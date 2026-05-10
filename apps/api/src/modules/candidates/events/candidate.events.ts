@@ -99,6 +99,24 @@ export class CandidateSkillAddedEvent extends BaseEvent {
   }
 }
 
+// ── candidate.status_changed ──────────────────────────────────────────────────
+
+export class CandidateStatusChangedEvent extends BaseEvent {
+  readonly candidateId: string;
+  readonly fromStatus: string;
+  readonly toStatus: string;
+
+  constructor(
+    actor: CandidateEventActor,
+    payload: { candidateId: string; fromStatus: string; toStatus: string },
+  ) {
+    super(actor);
+    this.candidateId = payload.candidateId;
+    this.fromStatus = payload.fromStatus;
+    this.toStatus = payload.toStatus;
+  }
+}
+
 // ── candidate.skill_removed ───────────────────────────────────────────────────
 
 export class CandidateSkillRemovedEvent extends BaseEvent {

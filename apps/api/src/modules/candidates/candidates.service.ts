@@ -11,12 +11,14 @@ import { NoteType } from '@repo/database';
 import type { RequestUser } from '../../auth/types/request-user.interface';
 import { AppContextService } from '../../common/context/app-context.service';
 import { EventNames } from '../../common/events/event-names.constant';
+import { FsmService, CANDIDATE_FSM } from '../../common/workflow';
 import { CandidatesRepository } from './candidates.repository';
 import { SkillsService } from './skills.service';
 import type { AssignSkillDto } from './dto/assign-skill.dto';
 import type { CreateCandidateDto } from './dto/create-candidate.dto';
 import type { CreateNoteDto } from './dto/create-note.dto';
 import type { ListCandidatesDto } from './dto/list-candidates.dto';
+import type { TransitionCandidateStatusDto } from './dto/transition-status.dto';
 import type { UpdateCandidateDto } from './dto/update-candidate.dto';
 import {
   toCandidateDetail,
@@ -31,6 +33,7 @@ import {
   CandidateNoteAddedEvent,
   CandidateSkillAddedEvent,
   CandidateSkillRemovedEvent,
+  CandidateStatusChangedEvent,
   CandidateUpdatedEvent,
 } from './events/candidate.events';
 
@@ -43,6 +46,7 @@ export class CandidatesService {
     private readonly skillsService: SkillsService,
     private readonly events: EventEmitter2,
     private readonly ctx: AppContextService,
+    private readonly fsm: FsmService,
   ) {}
 
   private actorContext(actor: RequestUser) {
@@ -239,6 +243,37 @@ export class CandidatesService {
       EventNames.CANDIDATE_DELETED,
       new CandidateDeletedEvent(this.actorContext(actor), { candidateId: id }),
     );
+  }
+
+  // ── Status transition ─────────────────────────────────────────────────────
+
+  async transitionStatus(
+    id: string,
+    dto: TransitionCandidateStatusDto,
+    actor: RequestUser,
+  ): Promise<CandidateDetail> {
+    const candidate = await this.assertExists(id, actor.organizationId);
+    const fromStatus = candidate.status;
+    const toStatus = dto.status;
+
+    this.fsm.validate(CANDIDATE_FSM, fromStatus, toStatus);
+
+    const updated = await this.repo.update(id, actor.organizationId, {
+      status: toStatus,
+    });
+
+    this.logger.log({ msg: 'Candidate status changed', candidateId: id, fromStatus, toStatus });
+
+    this.events.emit(
+      EventNames.CANDIDATE_STATUS_CHANGED,
+      new CandidateStatusChangedEvent(this.actorContext(actor), {
+        candidateId: id,
+        fromStatus,
+        toStatus,
+      }),
+    );
+
+    return toCandidateDetail(updated);
   }
 
   // ── Skills ────────────────────────────────────────────────────────────────

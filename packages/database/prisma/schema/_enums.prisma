@@ -40,11 +40,11 @@ enum UserStatus {
 // ── Candidate ─────────────────────────────────────────────────────────────────
 
 enum CandidateStatus {
-  ACTIVE          // available for placement consideration
+  ACTIVE          // in system; not yet ready for placement consideration
   INACTIVE        // in system but not actively pursuing roles
+  AVAILABLE       // actively seeking and ready for immediate submission
   PLACED          // successfully placed; tracking relationship
   BLACKLISTED     // internal flag — do not engage
-  DO_NOT_CONTACT  // explicit opt-out; legal compliance
 
   @@map("candidate_status")
 }

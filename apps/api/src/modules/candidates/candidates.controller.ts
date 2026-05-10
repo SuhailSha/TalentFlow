@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
 } from '@nestjs/common';
@@ -26,6 +27,7 @@ import { AssignSkillDto } from './dto/assign-skill.dto';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { ListCandidatesDto } from './dto/list-candidates.dto';
+import { TransitionCandidateStatusDto } from './dto/transition-status.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
 import type { CandidateDetail, CandidateListItem } from './types/candidate.types';
 
@@ -100,6 +102,21 @@ export class CandidatesController {
     @CurrentUser() user: RequestUser,
   ): Promise<void> {
     await this.candidatesService.softDelete(id, user);
+  }
+
+  // ── PUT /candidates/:id/status ────────────────────────────────────────────
+
+  @Put(':id/status')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(Permission.CANDIDATES_UPDATE)
+  async transitionStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TransitionCandidateStatusDto,
+    @CurrentUser() user: RequestUser,
+    @Req() req: Request,
+  ): Promise<ApiResponse<CandidateDetail>> {
+    const candidate = await this.candidatesService.transitionStatus(id, dto, user);
+    return ok(candidate, req.requestId);
   }
 
   // ── POST /candidates/:id/skills ────────────────────────────────────────────

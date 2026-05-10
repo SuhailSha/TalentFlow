@@ -12,6 +12,9 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AuditModule } from './common/audit/audit.module';
 import { AuditInterceptor } from './common/audit/audit.interceptor';
+import { WorkflowModule } from './common/workflow/workflow.module';
+import { ActivityModule } from './common/activity/activity.module';
+import { TransactionModule } from './common/transaction/transaction.module';
 import { DatabaseModule } from './database';
 import { HealthModule } from './health/health.module';
 import { LoggerModule } from './logger/logger.module';
@@ -52,6 +55,11 @@ import { JobsModule } from './modules/jobs/jobs.module';
 
     // ── Audit (must come after EventEmitter + Database) ────────────────────
     AuditModule,
+
+    // ── Shared workflow / transaction / activity infrastructure ────────────
+    WorkflowModule,
+    TransactionModule,
+    ActivityModule,
 
     // ── Queue Infrastructure ───────────────────────────────────────────────
     QueueModule.register(),

@@ -10,6 +10,7 @@ import { JobStatus, NoteType } from '@repo/database';
 import type { RequestUser } from '../../auth/types/request-user.interface';
 import { AppContextService } from '../../common/context/app-context.service';
 import { EventNames } from '../../common/events/event-names.constant';
+import { FsmService, JOB_FSM } from '../../common/workflow';
 import { SkillsService } from '../candidates/skills.service';
 import { JobsRepository } from './jobs.repository';
 import type { AssignJobSkillDto } from './dto/assign-job-skill.dto';
@@ -34,18 +35,6 @@ import {
   JobUpdatedEvent,
 } from './events/job.events';
 
-// ── Status FSM ────────────────────────────────────────────────────────────────
-// Valid transitions: DRAFT→OPEN, OPEN↔ON_HOLD, OPEN→FILLED, OPEN→CANCELLED,
-//                   FILLED→ARCHIVED, CANCELLED→ARCHIVED
-const ALLOWED_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
-  DRAFT:     [JobStatus.OPEN],
-  OPEN:      [JobStatus.ON_HOLD, JobStatus.FILLED, JobStatus.CANCELLED],
-  ON_HOLD:   [JobStatus.OPEN, JobStatus.CANCELLED],
-  FILLED:    [JobStatus.ARCHIVED],
-  CANCELLED: [JobStatus.ARCHIVED],
-  ARCHIVED:  [], // terminal state
-};
-
 @Injectable()
 export class JobsService {
   private readonly logger = new Logger(JobsService.name);
@@ -55,6 +44,7 @@ export class JobsService {
     private readonly skillsService: SkillsService,
     private readonly events: EventEmitter2,
     private readonly ctx: AppContextService,
+    private readonly fsm: FsmService,
   ) {}
 
   private actorContext(actor: RequestUser) {
@@ -199,17 +189,7 @@ export class JobsService {
     const fromStatus = job.status;
     const toStatus = dto.status;
 
-    if (fromStatus === toStatus) {
-      throw new BadRequestException(`Job is already in ${fromStatus} status`);
-    }
-
-    const allowed = ALLOWED_TRANSITIONS[fromStatus] ?? [];
-    if (!allowed.includes(toStatus)) {
-      throw new BadRequestException(
-        `Cannot transition from ${fromStatus} to ${toStatus}. ` +
-        `Allowed: ${allowed.join(', ') || 'none (terminal state)'}`,
-      );
-    }
+    this.fsm.validate(JOB_FSM, fromStatus, toStatus);
 
     const now = new Date();
     const updated = await this.repo.update(id, actor.organizationId, {

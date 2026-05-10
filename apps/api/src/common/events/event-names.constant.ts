@@ -22,12 +22,13 @@
  */
 export const EventNames = {
   // ── Candidate domain ────────────────────────────────────────────────────────
-  CANDIDATE_CREATED:       'candidate.created',
-  CANDIDATE_UPDATED:       'candidate.updated',
-  CANDIDATE_DELETED:       'candidate.deleted',
-  CANDIDATE_NOTE_ADDED:    'candidate.note_added',
-  CANDIDATE_SKILL_ADDED:   'candidate.skill_added',
-  CANDIDATE_SKILL_REMOVED: 'candidate.skill_removed',
+  CANDIDATE_CREATED:        'candidate.created',
+  CANDIDATE_UPDATED:        'candidate.updated',
+  CANDIDATE_DELETED:        'candidate.deleted',
+  CANDIDATE_STATUS_CHANGED: 'candidate.status_changed',
+  CANDIDATE_NOTE_ADDED:     'candidate.note_added',
+  CANDIDATE_SKILL_ADDED:    'candidate.skill_added',
+  CANDIDATE_SKILL_REMOVED:  'candidate.skill_removed',
 
   // ── Resume domain (infrastructure ready, feature in Phase 2) ────────────────
   RESUME_UPLOAD_REQUESTED: 'resume.upload_requested',
