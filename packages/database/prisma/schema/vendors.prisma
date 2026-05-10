@@ -1,0 +1,132 @@
+// ─── Vendor Domain ────────────────────────────────────────────────────────────
+//
+// Models:
+//   Vendor        — a company that supplies candidates or services
+//   VendorContact — named contacts within a vendor; one may be flagged isPrimary
+//   VendorNote    — append-only recruiter notes (immutable after creation)
+//
+// Design notes:
+//   • primaryContactName/Email/Phone are denormalised on Vendor for list-query
+//     performance; the service layer keeps them in sync with VendorContact.
+//   • relationshipOwnerId is stored as a plain UUID (no Prisma @relation) — the
+//     same pattern as hiringManagerId on JobDescription.
+//   • VendorContact uses hard delete (cascade on vendor delete); contacts are
+//     subordinate to the vendor and are not auditable standalone.
+//   • searchVector is populated by a DB trigger (see migration SQL).
+//   • The case-insensitive uniqueness constraint on (org_id, company_name) is a
+//     partial functional index in the DB; the service enforces it via ilike check.
+
+model Vendor {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+
+  // ── Identity ──────────────────────────────────────────────────────────────
+  companyName    String         @map("company_name") @db.VarChar(255)
+  vendorCode     String?        @map("vendor_code")  @db.VarChar(50)
+  website        String?        @db.VarChar(2048)
+  type           VendorType     @default(STAFFING_AGENCY)
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  status         VendorStatus   @default(PROSPECT)
+  priority       VendorPriority @default(NORMAL)
+
+  // ── Location ──────────────────────────────────────────────────────────────
+  city           String?        @db.VarChar(100)
+  stateProvince  String?        @map("state_province") @db.VarChar(100)
+  country        String?        @db.VarChar(100)
+  timezone       String?        @db.VarChar(50)
+
+  // ── Primary contact (denormalised for listing performance) ────────────────
+  // Source of truth is VendorContact.isPrimary; synced by VendorsService.
+  primaryContactName  String?   @map("primary_contact_name")  @db.VarChar(255)
+  primaryContactEmail String?   @map("primary_contact_email") @db.VarChar(255)
+  primaryContactPhone String?   @map("primary_contact_phone") @db.VarChar(50)
+
+  // ── Relationship ownership ────────────────────────────────────────────────
+  relationshipOwnerId String?   @map("relationship_owner_id") @db.Uuid
+
+  // ── Business terms ────────────────────────────────────────────────────────
+  domains         String[]      // specialisations e.g. ["Software Engineering", "Data Science"]
+  description     String?
+  contractDetails String?       @map("contract_details")
+  commissionRate  Decimal?      @map("commission_rate") @db.Decimal(5, 2)
+  paymentTermsDays Int?         @map("payment_terms_days")
+
+  // ── Full-text search ──────────────────────────────────────────────────────
+  // Populated by vendors_search_vector_trigger (migration SQL).
+  // Weights: company_name(A), primary_contact_name(B), domains(C), description(D)
+  searchVector Unsupported("tsvector")? @map("search_vector")
+
+  // ── Timestamps ────────────────────────────────────────────────────────────
+  activatedAt     DateTime?     @map("activated_at")      @db.Timestamptz
+  lastContactedAt DateTime?     @map("last_contacted_at") @db.Timestamptz
+  lastActivityAt  DateTime?     @map("last_activity_at")  @db.Timestamptz
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @updatedAt      @map("updated_at") @db.Timestamptz
+  deletedAt  DateTime?               @map("deleted_at")  @db.Timestamptz
+  createdBy  String?   @db.Uuid       @map("created_by")
+  updatedBy  String?   @db.Uuid       @map("updated_by")
+  deletedBy  String?   @db.Uuid       @map("deleted_by")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  contacts VendorContact[]
+  notes    VendorNote[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, priority])
+  @@index([organizationId, type])
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, lastActivityAt])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, relationshipOwnerId])
+  @@map("vendors")
+}
+
+model VendorContact {
+  id             String  @id @default(uuid()) @db.Uuid
+  vendorId       String  @map("vendor_id")       @db.Uuid
+  vendor         Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  organizationId String  @map("organization_id") @db.Uuid
+
+  firstName   String  @map("first_name") @db.VarChar(100)
+  lastName    String  @map("last_name")  @db.VarChar(100)
+  title       String? @db.VarChar(255)
+  email       String  @db.VarChar(255)
+  phone       String? @db.VarChar(50)
+  linkedinUrl String? @map("linkedin_url") @db.VarChar(2048)
+  isPrimary   Boolean @default(false) @map("is_primary")
+  isActive    Boolean @default(true)  @map("is_active")
+  notes       String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+  createdBy String?  @db.Uuid        @map("created_by")
+
+  @@index([vendorId])
+  @@index([organizationId])
+  @@map("vendor_contacts")
+}
+
+model VendorNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  vendorId       String   @map("vendor_id")       @db.Uuid
+  vendor         Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  organizationId String   @map("organization_id") @db.Uuid
+
+  content  String
+  noteType NoteType @default(NOTE) @map("note_type")
+
+  // Denormalised author — survives user deletion
+  authorId    String? @db.Uuid        @map("author_id")
+  authorEmail String? @db.VarChar(255) @map("author_email")
+  authorName  String? @db.VarChar(255) @map("author_name")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([vendorId, createdAt])
+  @@index([organizationId])
+  @@map("vendor_notes")
+}

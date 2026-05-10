@@ -108,6 +108,38 @@ enum NoteType {
   @@map("note_type")
 }
 
+// ── Vendor ────────────────────────────────────────────────────────────────────
+
+enum VendorStatus {
+  PROSPECT    // new — under evaluation, not yet engaged
+  ACTIVE      // qualified; current working relationship
+  INACTIVE    // relationship dormant; can be reactivated
+  BLOCKED     // do not engage — flagged internally; not yet archived
+  ARCHIVED    // terminal — soft-deleted; hidden from active listings
+
+  @@map("vendor_status")
+}
+
+enum VendorPriority {
+  LOW
+  NORMAL
+  HIGH
+  STRATEGIC   // key partner — preferential routing in submissions
+
+  @@map("vendor_priority")
+}
+
+enum VendorType {
+  STAFFING_AGENCY       // primary source of contractors / perms
+  CONSULTING_FIRM       // provides consultants / SOW work
+  FREELANCE_PLATFORM    // marketplace (Upwork, Toptal, etc.)
+  RECRUITMENT_PARTNER   // co-recruitment / referral partner
+  DIRECT_CLIENT         // client that hires directly (client-side platform mode)
+  OTHER
+
+  @@map("vendor_type")
+}
+
 // ── Job Descriptions ──────────────────────────────────────────────────────────
 
 // Weight applied to a required skill in the matching engine score.

@@ -36,10 +36,14 @@ export type {
   Skill,
   CandidateSkill,
   CandidateNote,
-  // Job Description domain (Step 4C.1)
+  // Job Description domain
   JobDescription,
   JobSkill,
   JobNote,
+  // Vendor domain
+  Vendor,
+  VendorContact,
+  VendorNote,
 } from '@prisma/client';
 
 // Enum values — exported as values so @IsEnum() decorators can use them at runtime.
@@ -54,11 +58,15 @@ export {
   SkillCategory,
   ProficiencyLevel,
   NoteType,
-  // Job Description domain (Step 4C.1)
+  // Job Description domain
   JobStatus,
   JobPriority,
   EmploymentType,
   WorkMode,
   SalaryType,
   ImportanceLevel,
+  // Vendor domain
+  VendorStatus,
+  VendorPriority,
+  VendorType,
 } from '@prisma/client';

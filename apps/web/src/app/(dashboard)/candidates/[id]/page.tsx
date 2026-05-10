@@ -16,9 +16,9 @@ import { useAuthContext } from '@/providers/auth-provider';
 const STATUS_COLORS: Record<CandidateStatus, string> = {
   ACTIVE: 'bg-green-100 text-green-800',
   INACTIVE: 'bg-gray-100 text-gray-700',
+  AVAILABLE: 'bg-teal-100 text-teal-800',
   PLACED: 'bg-blue-100 text-blue-800',
   BLACKLISTED: 'bg-red-100 text-red-800',
-  DO_NOT_CONTACT: 'bg-orange-100 text-orange-800',
 };
 
 const AVAILABILITY_LABELS: Record<AvailabilityStatus, string> = {

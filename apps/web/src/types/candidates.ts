@@ -1,4 +1,4 @@
-export type CandidateStatus = 'ACTIVE' | 'INACTIVE' | 'PLACED' | 'BLACKLISTED' | 'DO_NOT_CONTACT';
+export type CandidateStatus = 'ACTIVE' | 'INACTIVE' | 'AVAILABLE' | 'PLACED' | 'BLACKLISTED';
 export type AvailabilityStatus =
   | 'IMMEDIATELY'
   | 'TWO_WEEKS'

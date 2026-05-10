@@ -1,4 +1,4 @@
-import { CandidateStatus, JobStatus } from '@repo/database';
+import { CandidateStatus, JobStatus, VendorStatus } from '@repo/database';
 
 import type { FsmDefinition } from './fsm.types';
 
@@ -31,6 +31,22 @@ export const JOB_FSM: FsmDefinition<JobStatus> = {
     [JobStatus.ARCHIVED]:  [],  // terminal
   },
   terminal: [JobStatus.ARCHIVED],
+};
+
+// ── Vendor lifecycle ──────────────────────────────────────────────────────────
+// PROSPECT → ACTIVE/BLOCKED
+// ACTIVE ↔ INACTIVE, ACTIVE → BLOCKED
+// INACTIVE → ACTIVE/BLOCKED
+// BLOCKED → ARCHIVED (terminal; sets deletedAt via service side-effect)
+export const VENDOR_FSM: FsmDefinition<VendorStatus> = {
+  transitions: {
+    [VendorStatus.PROSPECT]:  [VendorStatus.ACTIVE, VendorStatus.BLOCKED],
+    [VendorStatus.ACTIVE]:    [VendorStatus.INACTIVE, VendorStatus.BLOCKED],
+    [VendorStatus.INACTIVE]:  [VendorStatus.ACTIVE, VendorStatus.BLOCKED],
+    [VendorStatus.BLOCKED]:   [VendorStatus.ARCHIVED],
+    [VendorStatus.ARCHIVED]:  [],
+  },
+  terminal: [VendorStatus.ARCHIVED],
 };
 
 // ── Submission lifecycle (placeholder — implemented with SubmissionsModule) ────

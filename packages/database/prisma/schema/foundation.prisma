@@ -88,6 +88,8 @@ model Organization {
   // Job Description domain (Step 4C.1)
   jobDescriptions JobDescription[]
   jobNotes        JobNote[]
+  // Vendor domain
+  vendors         Vendor[]
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   @@index([slug])

@@ -22,6 +22,7 @@ import { QueueModule } from './queue/queue.module';
 import { StorageModule } from './storage/storage.module';
 import { CandidatesModule } from './modules/candidates/candidates.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { VendorsModule } from './modules/vendors/vendors.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { JobsModule } from './modules/jobs/jobs.module';
     HealthModule,
     CandidatesModule,
     JobsModule,
+    VendorsModule,
   ],
   providers: [
     {

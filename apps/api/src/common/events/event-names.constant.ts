@@ -46,6 +46,16 @@ export const EventNames = {
   JOB_SKILL_ADDED:         'job.skill_added',
   JOB_SKILL_REMOVED:       'job.skill_removed',
 
+  // ── Vendor domain ───────────────────────────────────────────────────────────
+  VENDOR_CREATED:         'vendor.created',
+  VENDOR_UPDATED:         'vendor.updated',
+  VENDOR_DELETED:         'vendor.deleted',
+  VENDOR_STATUS_CHANGED:  'vendor.status_changed',
+  VENDOR_NOTE_ADDED:      'vendor.note_added',
+  VENDOR_CONTACT_ADDED:   'vendor.contact_added',
+  VENDOR_CONTACT_UPDATED: 'vendor.contact_updated',
+  VENDOR_CONTACT_REMOVED: 'vendor.contact_removed',
+
   // ── Submission domain (Phase 1B Step 4C.2 — not yet implemented) ───────────
   SUBMISSION_CREATED:      'submission.created',
   SUBMISSION_STAGE_CHANGED:'submission.stage_changed',
