@@ -126,6 +126,7 @@ model JobDescription {
   jobSkills      JobSkill[]
   notes          JobNote[]
   submissions    Submission[]
+  interviews     Interview[]
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Tenant isolation — always the first filter in every query.

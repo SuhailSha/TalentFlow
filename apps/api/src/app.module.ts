@@ -24,6 +24,7 @@ import { CandidatesModule } from './modules/candidates/candidates.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { SubmissionsModule } from './modules/submissions/submissions.module';
+import { InterviewsModule } from './modules/interviews/interviews.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { SubmissionsModule } from './modules/submissions/submissions.module';
     JobsModule,
     VendorsModule,
     SubmissionsModule,
+    InterviewsModule,
   ],
   providers: [
     {

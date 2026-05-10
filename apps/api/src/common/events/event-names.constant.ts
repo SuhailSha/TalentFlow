@@ -66,6 +66,17 @@ export const EventNames = {
   OFFER_EXTENDED:            'submission.offer_extended',  // status → OFFERED
   CANDIDATE_PLACED:          'submission.candidate_placed', // status → PLACED
 
+  // ── Interview domain ─────────────────────────────────────────────────────────
+  INTERVIEW_SCHEDULED:       'interview.scheduled',
+  INTERVIEW_UPDATED:         'interview.updated',
+  INTERVIEW_CANCELLED:       'interview.cancelled',
+  INTERVIEW_STATUS_CHANGED:  'interview.status_changed',
+  INTERVIEW_NOTE_ADDED:      'interview.note_added',
+  INTERVIEW_FEEDBACK_SUBMITTED: 'interview.feedback_submitted',
+  INTERVIEW_PASSED:          'interview.passed',
+  INTERVIEW_FAILED:          'interview.failed',
+  INTERVIEW_NO_SHOW:         'interview.no_show',
+
   // ── System / platform ───────────────────────────────────────────────────────
   AUTH_LOGIN:              'auth.login',
   AUTH_LOGOUT:             'auth.logout',

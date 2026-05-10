@@ -103,6 +103,7 @@ model Submission {
   createdBy       User                    @relation("SubmissionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   notes           SubmissionNote[]
   statusHistory   SubmissionStatusHistory[]
+  interviews      Interview[]
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Tenant isolation — always the first filter.

@@ -104,6 +104,7 @@ model Candidate {
   candidateSkills CandidateSkill[]
   notes           CandidateNote[]
   submissions     Submission[]
+  interviews      Interview[]
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Level-1 duplicate detection: same email is unique within an org.

@@ -51,10 +51,11 @@ export const Permission = {
   SUBMISSIONS_CREATE: 'submissions:create',
   SUBMISSIONS_UPDATE: 'submissions:update',
 
-  // ── Interviews (Step 6) ──────────────────────────────────────────────────
+  // ── Interviews ──────────────────────────────────────────────────────────────
   INTERVIEWS_READ: 'interviews:read',
   INTERVIEWS_CREATE: 'interviews:create',
   INTERVIEWS_UPDATE: 'interviews:update',
+  INTERVIEWS_DELETE: 'interviews:delete',
 
   // ── Reports ──────────────────────────────────────────────────────────────
   REPORTS_READ: 'reports:read',

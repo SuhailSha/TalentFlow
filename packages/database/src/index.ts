@@ -48,6 +48,12 @@ export type {
   Submission,
   SubmissionNote,
   SubmissionStatusHistory,
+  // Interview domain
+  Interview,
+  InterviewFeedback,
+  InterviewNote,
+  InterviewStatusHistory,
+  InterviewParticipant,
 } from '@prisma/client';
 
 // Enum values — exported as values so @IsEnum() decorators can use them at runtime.
@@ -75,4 +81,9 @@ export {
   VendorType,
   // Submission domain
   SubmissionStatus,
+  // Interview domain
+  InterviewStatus,
+  InterviewType,
+  FeedbackRecommendation,
+  InterviewParticipantRole,
 } from '@prisma/client';

@@ -1,0 +1,290 @@
+// ─── Interview Domain ──────────────────────────────────────────────────────────
+//
+// Models:
+//   Interview                — a single interview round for a submission
+//   InterviewFeedback        — structured feedback from an interviewer (one per interviewer/round)
+//   InterviewNote            — append-only activity log
+//   InterviewStatusHistory   — immutable audit trail of every FSM transition
+//   InterviewParticipant     — panel/multi-interviewer support
+//
+// Design decisions:
+//
+//  Rounds:
+//    `round` is an integer (1, 2, 3…) scoped per submission.
+//    `roundLabel` is a human-readable label ("Phone Screen", "Technical", "Final Panel").
+//    The active round is the one whose status is not terminal.
+//    No DB constraint limits the number of rounds — enterprise roles may have 6+.
+//
+//  Submission linkage:
+//    interviewId links back to its Submission via submissionId.
+//    A Submission in INTERVIEW status can have multiple rounds.
+//    Interview FSM is independent of Submission FSM — recruiter manually
+//    advances the Submission based on all rounds' outcomes.
+//
+//  Rescheduling chain:
+//    When a CONFIRMED/SCHEDULED interview is RESCHEDULED, a new Interview record
+//    is created with `rescheduledFromId` pointing to the original.
+//    The original interview is NOT deleted — it stays in history.
+//    The rescheduling chain is navigable: follow rescheduledFromId backwards.
+//
+//  Feedback model:
+//    InterviewFeedback is per-interviewer (multiple per interview for panels).
+//    `isSubmitted` separates drafts (autosaved) from finalized feedback.
+//    Structured scores (1–5) + FeedbackRecommendation are the decision inputs.
+//    Recruiter sees all submitted feedback before choosing PASSED or FAILED.
+//
+//  Interviewer denormalization:
+//    interviewerName/Email are denormalized alongside interviewerId (FK nullable)
+//    to support external interviewers who are not platform users.
+//    Same pattern as hiringManagerName on JobDescription.
+//
+//  Stage timestamps:
+//    scheduledAt, confirmedAt, startedAt, completedAt, passedAt, failedAt,
+//    cancelledAt, noShowAt — set by service on FSM transitions.
+//    Drive time-in-stage analytics: "average days from scheduled → completed".
+
+// ─── Interview ────────────────────────────────────────────────────────────────
+
+model Interview {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Submission linkage ────────────────────────────────────────────────────
+  submissionId String @db.Uuid @map("submission_id")
+  candidateId  String @db.Uuid @map("candidate_id")
+  jobId        String @db.Uuid @map("job_id")
+
+  // ── Round metadata ────────────────────────────────────────────────────────
+  round      Int               // 1, 2, 3… per submission
+  roundLabel String?           @db.VarChar(100) @map("round_label") // "Phone Screen", "Technical", "Final"
+  type       InterviewType     @default(PHONE)
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  status InterviewStatus @default(SCHEDULED)
+
+  // ── Ownership ─────────────────────────────────────────────────────────────
+  ownerId     String @db.Uuid @map("owner_id")     // recruiter coordinating this round
+  createdById String @db.Uuid @map("created_by_id")
+
+  // ── Interviewer ───────────────────────────────────────────────────────────
+  // interviewerId: FK to User if internal interviewer; null if external.
+  // interviewerName/Email: denormalized for external interviewers and for
+  // display even after user deletion.
+  interviewerId    String? @db.Uuid        @map("interviewer_id")
+  interviewerName  String? @db.VarChar(255) @map("interviewer_name")
+  interviewerEmail String? @db.VarChar(255) @map("interviewer_email")
+
+  // ── Scheduling ────────────────────────────────────────────────────────────
+  scheduledAt     DateTime? @db.Timestamptz @map("scheduled_at")     // planned date/time
+  durationMinutes Int?                      @map("duration_minutes") // expected length
+  timezone        String?   @db.VarChar(50)                          // e.g. "America/Chicago"
+  location        String?   @db.Text                                  // room / meeting link
+
+  // ── Stage timestamps (set by FSM service) ─────────────────────────────────
+  confirmedAt  DateTime? @db.Timestamptz @map("confirmed_at")
+  startedAt    DateTime? @db.Timestamptz @map("started_at")
+  completedAt  DateTime? @db.Timestamptz @map("completed_at")
+  passedAt     DateTime? @db.Timestamptz @map("passed_at")
+  failedAt     DateTime? @db.Timestamptz @map("failed_at")
+  cancelledAt  DateTime? @db.Timestamptz @map("cancelled_at")
+  noShowAt     DateTime? @db.Timestamptz @map("no_show_at")
+  rescheduledAt DateTime? @db.Timestamptz @map("rescheduled_at")
+
+  // ── Rescheduling chain ────────────────────────────────────────────────────
+  // Points to the interview this one replaces. Navigate backwards to see full history.
+  rescheduledFromId String? @db.Uuid @map("rescheduled_from_id")
+
+  // ── Cancellation ──────────────────────────────────────────────────────────
+  cancellationReason String? @db.Text @map("cancellation_reason")
+
+  // ── Recruiter notes ───────────────────────────────────────────────────────
+  // Pre-interview briefing note — NOT the same as activity log notes.
+  briefingNotes String? @db.Text @map("briefing_notes")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime  @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt DateTime  @updatedAt      @db.Timestamptz @map("updated_at")
+  deletedAt DateTime? @db.Timestamptz @map("deleted_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  submission      Submission            @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  candidate       Candidate             @relation(fields: [candidateId], references: [id], onDelete: Restrict)
+  job             JobDescription        @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  owner           User                  @relation("InterviewOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  interviewer     User?                 @relation("InterviewInterviewer", fields: [interviewerId], references: [id], onDelete: SetNull)
+  createdBy       User                  @relation("InterviewCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  rescheduledFrom Interview?            @relation("InterviewRescheduleChain", fields: [rescheduledFromId], references: [id], onDelete: SetNull)
+  rescheduledTo   Interview[]           @relation("InterviewRescheduleChain")
+  feedback        InterviewFeedback[]
+  notes           InterviewNote[]
+  statusHistory   InterviewStatusHistory[]
+  participants    InterviewParticipant[]
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, submissionId])
+  @@index([organizationId, candidateId])
+  @@index([organizationId, jobId])
+  @@index([organizationId, ownerId])
+  @@index([organizationId, interviewerId])
+  @@index([organizationId, scheduledAt])
+  // "Upcoming confirmed interviews this week" — primary operational query
+  @@index([organizationId, status, scheduledAt])
+  @@index([organizationId, deletedAt])
+  @@map("interviews")
+}
+
+// ─── InterviewFeedback ────────────────────────────────────────────────────────
+//
+// Structured feedback per interviewer per round.
+// Multiple feedback records per interview (panel support).
+// `isSubmitted = false` = draft; recruiter cannot act until submitted.
+// Structured scores (1–5) + FeedbackRecommendation → recruiter decides PASSED/FAILED.
+
+model InterviewFeedback {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  interviewId    String @db.Uuid @map("interview_id")
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Submitter ─────────────────────────────────────────────────────────────
+  submittedById    String? @db.Uuid        @map("submitted_by_id")
+  submitterName    String? @db.VarChar(255) @map("submitter_name")
+  submitterEmail   String? @db.VarChar(255) @map("submitter_email")
+
+  // ── Recommendation ────────────────────────────────────────────────────────
+  recommendation FeedbackRecommendation? @default(NEUTRAL)
+
+  // ── Structured scores (1–5, nullable = not assessed) ─────────────────────
+  technicalScore     Int? @map("technical_score")
+  communicationScore Int? @map("communication_score")
+  cultureFitScore    Int? @map("culture_fit_score")
+  overallScore       Int? @map("overall_score")
+
+  // ── Qualitative content ───────────────────────────────────────────────────
+  strengths String? @db.Text
+  concerns  String? @db.Text
+  notes     String? @db.Text
+
+  // ── Submission state ──────────────────────────────────────────────────────
+  // false = autosaved draft (not visible to recruiter yet)
+  // true  = finalized; recruiter can use as input for PASSED/FAILED decision
+  isSubmitted Boolean   @default(false) @map("is_submitted")
+  submittedAt DateTime? @db.Timestamptz  @map("submitted_at")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+  updatedAt DateTime @updatedAt      @db.Timestamptz @map("updated_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  submittedBy User?     @relation("InterviewFeedbackAuthor", fields: [submittedById], references: [id], onDelete: SetNull)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([interviewId])
+  @@index([interviewId, isSubmitted])
+  @@index([organizationId])
+  @@map("interview_feedback")
+}
+
+// ─── InterviewNote ────────────────────────────────────────────────────────────
+//
+// Append-only activity log per Interview. Mirrors SubmissionNote/CandidateNote.
+// isSystem = true for auto-generated notes (FSM transitions, etc.)
+
+model InterviewNote {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  interviewId    String @db.Uuid @map("interview_id")
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Content ───────────────────────────────────────────────────────────────
+  content  String   @db.Text
+  noteType NoteType @default(NOTE) @map("note_type")
+  isSystem Boolean  @default(false) @map("is_system")
+
+  // ── Author ────────────────────────────────────────────────────────────────
+  authorId    String? @db.Uuid        @map("author_id")
+  authorEmail String? @db.VarChar(255) @map("author_email")
+  authorName  String? @db.VarChar(255) @map("author_name")
+
+  // ── Timestamp ─────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  interview    Interview    @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User?        @relation("InterviewNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([interviewId])
+  @@index([organizationId])
+  @@index([interviewId, createdAt])
+  @@map("interview_notes")
+}
+
+// ─── InterviewStatusHistory ───────────────────────────────────────────────────
+//
+// Append-only log of every FSM state transition.
+// Enables audit trail, time-in-stage analytics, and timeline UI.
+
+model InterviewStatusHistory {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id          String @id @default(uuid()) @db.Uuid
+  interviewId String @db.Uuid @map("interview_id")
+
+  // ── Transition ────────────────────────────────────────────────────────────
+  fromStatus InterviewStatus? @map("from_status") // null = initial creation
+  toStatus   InterviewStatus  @map("to_status")
+  changedById String           @db.Uuid @map("changed_by_id")
+  reason      String?          @db.Text
+
+  // ── Timestamp ─────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  changedBy User      @relation("InterviewStatusHistoryActor", fields: [changedById], references: [id], onDelete: Restrict)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([interviewId])
+  @@index([interviewId, createdAt])
+  @@map("interview_status_history")
+}
+
+// ─── InterviewParticipant ─────────────────────────────────────────────────────
+//
+// Panel/multi-interviewer support. Each Interview has one or more participants.
+// Primary interviewer is also stored denormalized on Interview for quick access.
+// Participants with role INTERVIEWER can submit InterviewFeedback.
+
+model InterviewParticipant {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id          String @id @default(uuid()) @db.Uuid
+  interviewId String @db.Uuid @map("interview_id")
+
+  // ── Participant ───────────────────────────────────────────────────────────
+  userId    String? @db.Uuid        @map("user_id")    // null for external participants
+  name      String  @db.VarChar(255)
+  email     String  @db.VarChar(255)
+  role      InterviewParticipantRole @default(INTERVIEWER)
+
+  // ── Confirmation ──────────────────────────────────────────────────────────
+  hasConfirmed Boolean   @default(false) @map("has_confirmed")
+  confirmedAt  DateTime? @db.Timestamptz @map("confirmed_at")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  user      User?     @relation("InterviewParticipantUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@unique([interviewId, email])
+  @@index([interviewId])
+  @@map("interview_participants")
+}

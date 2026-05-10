@@ -1,4 +1,4 @@
-import { CandidateStatus, JobStatus, SubmissionStatus, VendorStatus } from '@repo/database';
+import { CandidateStatus, InterviewStatus, JobStatus, SubmissionStatus, VendorStatus } from '@repo/database';
 
 import type { FsmDefinition } from './fsm.types';
 
@@ -117,4 +117,64 @@ export const SUBMISSION_FSM: FsmDefinition<SubmissionStatus> = {
     [SubmissionStatus.CLOSED]:    [],
   },
   terminal: [SubmissionStatus.CLOSED],
+};
+
+// ── Interview lifecycle ────────────────────────────────────────────────────────
+//
+// Each Interview record represents one round of a submission's interview process.
+//
+// Forward path (typical):
+//   SCHEDULED → CONFIRMED → IN_PROGRESS → COMPLETED → FEEDBACK_PENDING → PASSED | FAILED
+//
+// Rescheduling path (new Interview record is created; original stays for history):
+//   SCHEDULED | CONFIRMED → RESCHEDULED → CONFIRMED
+//
+// No-show path (candidate/interviewer didn't appear):
+//   SCHEDULED | CONFIRMED | RESCHEDULED | IN_PROGRESS → NO_SHOW → RESCHEDULED | CANCELLED
+//
+// Cancellation (from any active state):
+//   any → CANCELLED
+//
+// Terminal states: PASSED, FAILED, CANCELLED
+// Note: PASSED/FAILED do NOT auto-advance the Submission — recruiter retains control.
+export const INTERVIEW_FSM: FsmDefinition<InterviewStatus> = {
+  transitions: {
+    [InterviewStatus.SCHEDULED]: [
+      InterviewStatus.CONFIRMED,
+      InterviewStatus.RESCHEDULED,
+      InterviewStatus.NO_SHOW,
+      InterviewStatus.CANCELLED,
+    ],
+    [InterviewStatus.CONFIRMED]: [
+      InterviewStatus.IN_PROGRESS,
+      InterviewStatus.RESCHEDULED,
+      InterviewStatus.NO_SHOW,
+      InterviewStatus.CANCELLED,
+    ],
+    [InterviewStatus.RESCHEDULED]: [
+      InterviewStatus.CONFIRMED,
+      InterviewStatus.CANCELLED,
+    ],
+    [InterviewStatus.IN_PROGRESS]: [
+      InterviewStatus.COMPLETED,
+      InterviewStatus.NO_SHOW,
+      InterviewStatus.CANCELLED,
+    ],
+    [InterviewStatus.COMPLETED]: [
+      InterviewStatus.FEEDBACK_PENDING,
+    ],
+    [InterviewStatus.FEEDBACK_PENDING]: [
+      InterviewStatus.PASSED,
+      InterviewStatus.FAILED,
+    ],
+    [InterviewStatus.NO_SHOW]: [
+      InterviewStatus.RESCHEDULED,
+      InterviewStatus.CANCELLED,
+    ],
+    // Terminal states
+    [InterviewStatus.PASSED]:    [],
+    [InterviewStatus.FAILED]:    [],
+    [InterviewStatus.CANCELLED]: [],
+  },
+  terminal: [InterviewStatus.PASSED, InterviewStatus.FAILED, InterviewStatus.CANCELLED],
 };

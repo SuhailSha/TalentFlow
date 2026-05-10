@@ -208,6 +208,62 @@ enum SalaryType {
   @@map("salary_type")
 }
 
+// ── Interviews ────────────────────────────────────────────────────────────────
+
+// Format of the interview: phone, video, onsite, etc.
+enum InterviewType {
+  PHONE       // initial phone screen
+  VIDEO       // remote video interview (Zoom, Teams, Meet)
+  ONSITE      // in-person at client/office location
+  PANEL       // multiple interviewers simultaneously
+  TECHNICAL   // dedicated technical assessment
+  BEHAVIORAL  // competency/culture-fit focused
+  CASE_STUDY  // case study / presentation format
+  OTHER
+
+  @@map("interview_type")
+}
+
+// Lifecycle FSM — see INTERVIEW_FSM in lifecycle.constants.ts
+// SCHEDULED → CONFIRMED → IN_PROGRESS → COMPLETED → FEEDBACK_PENDING → PASSED|FAILED
+// Any active state → CANCELLED (terminal)
+// SCHEDULED|CONFIRMED → RESCHEDULED ↔ CONFIRMED
+// NO_SHOW is reachable from SCHEDULED|CONFIRMED|RESCHEDULED|IN_PROGRESS
+enum InterviewStatus {
+  SCHEDULED        // interview created and time set; awaiting confirmation
+  CONFIRMED        // candidate (and interviewer) has confirmed the slot
+  RESCHEDULED      // previous slot cancelled; new time being arranged
+  IN_PROGRESS      // interview is actively happening right now
+  COMPLETED        // interview ended; feedback not yet collected
+  FEEDBACK_PENDING // completed but awaiting structured feedback submission
+  PASSED           // candidate passed this round (terminal)
+  FAILED           // candidate failed this round (terminal)
+  NO_SHOW          // candidate (or interviewer) did not appear
+  CANCELLED        // interview cancelled before completion (terminal)
+
+  @@map("interview_status")
+}
+
+// Interviewer recommendation — drives PASSED/FAILED outcome decision.
+enum FeedbackRecommendation {
+  STRONG_YES  // exceptional candidate — fast-track
+  YES         // hire; meets all criteria
+  NEUTRAL     // borderline; needs discussion
+  NO          // does not meet criteria
+  STRONG_NO   // clear mismatch — do not proceed
+
+  @@map("feedback_recommendation")
+}
+
+// Role of a participant in the interview (for panel/multi-interviewer support).
+enum InterviewParticipantRole {
+  INTERVIEWER   // conducting the interview; can submit feedback
+  OBSERVER      // passive observer; can submit notes only
+  COORDINATOR   // recruiter/coordinator managing logistics
+
+  @@map("interview_participant_role")
+}
+
 // ── Submissions ───────────────────────────────────────────────────────────────
 
 // Lifecycle FSM — see lifecycle.constants.ts for transition rules.

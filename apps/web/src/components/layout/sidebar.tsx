@@ -4,6 +4,7 @@ import {
   BarChart3,
   Briefcase,
   Building2,
+  CalendarClock,
   FileText,
   LayoutDashboard,
   Users,
@@ -30,6 +31,7 @@ const navGroups: NavGroup[] = [
       { title: 'Candidates', href: '/candidates', icon: Users },
       { title: 'Jobs', href: '/jobs', icon: FileText },
       { title: 'Submissions', href: '/submissions', icon: Briefcase },
+      { title: 'Interviews', href: '/interviews', icon: CalendarClock },
     ],
   },
   {

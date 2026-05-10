@@ -93,6 +93,9 @@ model Organization {
   // Submission domain
   submissions     Submission[]
   submissionNotes SubmissionNote[]
+  // Interview domain
+  interviews      Interview[]
+  interviewNotes  InterviewNote[]
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   @@index([slug])
@@ -162,6 +165,14 @@ model User {
   createdSubmissions  Submission[]              @relation("SubmissionCreatedBy")
   authoredSubmissionNotes SubmissionNote[]      @relation("SubmissionNoteAuthor")
   submissionStatusChanges SubmissionStatusHistory[] @relation("SubmissionStatusHistoryActor")
+  // Interview domain
+  ownedInterviews          Interview[]               @relation("InterviewOwner")
+  conductedInterviews      Interview[]               @relation("InterviewInterviewer")
+  createdInterviews        Interview[]               @relation("InterviewCreatedBy")
+  authoredInterviewNotes   InterviewNote[]           @relation("InterviewNoteAuthor")
+  interviewStatusChanges   InterviewStatusHistory[]  @relation("InterviewStatusHistoryActor")
+  interviewFeedbackGiven   InterviewFeedback[]       @relation("InterviewFeedbackAuthor")
+  interviewParticipations  InterviewParticipant[]    @relation("InterviewParticipantUser")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Composite unique: same email cannot exist twice within one org.
