@@ -1,0 +1,27 @@
+import type { AuthResponse, LoginCredentials, UserProfile } from '@/types/auth';
+import { apiClient } from './client';
+
+/**
+ * Auth API — all calls use httpOnly cookies (set/cleared by the API server).
+ * No tokens are handled client-side; the browser manages cookie transmission.
+ */
+
+export async function login(credentials: LoginCredentials): Promise<UserProfile> {
+  const { data } = await apiClient.post<AuthResponse>('/auth/login', credentials);
+  return data.user;
+}
+
+export async function logout(): Promise<void> {
+  await apiClient.post<{ ok: true }>('/auth/logout');
+}
+
+/** Silent token refresh — called by the interceptor on 401. */
+export async function refreshTokens(): Promise<void> {
+  await apiClient.post<{ ok: true }>('/auth/refresh');
+}
+
+/** Fetch the current user's profile. 401 if not authenticated. */
+export async function getMe(): Promise<UserProfile> {
+  const { data } = await apiClient.get<AuthResponse>('/auth/me');
+  return data.user;
+}

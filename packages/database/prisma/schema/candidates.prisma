@@ -1,0 +1,237 @@
+// ─── Candidate Domain ─────────────────────────────────────────────────────────
+//
+// Core recruitment entity: a person who may be placed at a client organization.
+//
+// Key design decisions:
+//
+//  Experience:
+//    Stored as `careerStartDate` (Date, nullable) rather than `yearsExperience`
+//    (integer). This auto-updates as time passes with no maintenance. The API
+//    layer computes: experienceYears = floor((now - careerStartDate) / 365.25)
+//    The filter DTO converts experienceMin/Max years to careerStartDate ranges.
+//
+//  Skills:
+//    `Skill` is global (no organizationId) — "React" is the same entity across
+//    all tenants. This powers future cross-tenant matching and dedup.
+//    `CandidateSkill` is the junction, holding proficiency + experience metadata.
+//
+//  Duplicate detection:
+//    Level 1 — DB UNIQUE (organizationId, email) → 409 on hard duplicate.
+//    Level 2 — App-layer name+phone fuzzy check → 201 + potentialDuplicates[].
+//    Level 3 — Cross-org email hash (future, matching engine).
+//
+//  Search:
+//    Phase 1: ILIKE on name/email/title/company (adequate to ~50k rows/tenant).
+//    Phase 2: Add tsvector GENERATED ALWAYS AS column + GIN index via migration.
+
+// ─── Candidate ────────────────────────────────────────────────────────────────
+
+model Candidate {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Contact ───────────────────────────────────────────────────────────────
+  email     String  @db.VarChar(255)
+  firstName String  @db.VarChar(100) @map("first_name")
+  lastName  String  @db.VarChar(100) @map("last_name")
+  phone     String? @db.VarChar(50)
+
+  // External profiles
+  linkedinUrl  String? @db.Text @map("linkedin_url")
+  githubUrl    String? @db.Text @map("github_url")
+  portfolioUrl String? @db.Text @map("portfolio_url")
+
+  // ── Location ──────────────────────────────────────────────────────────────
+  city          String? @db.VarChar(100)
+  stateProvince String? @db.VarChar(100) @map("state_province")
+  country       String? @db.VarChar(100)
+  timezone      String? @db.VarChar(50) // e.g. "America/New_York"
+  isRemote      Boolean @default(false)  @map("is_remote") // open to remote work
+
+  // ── Professional ──────────────────────────────────────────────────────────
+  currentTitle   String? @db.VarChar(255) @map("current_title")
+  currentCompany String? @db.VarChar(255) @map("current_company")
+
+  // Date their career started (not birth date). Used to compute yearsOfExperience.
+  // The API returns: experienceYears = Math.floor((Date.now() - careerStartDate) / 31_557_600_000)
+  careerStartDate DateTime? @map("career_start_date") @db.Date
+
+  // Free-form recruiter summary / elevator pitch
+  summary String? @db.Text
+
+  // ── Compensation expectations ─────────────────────────────────────────────
+  // Stored as integers (whole currency units, e.g. USD $95000 = 95000).
+  // Not minor units (cents) to keep filtering/display simple.
+  salaryExpectationMin Int?    @map("salary_expectation_min")
+  salaryExpectationMax Int?    @map("salary_expectation_max")
+  salaryCurrency       String? @db.VarChar(3) @map("salary_currency") // ISO 4217: "USD", "EUR"
+
+  // ── Status & Availability ─────────────────────────────────────────────────
+  status             CandidateStatus    @default(ACTIVE)
+  availabilityStatus AvailabilityStatus @default(NOT_LOOKING) @map("availability_status")
+
+  // Concrete date when the candidate becomes available (optional precision)
+  availableFrom DateTime? @map("available_from") @db.Date
+
+  // ── Source Tracking ───────────────────────────────────────────────────────
+  source       CandidateSource @default(MANUAL)
+  // e.g. vendor name for VENDOR source, job board name for JOB_BOARD
+  sourceDetail String?         @db.VarChar(255) @map("source_detail")
+
+  // ── Resume / Documents ────────────────────────────────────────────────────
+  // File storage is implemented in Step 7 (S3/blob). These fields reserve the
+  // schema slot now. The key is the object storage path / S3 key.
+  resumeFileKey    String?   @db.VarChar(512) @map("resume_file_key")
+  resumeFileName   String?   @db.VarChar(255) @map("resume_file_name")
+  resumeUploadedAt DateTime? @map("resume_uploaded_at")
+
+  // ── Denormalized activity tracking ────────────────────────────────────────
+  // Updated on every new note/submission/interview to power activity-sorted lists.
+  // Maintained by the application layer (not a trigger) to keep logic explicit.
+  lastActivityAt DateTime? @map("last_activity_at")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt      @map("updated_at")
+  deletedAt DateTime?                 @map("deleted_at")
+  createdBy String?   @db.Uuid       @map("created_by")
+  updatedBy String?   @db.Uuid       @map("updated_by")
+  deletedBy String?   @db.Uuid       @map("deleted_by")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  candidateSkills CandidateSkill[]
+  notes           CandidateNote[]
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  // Level-1 duplicate detection: same email is unique within an org.
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, availabilityStatus])
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, lastActivityAt])
+  // Experience-range filtering: convert experienceMin/Max years → careerStartDate bounds.
+  @@index([organizationId, careerStartDate])
+  @@index([organizationId, country])
+  @@index([organizationId, isRemote])
+  @@map("candidates")
+}
+
+// ─── Skill ────────────────────────────────────────────────────────────────────
+//
+// Global skills catalogue — NOT org-scoped. "React" is the same Skill row
+// regardless of which tenant uses it. This enables future cross-tenant matching.
+//
+// Dedup: `name` is stored lowercase-normalized ("react", "typescript", "aws").
+// `displayName` preserves the canonical casing shown to users ("TypeScript").
+// Application layer: normalize to lowercase before upsert; return existing if found.
+
+model Skill {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @db.VarChar(100) // lowercase-normalized; unique
+  displayName String        @db.VarChar(100) @map("display_name") // "TypeScript"
+  category    SkillCategory @default(OTHER)
+
+  // Alternative names / abbreviations for search matching.
+  // e.g. ["JS", "JavaScript", "ECMAScript", "es6"] for a "javascript" skill.
+  aliases String[] @default([])
+
+  // Optional: track which org first added this skill (for analytics, not filtering)
+  sourceOrganizationId String? @db.Uuid @map("source_organization_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  candidateSkills CandidateSkill[]
+  // Job Description domain (Step 4C.1)
+  jobSkills       JobSkill[]
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@unique([name]) // enforced at DB; app layer lowercases before upsert
+  @@index([category])
+  @@map("skills")
+}
+
+// ─── CandidateSkill ───────────────────────────────────────────────────────────
+//
+// Junction between Candidate and Skill with proficiency metadata.
+// No soft delete — just delete the row when a skill is removed.
+// The (skillId, proficiencyLevel) index prepares the matching engine:
+//   "find all EXPERT-level React developers in this org"
+
+model CandidateSkill {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id          String @id @default(uuid()) @db.Uuid
+  candidateId String @db.Uuid @map("candidate_id")
+  skillId     String @db.Uuid @map("skill_id")
+
+  // ── Proficiency ───────────────────────────────────────────────────────────
+  proficiencyLevel  ProficiencyLevel @default(INTERMEDIATE) @map("proficiency_level")
+  yearsOfExperience Int?             @map("years_of_experience") // recruiter estimate, nullable
+
+  // Marks this as a defining/headline skill (shown in list-view "top skills" chip)
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  // ── Provenance ────────────────────────────────────────────────────────────
+  assignedBy String?  @db.Uuid @map("assigned_by") // userId of assigning recruiter
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  skill     Skill     @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@unique([candidateId, skillId]) // each skill assigned at most once per candidate
+  @@index([candidateId])
+  @@index([skillId])
+  // Matching engine prep: "EXPERT React devs" → filter (skillId=X, level=EXPERT)
+  @@index([skillId, proficiencyLevel])
+  // Top-skills queries: "isPrimary skills for candidate X" filter
+  @@index([candidateId, isPrimary])
+  @@map("candidate_skills")
+}
+
+// ─── CandidateNote ────────────────────────────────────────────────────────────
+//
+// Append-only activity/communication log per candidate.
+// - No updatedAt (notes are immutable facts, not editable records)
+// - No soft delete (deleting notes would corrupt the audit trail)
+// - authorEmail/authorName are denormalized so notes survive user deletion
+//
+// Future extensions: add submissionId/interviewId FK to link notes to events.
+
+model CandidateNote {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  candidateId    String @db.Uuid @map("candidate_id")
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Content ───────────────────────────────────────────────────────────────
+  content  String   @db.Text
+  noteType NoteType @default(NOTE) @map("note_type")
+
+  // ── Author ────────────────────────────────────────────────────────────────
+  // SetNull: notes survive user deletion; denormalized fields preserve readability.
+  authorId    String? @db.Uuid       @map("author_id")
+  authorEmail String? @db.VarChar(255) @map("author_email")
+  authorName  String? @db.VarChar(255) @map("author_name")
+
+  // ── Append-only timestamp ─────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  candidate    Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User?        @relation("CandidateNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([candidateId])
+  @@index([organizationId])
+  @@index([candidateId, createdAt])
+  @@map("candidate_notes")
+}

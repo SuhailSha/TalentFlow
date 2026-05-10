@@ -1,0 +1,177 @@
+// ─── Enums ────────────────────────────────────────────────────────────────────
+//
+// All enum types are centralised here so every domain module imports from a
+// single place. When adding a new domain, append its enums at the bottom.
+//
+// Naming conventions
+//   Type name  : PascalCase + contextual suffix   e.g.  OrgStatus, UserStatus
+//   Value name : SCREAMING_SNAKE_CASE              e.g.  PENDING_VERIFICATION
+//   DB type    : @@map → snake_case                e.g.  org_status
+
+// ── Organization ──────────────────────────────────────────────────────────────
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED    // billing/compliance hold — logins blocked, data readable
+  CANCELLED    // permanently closed — data retained per retention policy
+
+  @@map("org_status")
+}
+
+enum OrgPlan {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+
+  @@map("org_plan")
+}
+
+// ── User ──────────────────────────────────────────────────────────────────────
+
+enum UserStatus {
+  PENDING_VERIFICATION  // registered but email not verified
+  ACTIVE                // fully operational
+  SUSPENDED             // temporarily blocked by admin
+  DEACTIVATED           // soft-removed; login impossible, data intact
+
+  @@map("user_status")
+}
+
+// ── Candidate ─────────────────────────────────────────────────────────────────
+
+enum CandidateStatus {
+  ACTIVE          // available for placement consideration
+  INACTIVE        // in system but not actively pursuing roles
+  PLACED          // successfully placed; tracking relationship
+  BLACKLISTED     // internal flag — do not engage
+  DO_NOT_CONTACT  // explicit opt-out; legal compliance
+
+  @@map("candidate_status")
+}
+
+enum AvailabilityStatus {
+  IMMEDIATELY   // can start within 1–2 weeks
+  TWO_WEEKS     // standard notice period
+  ONE_MONTH
+  THREE_MONTHS
+  NOT_LOOKING   // passive — in system for future
+
+  @@map("availability_status")
+}
+
+enum CandidateSource {
+  MANUAL     // recruiter manually entered
+  IMPORT     // bulk CSV/spreadsheet import
+  VENDOR     // referred by a vendor (Step 4B.2+)
+  JOB_BOARD  // applied via integrated job board (future)
+  REFERRAL   // candidate or employee referral (future)
+
+  @@map("candidate_source")
+}
+
+// ── Skills ────────────────────────────────────────────────────────────────────
+
+enum SkillCategory {
+  PROGRAMMING_LANGUAGE
+  FRAMEWORK_LIBRARY
+  DATABASE
+  CLOUD_INFRASTRUCTURE
+  DEVOPS
+  DESIGN
+  PROJECT_MANAGEMENT
+  SOFT_SKILL
+  DOMAIN_EXPERTISE
+  OTHER
+
+  @@map("skill_category")
+}
+
+enum ProficiencyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+
+  @@map("proficiency_level")
+}
+
+// ── Candidate Notes ───────────────────────────────────────────────────────────
+
+enum NoteType {
+  NOTE           // free-form recruiter note
+  CALL           // phone/video call log
+  EMAIL          // email correspondence log
+  MEETING        // in-person or scheduled meeting
+  STATUS_CHANGE  // auto-generated when candidate status changes
+  SYSTEM         // automated platform event
+
+  @@map("note_type")
+}
+
+// ── Job Descriptions ──────────────────────────────────────────────────────────
+
+// Weight applied to a required skill in the matching engine score.
+// HIGH required skill outscores LOW required skill even though both are gates.
+enum ImportanceLevel {
+  LOW
+  MEDIUM
+  HIGH
+
+  @@map("importance_level")
+}
+
+// Lifecycle: DRAFT → OPEN ↔ ON_HOLD → FILLED/CANCELLED → ARCHIVED
+// Transitions enforced in JobsService (FSM). Side effects: opened_at/closed_at stamps.
+enum JobStatus {
+  DRAFT       // being written — not visible to hiring managers yet
+  OPEN        // actively sourcing candidates
+  ON_HOLD     // temporarily paused (budget freeze, priority shift)
+  FILLED      // position filled; submission pipeline marks this
+  CANCELLED   // cancelled before filling
+  ARCHIVED    // terminal — soft-deleted by admin
+
+  @@map("job_status")
+}
+
+// Urgency signal used to sort and triage open roles.
+enum JobPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT  // SLA-driven — appears at top of dashboards
+
+  @@map("job_priority")
+}
+
+// What kind of engagement the position is.
+// CONTRACT_TO_HIRE is common in staffing — starts as contract, converts to perm.
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  CONTRACT_TO_HIRE
+  FREELANCE
+  INTERNSHIP
+
+  @@map("employment_type")
+}
+
+// Physical presence requirement for the role.
+enum WorkMode {
+  ONSITE
+  REMOTE
+  HYBRID
+
+  @@map("work_mode")
+}
+
+// How the salary/rate figure is expressed.
+// HOURLY is standard for contract roles; ANNUAL for permanent.
+enum SalaryType {
+  ANNUAL
+  HOURLY
+  MONTHLY
+  TOTAL_COMPENSATION  // includes bonus/equity (for senior perm roles)
+
+  @@map("salary_type")
+}

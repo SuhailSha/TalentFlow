@@ -1,0 +1,95 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+
+import { validateEnv } from './config';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from './auth/guards/permissions.guard';
+import { AppContextModule } from './common/context/app-context.module';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { AuditModule } from './common/audit/audit.module';
+import { AuditInterceptor } from './common/audit/audit.interceptor';
+import { DatabaseModule } from './database';
+import { HealthModule } from './health/health.module';
+import { LoggerModule } from './logger/logger.module';
+import { QueueModule } from './queue/queue.module';
+import { StorageModule } from './storage/storage.module';
+import { CandidatesModule } from './modules/candidates/candidates.module';
+import { JobsModule } from './modules/jobs/jobs.module';
+
+@Module({
+  imports: [
+    // ── Framework / Config ─────────────────────────────────────────────────
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      validate: validateEnv,
+    }),
+
+    // ── Request context (CLS) — must be first; guards depend on it ──────────
+    AppContextModule,
+
+    // ── Logging ────────────────────────────────────────────────────────────
+    LoggerModule,
+
+    // ── Event Bus ─────────────────────────────────────────────────────────
+    // wildcard: true  → enables 'candidate.*' pattern listeners
+    // delimiter: '.'  → matches our "resource.action" naming convention
+    // maxListeners: 20 → raise from default 10 (one per domain module)
+    // verboseMemoryLeak: true → warn when listener count approaches limit
+    EventEmitterModule.forRoot({
+      wildcard: true,
+      delimiter: '.',
+      maxListeners: 20,
+      verboseMemoryLeak: true,
+    }),
+
+    // ── Database ───────────────────────────────────────────────────────────
+    DatabaseModule,
+
+    // ── Audit (must come after EventEmitter + Database) ────────────────────
+    AuditModule,
+
+    // ── Queue Infrastructure ───────────────────────────────────────────────
+    QueueModule.register(),
+
+    // ── File Storage ───────────────────────────────────────────────────────
+    StorageModule.register(),
+
+    // ── Feature Modules ────────────────────────────────────────────────────
+    AuthModule,
+    HealthModule,
+    CandidatesModule,
+    JobsModule,
+  ],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: GlobalExceptionFilter,
+    },
+    // Interceptor order matters — executed top-to-bottom on request,
+    // bottom-to-top on response (like middleware onion model).
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
+    // Guard order: JWT runs first (populates req.user + CLS),
+    // then PermissionsGuard checks req.user.permissions.
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
+    },
+  ],
+})
+export class AppModule {}

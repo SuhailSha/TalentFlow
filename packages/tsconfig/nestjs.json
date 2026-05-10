@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "NestJS",
+  "extends": "./base.json",
+  "compilerOptions": {
+    // ─── NestJS requires CommonJS and decorator support ──────────────────────
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+
+    // ─── Required for NestJS dependency injection ────────────────────────────
+    // emitDecoratorMetadata: NestJS reads parameter types at runtime via reflect-metadata
+    // experimentalDecorators: enables @Injectable(), @Controller(), etc.
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+
+    // ─── NestJS class properties are injected, not initialized in constructor
+    // Set to false to avoid false positives on injected properties
+    "strictPropertyInitialization": false,
+
+    // ─── Build output ───────────────────────────────────────────────────────
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo"
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "**/*.spec.ts",
+    "**/*.e2e-spec.ts"
+  ]
+}

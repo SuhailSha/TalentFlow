@@ -1,0 +1,318 @@
+// ─── Foundation: Multi-tenant Identity Layer ──────────────────────────────────
+//
+// This file defines the five core tables that every other domain module depends
+// on. Nothing in this file should be deleted; only extended.
+//
+// ┌─────────────────────────────────────────────────────────────┐
+// │  SCHEMA CONVENTIONS                                         │
+// │                                                             │
+// │  Naming                                                     │
+// │   Prisma model   PascalCase          e.g. Organization      │
+// │   Prisma field   camelCase           e.g. organizationId    │
+// │   DB table       @@map snake_case    e.g. organizations     │
+// │   DB column      @map  snake_case    e.g. organization_id   │
+// │                                                             │
+// │  IDs                                                        │
+// │   String @id @default(uuid()) @db.Uuid                      │
+// │   Stored as PostgreSQL uuid type (16 bytes, indexed)         │
+// │   Generated at application layer by Prisma                  │
+// │                                                             │
+// │  Soft delete                                                 │
+// │   deletedAt DateTime? @map("deleted_at")                    │
+// │   null = active; non-null = deleted timestamp               │
+// │   Every query on soft-deletable tables must filter:         │
+// │     where: { deletedAt: null }                              │
+// │   AuditLog is append-only — NO soft delete                  │
+// │                                                             │
+// │  Audit fields (on every mutable model)                      │
+// │   createdAt  DateTime  @default(now())                       │
+// │   updatedAt  DateTime  @updatedAt                           │
+// │   deletedAt  DateTime?                                      │
+// │   createdBy  String?   @db.Uuid  (actor user ID)            │
+// │   updatedBy  String?   @db.Uuid                             │
+// │   deletedBy  String?   @db.Uuid                             │
+// │                                                             │
+// │  Multi-tenancy                                              │
+// │   Every tenant-scoped table has organizationId              │
+// │   Composite unique indexes always include organizationId     │
+// │   @@index([organizationId]) on every tenant-scoped table    │
+// │                                                             │
+// │  Relation conventions                                       │
+// │   FK field ends with Id         e.g. organizationId        │
+// │   Explicit @relation names      e.g. "UserOrganization"     │
+// │   onDelete: Restrict for parent records (prevent orphans)   │
+// │   onDelete: Cascade  for child records (cleanup)            │
+// │   onDelete: SetNull  for optional audit references          │
+// └─────────────────────────────────────────────────────────────┘
+
+// ─── Organization ─────────────────────────────────────────────────────────────
+//
+// Root of the tenant hierarchy. Every other entity belongs to exactly one
+// Organization. Deleting an Organization should only happen after exporting
+// and archiving all data (enforced by onDelete: Restrict on child relations).
+
+model Organization {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id   String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(255)
+
+  // URL-safe unique identifier used in subdomains and API paths.
+  // Generated once at org creation; changing it breaks bookmarks.
+  slug String @unique @db.VarChar(100)
+
+  // Primary email domain used for auto-matching invitations (e.g. "acme.com").
+  // Optional — orgs without a domain rely on explicit user invitations.
+  domain String? @db.VarChar(255)
+
+  logoUrl String? @db.Text @map("logo_url")
+
+  status OrgStatus @default(ACTIVE)
+  plan   OrgPlan   @default(STARTER)
+
+  // Tenant-specific feature flags and UI preferences.
+  // Typed via application-layer Zod schema, not Prisma types.
+  settings Json @default("{}")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  users          User[]
+  roles          Role[]
+  userRoles      UserRole[]
+  // Candidate domain (Step 4B.1)
+  candidates     Candidate[]
+  candidateNotes CandidateNote[]
+  // Job Description domain (Step 4C.1)
+  jobDescriptions JobDescription[]
+  jobNotes        JobNote[]
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([slug])
+  @@index([domain])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("organizations")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+//
+// A person who can authenticate and act within a tenant. A user always belongs
+// to exactly one organization. Cross-org access is handled at the API layer
+// via scoped JWTs (Step 5) not by having multiple User records.
+
+model User {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid @map("organization_id")
+
+  // Email is unique within an org; the same address may exist in different orgs.
+  email         String  @db.VarChar(255)
+  emailVerified Boolean @default(false) @map("email_verified")
+
+  // Null for SSO-only accounts (OAuth / SAML — Step 8).
+  passwordHash String? @db.Text @map("password_hash")
+
+  firstName   String  @db.VarChar(100) @map("first_name")
+  lastName    String  @db.VarChar(100) @map("last_name")
+  displayName String? @db.VarChar(255) @map("display_name")
+  avatarUrl   String? @db.Text @map("avatar_url")
+  phone       String? @db.VarChar(50)
+  title       String? @db.VarChar(150)  // job title within the organization
+
+  status UserStatus @default(PENDING_VERIFICATION)
+
+  // ── Auth security ─────────────────────────────────────────────────────────
+  lastLoginAt         DateTime? @map("last_login_at")
+  failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
+
+  // Populated by the auth service after N consecutive failures (Step 5).
+  lockedUntil DateTime? @map("locked_until")
+
+  // Used to invalidate tokens issued before a password reset.
+  passwordChangedAt DateTime? @map("password_changed_at")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  createdBy String?   @db.Uuid @map("created_by")
+  updatedBy String?   @db.Uuid @map("updated_by")
+  deletedBy String?   @db.Uuid @map("deleted_by")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  userRoles      UserRole[]
+  auditLogs      AuditLog[]     @relation("AuditLogActor")
+  refreshTokens  RefreshToken[]
+  // Candidate domain (Step 4B.1)
+  authoredNotes  CandidateNote[] @relation("CandidateNoteAuthor")
+  // Job Description domain (Step 4C.1)
+  hiringManagerJobs JobDescription[] @relation("JobHiringManager")
+  authoredJobNotes  JobNote[]        @relation("JobNoteAuthor")
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  // Composite unique: same email cannot exist twice within one org.
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([email])
+  @@index([status])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// ─── Role ─────────────────────────────────────────────────────────────────────
+//
+// Roles carry a set of named permissions. They are either:
+//   - System roles  (organizationId IS NULL, isSystem = true)
+//     Predefined globally: "super_admin", "org_admin", "recruiter", etc.
+//     Cannot be deleted or modified at the org level.
+//   - Custom roles  (organizationId IS NOT NULL, isSystem = false)
+//     Created per-org to model client-specific permission structures.
+//
+// Permission strings follow the pattern:  resource:action
+//   e.g. "candidates:read", "jobs:write", "vendors:delete"
+// The full permission catalogue lives in apps/api/src/common/constants/permissions.ts (Step 5).
+
+model Role {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String? @db.Uuid @map("organization_id")
+
+  // Machine name used in code. Immutable after creation.
+  // e.g. "recruiter", "hiring_manager", "vendor_portal"
+  name String @db.VarChar(100)
+
+  // Human-readable label shown in the UI.
+  displayName String  @db.VarChar(255) @map("display_name")
+  description String? @db.Text
+
+  // System roles: created by seed, cannot be deleted via API.
+  isSystem Boolean @default(false) @map("is_system")
+
+  // Flat array of permission strings.
+  // e.g. ["candidates:read", "candidates:write", "jobs:read"]
+  permissions String[]
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  // Cascade: deleting an org removes its custom roles.
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userRoles    UserRole[]
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  // Note: PostgreSQL treats NULL != NULL in unique constraints, so two system
+  // roles (organizationId NULL) with the same name are technically allowed by
+  // this constraint. Application-layer validation enforces global uniqueness
+  // for system roles (isSystem = true).
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([isSystem])
+  @@index([deletedAt])
+  @@map("roles")
+}
+
+// ─── UserRole ─────────────────────────────────────────────────────────────────
+//
+// Junction table granting a User a Role within an Organization.
+// A user can hold multiple roles; each grant records who assigned it and when.
+// Roles can be time-limited via expiresAt (for contractor or temp access).
+//
+// organizationId is denormalized here to allow efficient tenant-scoped queries
+// without joining through User or Role.
+
+model UserRole {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  userId         String @db.Uuid @map("user_id")
+  roleId         String @db.Uuid @map("role_id")
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Grant metadata ────────────────────────────────────────────────────────
+  grantedAt DateTime  @default(now()) @map("granted_at")
+  grantedBy String?   @db.Uuid @map("granted_by")  // userId of the granting admin
+  expiresAt DateTime? @map("expires_at")             // null = permanent
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  // A user cannot hold the same role twice.
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([organizationId])
+  // Allows efficient cleanup of expired grants via a scheduled job.
+  @@index([expiresAt])
+  @@map("user_roles")
+}
+
+// ─── AuditLog ─────────────────────────────────────────────────────────────────
+//
+// Append-only immutable event log. Captures every significant state change
+// across the platform for compliance, debugging, and user-facing activity feeds.
+//
+// Conventions:
+//   action        "resource_type.action"   e.g. "user.created", "candidate.status_changed"
+//   resourceType  Prisma model name        e.g. "User", "Candidate", "JobDescription"
+//   resourceId    Primary key of affected record (UUID as string)
+//   before/after  JSON snapshots — only the changed fields, not the whole record
+//
+// This table is NEVER soft-deleted. Records are retained per the tenant's
+// data-retention policy and purged via a background job, not application code.
+
+model AuditLog {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id String @id @default(uuid()) @db.Uuid
+
+  // Null for system-level events not tied to any tenant.
+  organizationId String? @db.Uuid @map("organization_id")
+
+  // ── Actor ─────────────────────────────────────────────────────────────────
+  // actorId is nullable: null for system/scheduled actions with no human actor.
+  // actorEmail is denormalized so the audit trail remains readable even after
+  // the actor's User record is deleted (onDelete: SetNull on the FK).
+  actorId    String? @db.Uuid @map("actor_id")
+  actorEmail String? @db.VarChar(255) @map("actor_email")
+
+  // ── Event ─────────────────────────────────────────────────────────────────
+  action       String @db.VarChar(100)       // "user.created"
+  resourceType String @db.VarChar(100) @map("resource_type")  // "User"
+  resourceId   String @db.VarChar(255) @map("resource_id")    // UUID or other PK
+
+  // Field-level diff: only the changed keys are stored, not full snapshots.
+  before Json? // state before the change (null for creation events)
+  after  Json? // state after the change  (null for deletion events)
+
+  // Arbitrary structured context: request ID, batch job ID, feature flag, etc.
+  metadata Json?
+
+  // ── Request context ───────────────────────────────────────────────────────
+  ipAddress String? @db.VarChar(45) @map("ip_address") // supports IPv6
+  userAgent String? @db.Text @map("user_agent")
+
+  // ── Timestamp (NO updatedAt — audit logs are immutable) ───────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  // SetNull: actor logs survive user deletion; actorEmail preserves readability.
+  actor User? @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([organizationId])
+  @@index([actorId])
+  @@index([action])
+  // Composite index for resource-centric queries: "all events for candidate X"
+  @@index([resourceType, resourceId])
+  // Time-range queries for compliance reports and activity feeds
+  @@index([createdAt])
+  @@map("audit_logs")
+}

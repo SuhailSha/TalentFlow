@@ -1,0 +1,45 @@
+// ─── Auth: Refresh Token Store ────────────────────────────────────────────────
+//
+// Stores hashed refresh tokens for the sliding-session / token-rotation flow.
+//
+// Security model:
+//   • The raw token is NEVER stored. Only a SHA-256 hex digest is persisted.
+//   • Each refresh produces a new token; the old token is revoked immediately.
+//   • Tokens share a `family` UUID (set at first login, inherited on rotation).
+//   • If a revoked token in a family is presented again (replay attack), the
+//     entire family is revoked — forcing re-authentication on all devices that
+//     share that refresh session.
+//   • A background job should periodically DELETE rows where expiresAt < now().
+
+model RefreshToken {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id String @id @default(uuid()) @db.Uuid
+
+  // SHA-256 hex digest of the raw token string. Unique — one active hash per token.
+  tokenHash String @unique @map("token_hash") @db.VarChar(64)
+
+  userId String @db.Uuid @map("user_id")
+
+  // Shared across all tokens in a rotation chain. Used for family invalidation.
+  family String @db.Uuid
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at") // null = active
+
+  // ── Device fingerprint (shown in "Your active sessions" UI) ───────────────
+  userAgent String? @map("user_agent") @db.VarChar(512)
+  ipAddress String? @map("ip_address") @db.VarChar(45) // supports IPv6
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  // Cascade: all refresh tokens are destroyed when the user is deleted.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([userId])
+  @@index([family]) // family invalidation: DELETE WHERE family = ?
+  @@index([expiresAt]) // background cleanup job
+  @@map("refresh_tokens")
+}

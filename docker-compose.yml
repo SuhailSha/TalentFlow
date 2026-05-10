@@ -1,0 +1,77 @@
+version: '3.9'
+
+# ─── Local Development Infrastructure ────────────────────────────────────────
+#
+# Services:
+#   postgres  — Primary database (PostgreSQL 16)
+#   redis     — Session cache / future job queue (Redis 7)
+#
+# Usage:
+#   docker compose up -d          # start in background
+#   docker compose down           # stop (keeps data volumes)
+#   docker compose down -v        # stop + delete volumes (fresh start)
+#   docker compose logs -f        # tail all logs
+
+services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: recruitment_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: recruitment_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d recruitment_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: recruitment_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Redis Commander (queue monitoring UI) ─────────────────────────────────────
+  # Access: http://localhost:8081
+  # Shows BullMQ job queues: waiting, active, delayed, completed, failed counts.
+  # Only needed when debugging queue issues — start with: docker compose up redis-commander
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: recruitment_redis_commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: 'local:redis:6379'
+    ports:
+      - '8081:8081'
+    depends_on:
+      redis:
+        condition: service_healthy
+    profiles:
+      - tools
+
+# ── Named volumes (data persists across container restarts) ───────────────────
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

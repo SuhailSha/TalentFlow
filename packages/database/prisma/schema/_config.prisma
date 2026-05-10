@@ -1,0 +1,23 @@
+// ─── Generator ────────────────────────────────────────────────────────────────
+//
+// prismaSchemaFolder (stable in Prisma 5.15+) merges all .prisma files in this
+// directory at generate/migrate time. Models can be freely split across files;
+// the CLI treats them as a single logical schema.
+//
+// To add a new domain module, create packages/database/prisma/schema/<module>.prisma
+// and the CLI will pick it up automatically.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["prismaSchemaFolder"]
+}
+
+// ─── Data source ──────────────────────────────────────────────────────────────
+//
+// DATABASE_URL is read from the environment (apps/api/.env or process.env).
+// Connection pooling via PgBouncer / Prisma Accelerate is configured in Step 7.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

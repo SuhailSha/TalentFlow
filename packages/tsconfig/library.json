@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Library (shared packages)",
+  "extends": "./base.json",
+  "compilerOptions": {
+    // ─── Libraries emit both types and JS ───────────────────────────────────
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+
+    // ─── ESNext module — consuming apps/bundlers handle down-compilation ────
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+
+    // ─── Build output ───────────────────────────────────────────────────────
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "tsBuildInfoFile": ".tsbuildinfo"
+  },
+  "exclude": ["node_modules", "dist"]
+}
