@@ -207,3 +207,26 @@ enum SalaryType {
 
   @@map("salary_type")
 }
+
+// ── Submissions ───────────────────────────────────────────────────────────────
+
+// Lifecycle FSM — see lifecycle.constants.ts for transition rules.
+// DRAFT → SUBMITTED → UNDER_REVIEW → SHORTLISTED → INTERVIEW → OFFERED → PLACED
+// Any non-terminal → REJECTED | WITHDRAWN | ON_HOLD
+// ON_HOLD → any active state
+// PLACED / REJECTED / WITHDRAWN → CLOSED (terminal)
+enum SubmissionStatus {
+  DRAFT        // being prepared; not yet formally submitted to client
+  SUBMITTED    // formally submitted; awaiting client acknowledgment
+  UNDER_REVIEW // client is actively reviewing the CV/profile
+  SHORTLISTED  // client has shortlisted for an interview
+  INTERVIEW    // interview scheduled or in progress
+  OFFERED      // offer extended by client
+  PLACED       // candidate accepted and engagement started
+  REJECTED     // rejected at this stage (can resubmit with new submission)
+  WITHDRAWN    // recruiter or candidate withdrew the submission
+  ON_HOLD      // temporarily paused (budget freeze, client delay, etc.)
+  CLOSED       // terminal — engagement ended or explicitly closed
+
+  @@map("submission_status")
+}

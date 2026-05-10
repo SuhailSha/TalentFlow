@@ -103,6 +103,7 @@ model Candidate {
   organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   candidateSkills CandidateSkill[]
   notes           CandidateNote[]
+  submissions     Submission[]
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Level-1 duplicate detection: same email is unique within an org.

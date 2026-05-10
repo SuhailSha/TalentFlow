@@ -1,0 +1,207 @@
+// ─── Submission Domain ─────────────────────────────────────────────────────────
+//
+// The operational core of the platform: connects Candidate ↔ JobDescription
+// ↔ Vendor ↔ Recruiter in a tracked workflow.
+//
+// Key design decisions:
+//
+//  Duplicate prevention:
+//    A partial unique index (applied via migration SQL) prevents two active
+//    submissions for the same (org, candidate, job) triplet. "Active" = status
+//    is not in the terminal set {REJECTED, WITHDRAWN, PLACED, CLOSED}.
+//    Service layer also checks before creating to give a clean ConflictException.
+//
+//  Vendor is optional:
+//    Direct-source submissions (LinkedIn, referral, existing pipeline) have no
+//    vendor. vendorId is nullable.
+//
+//  Ownership vs. creation:
+//    ownerId — the recruiter responsible for managing this submission end-to-end.
+//              Defaults to createdById; can be reassigned (handoff between recruiters).
+//    createdById — immutable record of who created the submission.
+//
+//  Stage timestamps:
+//    Each FSM transition stamps the corresponding *At column. These drive:
+//      - Time-in-stage analytics (submittedAt → reviewedAt = review lag)
+//      - SLA alerting (time since shortlistedAt with no interviewAt)
+//      - Pipeline funnel dashboards
+//
+//  Rate/offer fields:
+//    billRate / payRate are stored here (not on Candidate) because the negotiated
+//    rate is submission-specific: the same candidate may have different rates on
+//    different engagements.
+//
+//  Status history:
+//    SubmissionStatusHistory is append-only. Every FSM transition writes a row.
+//    Enables auditing ("who moved this to REJECTED and why?") and replaying
+//    timeline views in the UI without querying the audit log table.
+//
+//  Soft delete:
+//    deletedAt is set via explicit archive/delete endpoint only.
+//    FSM terminal states (REJECTED, WITHDRAWN, PLACED, CLOSED) do NOT
+//    automatically soft-delete — the record stays readable in history views.
+
+// ─── Submission ───────────────────────────────────────────────────────────────
+
+model Submission {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Core relations ────────────────────────────────────────────────────────
+  candidateId String  @db.Uuid @map("candidate_id")
+  jobId       String  @db.Uuid @map("job_id")
+  vendorId    String? @db.Uuid @map("vendor_id") // null = direct source (no vendor)
+
+  // ── Ownership ─────────────────────────────────────────────────────────────
+  ownerId     String @db.Uuid @map("owner_id")    // responsible recruiter
+  createdById String @db.Uuid @map("created_by_id")
+
+  // ── Pipeline status ───────────────────────────────────────────────────────
+  status SubmissionStatus @default(DRAFT)
+
+  // ── Stage timestamps (set by FSM service on each transition) ──────────────
+  submittedAt   DateTime? @map("submitted_at")
+  reviewedAt    DateTime? @map("reviewed_at")    // entered UNDER_REVIEW
+  shortlistedAt DateTime? @map("shortlisted_at")
+  interviewAt   DateTime? @map("interview_at")   // entered INTERVIEW
+  offeredAt     DateTime? @map("offered_at")
+  placedAt      DateTime? @map("placed_at")
+  rejectedAt    DateTime? @map("rejected_at")
+  withdrawnAt   DateTime? @map("withdrawn_at")
+  closedAt      DateTime? @map("closed_at")
+
+  // ── Rate / offer details ──────────────────────────────────────────────────
+  // NULL = not yet negotiated. All in the currency field below.
+  billRate Decimal? @db.Decimal(10, 2) @map("bill_rate") // rate charged to client
+  payRate  Decimal? @db.Decimal(10, 2) @map("pay_rate")  // rate paid to candidate/vendor
+  currency String   @default("USD") @db.VarChar(3)       // ISO 4217
+
+  // For permanent placements: the agreed annual salary on offer.
+  offerSalary Decimal? @db.Decimal(12, 2) @map("offer_salary")
+
+  // Target start date (recruiter or client expectation).
+  startDate DateTime? @db.Date @map("start_date")
+
+  // ── Recruiter notes ───────────────────────────────────────────────────────
+  // Free-form intro/cover note sent to client alongside the submission.
+  // Not the same as SubmissionNote (activity log) — this is the pitch text.
+  coverNote       String? @db.Text @map("cover_note")
+  rejectionReason String? @db.Text @map("rejection_reason")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt      @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  candidate       Candidate               @relation(fields: [candidateId], references: [id], onDelete: Restrict)
+  job             JobDescription          @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  vendor          Vendor?                 @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  owner           User                    @relation("SubmissionOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  createdBy       User                    @relation("SubmissionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  notes           SubmissionNote[]
+  statusHistory   SubmissionStatusHistory[]
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  // Tenant isolation — always the first filter.
+  @@index([organizationId])
+  // Pipeline board: all submissions at a given status for the org.
+  @@index([organizationId, status])
+  // Candidate view: "all submissions for this candidate".
+  @@index([organizationId, candidateId])
+  // Job view: "all submissions for this job" (pipeline funnel).
+  @@index([organizationId, jobId])
+  // Recruiter dashboard: "submissions I own".
+  @@index([organizationId, ownerId])
+  // Vendor reporting: "all submissions sourced from this vendor".
+  @@index([organizationId, vendorId])
+  // Default chronological list.
+  @@index([organizationId, createdAt])
+  // Soft-delete filter.
+  @@index([organizationId, deletedAt])
+  // Compound: job pipeline board sorted by status then creation.
+  @@index([organizationId, jobId, status])
+  // Compound: candidate pipeline across all jobs.
+  @@index([organizationId, candidateId, status])
+  // NOTE: partial unique index for duplicate prevention is added via migration SQL:
+  //   CREATE UNIQUE INDEX submissions_active_unique
+  //   ON submissions (organization_id, candidate_id, job_id)
+  //   WHERE status NOT IN ('REJECTED','WITHDRAWN','PLACED','CLOSED') AND deleted_at IS NULL;
+  @@map("submissions")
+}
+
+// ─── SubmissionNote ───────────────────────────────────────────────────────────
+//
+// Append-only activity log per Submission. Same pattern as CandidateNote/JobNote.
+//
+// Conventions:
+//   - No updatedAt (notes are immutable facts)
+//   - authorEmail/authorName denormalized to survive user deletion
+//   - isSystem=true for auto-generated notes (FSM transitions, etc.)
+
+model SubmissionNote {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  submissionId   String @db.Uuid @map("submission_id")
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Content ───────────────────────────────────────────────────────────────
+  content  String   @db.Text
+  noteType NoteType @default(NOTE) @map("note_type")
+  isSystem Boolean  @default(false) @map("is_system") // true = auto-generated by FSM
+
+  // ── Author ────────────────────────────────────────────────────────────────
+  authorId    String? @db.Uuid        @map("author_id")
+  authorEmail String? @db.VarChar(255) @map("author_email")
+  authorName  String? @db.VarChar(255) @map("author_name")
+
+  // ── Timestamp ─────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  submission   Submission   @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User?        @relation("SubmissionNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([submissionId])
+  @@index([organizationId])
+  @@index([submissionId, createdAt])
+  @@map("submission_notes")
+}
+
+// ─── SubmissionStatusHistory ──────────────────────────────────────────────────
+//
+// Append-only log of every FSM state transition. Written by SubmissionsService
+// on every status change. Enables:
+//   - Audit trail ("who moved this from SHORTLISTED to REJECTED?")
+//   - Time-in-stage analytics (diff between consecutive rows)
+//   - Timeline UI (replay submission journey in order)
+
+model SubmissionStatusHistory {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id           String @id @default(uuid()) @db.Uuid
+  submissionId String @db.Uuid @map("submission_id")
+
+  // ── Transition ────────────────────────────────────────────────────────────
+  fromStatus SubmissionStatus? @map("from_status") // null = initial creation
+  toStatus   SubmissionStatus  @map("to_status")
+  changedById String           @db.Uuid @map("changed_by_id")
+
+  // Optional reason (required for some transitions: REJECTED, WITHDRAWN, ON_HOLD).
+  reason String? @db.Text
+
+  // ── Timestamp ─────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  changedBy  User       @relation("SubmissionStatusHistoryActor", fields: [changedById], references: [id], onDelete: Restrict)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([submissionId])
+  @@index([submissionId, createdAt])
+  @@map("submission_status_history")
+}

@@ -1,4 +1,4 @@
-import { CandidateStatus, JobStatus, VendorStatus } from '@repo/database';
+import { CandidateStatus, JobStatus, SubmissionStatus, VendorStatus } from '@repo/database';
 
 import type { FsmDefinition } from './fsm.types';
 
@@ -49,25 +49,72 @@ export const VENDOR_FSM: FsmDefinition<VendorStatus> = {
   terminal: [VendorStatus.ARCHIVED],
 };
 
-// ── Submission lifecycle (placeholder — implemented with SubmissionsModule) ────
-// SUBMITTED → SCREENING → INTERVIEW → OFFER → HIRED (terminal)
-//         ↘ REJECTED (terminal, reachable from any non-terminal state)
-export type SubmissionStatus =
-  | 'SUBMITTED'
-  | 'SCREENING'
-  | 'INTERVIEW'
-  | 'OFFER'
-  | 'HIRED'
-  | 'REJECTED';
-
+// ── Submission lifecycle ───────────────────────────────────────────────────────
+//
+// Full 11-state pipeline FSM.
+//
+// Forward path:
+//   DRAFT → SUBMITTED → UNDER_REVIEW → SHORTLISTED → INTERVIEW → OFFERED → PLACED
+//
+// From any active (non-terminal) state:
+//   → REJECTED   (client rejection at any stage)
+//   → WITHDRAWN  (candidate or recruiter withdrawal)
+//   → ON_HOLD    (pause without losing stage context)
+//
+// ON_HOLD resumes to any active state (recruiter decides which stage to re-enter).
+//
+// Terminal states (no outbound transitions): PLACED, REJECTED, WITHDRAWN, CLOSED
+// PLACED / REJECTED / WITHDRAWN → CLOSED allowed to explicitly close the record.
 export const SUBMISSION_FSM: FsmDefinition<SubmissionStatus> = {
   transitions: {
-    SUBMITTED:  ['SCREENING',  'REJECTED'],
-    SCREENING:  ['INTERVIEW',  'REJECTED'],
-    INTERVIEW:  ['OFFER',      'REJECTED'],
-    OFFER:      ['HIRED',      'REJECTED'],
-    HIRED:      [],
-    REJECTED:   [],
+    [SubmissionStatus.DRAFT]: [
+      SubmissionStatus.SUBMITTED,
+      SubmissionStatus.WITHDRAWN,
+    ],
+    [SubmissionStatus.SUBMITTED]: [
+      SubmissionStatus.UNDER_REVIEW,
+      SubmissionStatus.REJECTED,
+      SubmissionStatus.WITHDRAWN,
+      SubmissionStatus.ON_HOLD,
+    ],
+    [SubmissionStatus.UNDER_REVIEW]: [
+      SubmissionStatus.SHORTLISTED,
+      SubmissionStatus.REJECTED,
+      SubmissionStatus.WITHDRAWN,
+      SubmissionStatus.ON_HOLD,
+    ],
+    [SubmissionStatus.SHORTLISTED]: [
+      SubmissionStatus.INTERVIEW,
+      SubmissionStatus.REJECTED,
+      SubmissionStatus.WITHDRAWN,
+      SubmissionStatus.ON_HOLD,
+    ],
+    [SubmissionStatus.INTERVIEW]: [
+      SubmissionStatus.OFFERED,
+      SubmissionStatus.REJECTED,
+      SubmissionStatus.WITHDRAWN,
+      SubmissionStatus.ON_HOLD,
+    ],
+    [SubmissionStatus.OFFERED]: [
+      SubmissionStatus.PLACED,
+      SubmissionStatus.REJECTED,
+      SubmissionStatus.WITHDRAWN,
+      SubmissionStatus.ON_HOLD,
+    ],
+    [SubmissionStatus.ON_HOLD]: [
+      SubmissionStatus.SUBMITTED,
+      SubmissionStatus.UNDER_REVIEW,
+      SubmissionStatus.SHORTLISTED,
+      SubmissionStatus.INTERVIEW,
+      SubmissionStatus.OFFERED,
+      SubmissionStatus.REJECTED,
+      SubmissionStatus.WITHDRAWN,
+    ],
+    // Terminal states — with optional CLOSED transition
+    [SubmissionStatus.PLACED]:    [SubmissionStatus.CLOSED],
+    [SubmissionStatus.REJECTED]:  [SubmissionStatus.CLOSED],
+    [SubmissionStatus.WITHDRAWN]: [SubmissionStatus.CLOSED],
+    [SubmissionStatus.CLOSED]:    [],
   },
-  terminal: ['HIRED', 'REJECTED'],
+  terminal: [SubmissionStatus.CLOSED],
 };

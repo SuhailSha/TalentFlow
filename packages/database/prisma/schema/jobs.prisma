@@ -125,6 +125,7 @@ model JobDescription {
   hiringManager  User?        @relation("JobHiringManager", fields: [hiringManagerId], references: [id], onDelete: SetNull)
   jobSkills      JobSkill[]
   notes          JobNote[]
+  submissions    Submission[]
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Tenant isolation — always the first filter in every query.

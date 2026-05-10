@@ -56,11 +56,15 @@ export const EventNames = {
   VENDOR_CONTACT_UPDATED: 'vendor.contact_updated',
   VENDOR_CONTACT_REMOVED: 'vendor.contact_removed',
 
-  // ── Submission domain (Phase 1B Step 4C.2 — not yet implemented) ───────────
-  SUBMISSION_CREATED:      'submission.created',
-  SUBMISSION_STAGE_CHANGED:'submission.stage_changed',
-  OFFER_EXTENDED:          'offer.extended',
-  OFFER_STATUS_CHANGED:    'offer.status_changed',
+  // ── Submission domain ────────────────────────────────────────────────────────
+  SUBMISSION_CREATED:        'submission.created',
+  SUBMISSION_UPDATED:        'submission.updated',
+  SUBMISSION_DELETED:        'submission.deleted',
+  SUBMISSION_STATUS_CHANGED: 'submission.status_changed',
+  SUBMISSION_NOTE_ADDED:     'submission.note_added',
+  SUBMISSION_OWNER_CHANGED:  'submission.owner_changed',
+  OFFER_EXTENDED:            'submission.offer_extended',  // status → OFFERED
+  CANDIDATE_PLACED:          'submission.candidate_placed', // status → PLACED
 
   // ── System / platform ───────────────────────────────────────────────────────
   AUTH_LOGIN:              'auth.login',

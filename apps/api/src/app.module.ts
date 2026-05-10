@@ -23,6 +23,7 @@ import { StorageModule } from './storage/storage.module';
 import { CandidatesModule } from './modules/candidates/candidates.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
+import { SubmissionsModule } from './modules/submissions/submissions.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { VendorsModule } from './modules/vendors/vendors.module';
     CandidatesModule,
     JobsModule,
     VendorsModule,
+    SubmissionsModule,
   ],
   providers: [
     {

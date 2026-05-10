@@ -90,6 +90,9 @@ model Organization {
   jobNotes        JobNote[]
   // Vendor domain
   vendors         Vendor[]
+  // Submission domain
+  submissions     Submission[]
+  submissionNotes SubmissionNote[]
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   @@index([slug])
@@ -154,6 +157,11 @@ model User {
   // Job Description domain (Step 4C.1)
   hiringManagerJobs JobDescription[] @relation("JobHiringManager")
   authoredJobNotes  JobNote[]        @relation("JobNoteAuthor")
+  // Submission domain
+  ownedSubmissions    Submission[]              @relation("SubmissionOwner")
+  createdSubmissions  Submission[]              @relation("SubmissionCreatedBy")
+  authoredSubmissionNotes SubmissionNote[]      @relation("SubmissionNoteAuthor")
+  submissionStatusChanges SubmissionStatusHistory[] @relation("SubmissionStatusHistoryActor")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Composite unique: same email cannot exist twice within one org.

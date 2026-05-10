@@ -72,8 +72,9 @@ model Vendor {
   deletedBy  String?   @db.Uuid       @map("deleted_by")
 
   // ── Relations ─────────────────────────────────────────────────────────────
-  contacts VendorContact[]
-  notes    VendorNote[]
+  contacts    VendorContact[]
+  notes       VendorNote[]
+  submissions Submission[]
 
   @@index([organizationId, status])
   @@index([organizationId, priority])

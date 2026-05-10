@@ -44,6 +44,10 @@ export type {
   Vendor,
   VendorContact,
   VendorNote,
+  // Submission domain
+  Submission,
+  SubmissionNote,
+  SubmissionStatusHistory,
 } from '@prisma/client';
 
 // Enum values — exported as values so @IsEnum() decorators can use them at runtime.
@@ -69,4 +73,6 @@ export {
   VendorStatus,
   VendorPriority,
   VendorType,
+  // Submission domain
+  SubmissionStatus,
 } from '@prisma/client';
