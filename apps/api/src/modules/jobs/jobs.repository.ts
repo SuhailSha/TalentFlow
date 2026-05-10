@@ -98,7 +98,7 @@ export class JobsRepository {
   // ── Counters ──────────────────────────────────────────────────────────────
 
   async countForOrg(organizationId: string): Promise<number> {
-    return this.prisma.jobDescription.count({ where: { organizationId } });
+    return this.prisma.jobDescription.count({ where: { organizationId, deletedAt: null } });
   }
 
   // ── Write ─────────────────────────────────────────────────────────────────
@@ -110,9 +110,9 @@ export class JobsRepository {
     });
   }
 
-  async update(id: string, data: Prisma.JobDescriptionUncheckedUpdateInput) {
+  async update(id: string, organizationId: string, data: Prisma.JobDescriptionUncheckedUpdateInput) {
     return this.prisma.jobDescription.update({
-      where: { id },
+      where: { id, organizationId },
       data: { ...data, updatedAt: new Date() },
       include: JOB_DETAIL_INCLUDE,
     });

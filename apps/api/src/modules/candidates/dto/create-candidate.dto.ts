@@ -12,6 +12,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateCandidateDto {
@@ -104,6 +105,8 @@ export class CreateCandidateDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @ValidateIf((o) => o.salaryExpectationMin !== undefined && o.salaryExpectationMax !== undefined)
+  @ValidateIf((o) => o.salaryExpectationMax >= o.salaryExpectationMin, { message: 'salaryExpectationMax must be >= salaryExpectationMin' })
   salaryExpectationMax?: number;
 
   @IsOptional()

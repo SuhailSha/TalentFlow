@@ -168,9 +168,9 @@ export class CandidatesRepository {
     });
   }
 
-  async update(id: string, _organizationId: string, data: Prisma.CandidateUpdateInput) {
+  async update(id: string, organizationId: string, data: Prisma.CandidateUpdateInput) {
     return this.prisma.candidate.update({
-      where: { id },
+      where: { id, organizationId, deletedAt: null },
       data: {
         ...data,
         updatedAt: new Date(),
@@ -179,9 +179,9 @@ export class CandidatesRepository {
     });
   }
 
-  async softDelete(id: string, _organizationId: string, deletedBy: string) {
+  async softDelete(id: string, organizationId: string, deletedBy: string) {
     return this.prisma.candidate.update({
-      where: { id },
+      where: { id, organizationId, deletedAt: null },
       data: {
         deletedAt: new Date(),
         deletedBy,
@@ -190,9 +190,9 @@ export class CandidatesRepository {
     });
   }
 
-  async touchActivityAt(id: string) {
-    return this.prisma.candidate.update({
-      where: { id },
+  async touchActivityAt(id: string, organizationId: string) {
+    return this.prisma.candidate.updateMany({
+      where: { id, organizationId, deletedAt: null },
       data: { lastActivityAt: new Date() },
     });
   }

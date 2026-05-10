@@ -11,6 +11,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateJobDto {
@@ -66,6 +67,8 @@ export class CreateJobDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @ValidateIf((o) => o.experienceMin !== undefined && o.experienceMax !== undefined)
+  @ValidateIf((o) => o.experienceMax >= o.experienceMin, { message: 'experienceMax must be >= experienceMin' })
   experienceMax?: number;
 
   // ── Compensation ───────────────────────────────────────────────────────────
@@ -79,6 +82,8 @@ export class CreateJobDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @ValidateIf((o) => o.salaryMin !== undefined && o.salaryMax !== undefined)
+  @ValidateIf((o) => o.salaryMax >= o.salaryMin, { message: 'salaryMax must be >= salaryMin' })
   salaryMax?: number;
 
   @IsOptional()

@@ -283,7 +283,7 @@ export class CandidatesService {
       assignedBy: actor.userId,
     });
 
-    await this.repo.touchActivityAt(candidateId);
+    await this.repo.touchActivityAt(candidateId, actor.organizationId);
 
     this.events.emit(
       EventNames.CANDIDATE_SKILL_ADDED,
@@ -327,7 +327,7 @@ export class CandidatesService {
       organizationId: actor.organizationId,
     });
 
-    await this.repo.touchActivityAt(candidateId);
+    await this.repo.touchActivityAt(candidateId, actor.organizationId);
 
     this.events.emit(
       EventNames.CANDIDATE_NOTE_ADDED,

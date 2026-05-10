@@ -144,7 +144,7 @@ export class JobsService {
   async update(id: string, dto: UpdateJobDto, actor: RequestUser): Promise<JobDetail> {
     await this.assertExists(id, actor.organizationId);
 
-    const updated = await this.repo.update(id, {
+    const updated = await this.repo.update(id, actor.organizationId, {
       ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
       ...(dto.department !== undefined ? { department: dto.department?.trim() ?? null } : {}),
       ...(dto.employmentType !== undefined ? { employmentType: dto.employmentType } : {}),
@@ -212,7 +212,7 @@ export class JobsService {
     }
 
     const now = new Date();
-    const updated = await this.repo.update(id, {
+    const updated = await this.repo.update(id, actor.organizationId, {
       status: toStatus,
       ...(toStatus === JobStatus.OPEN && !job.openedAt ? { openedAt: now } : {}),
       ...(toStatus === JobStatus.FILLED || toStatus === JobStatus.CANCELLED

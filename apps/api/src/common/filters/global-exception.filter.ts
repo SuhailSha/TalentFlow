@@ -76,11 +76,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       401: 'UNAUTHORIZED',
       403: 'FORBIDDEN',
       404: 'NOT_FOUND',
+      405: 'METHOD_NOT_ALLOWED',
+      408: 'REQUEST_TIMEOUT',
       409: 'CONFLICT',
+      410: 'GONE',
+      413: 'PAYLOAD_TOO_LARGE',
+      415: 'UNSUPPORTED_MEDIA_TYPE',
       422: 'UNPROCESSABLE_ENTITY',
       429: 'TOO_MANY_REQUESTS',
       500: 'INTERNAL_SERVER_ERROR',
+      502: 'BAD_GATEWAY',
       503: 'SERVICE_UNAVAILABLE',
+      504: 'GATEWAY_TIMEOUT',
     };
     return map[status] ?? `HTTP_${status}`;
   }
