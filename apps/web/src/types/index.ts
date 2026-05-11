@@ -1,6 +1,11 @@
 export type { NavItem, NavGroup, BreadcrumbItem } from './navigation';
 export type { ActivityVerb, ActivityEntry, EntityType } from './activity';
 export type {
+  CommandCenter, CommandCenterMetrics,
+  UrgentReminderItem, PendingFeedbackItem, UpcomingInterviewItem,
+  StalledSubmissionItem, RecruiterWorkloadItem,
+} from './dashboard';
+export type {
   ReminderType, ReminderStatus, ReminderPriority, ReminderActivityAction,
   ReminderListItem, ReminderDetail, ReminderActivityView,
   ReminderStats, ActionCenter, ActionCenterStats,

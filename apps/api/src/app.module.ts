@@ -31,6 +31,7 @@ import { OrganizationModule } from './modules/organization/organization.module';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
     UsersModule,
     RolesModule,
     SubscriptionModule,
+    DashboardModule,
   ],
   providers: [
     {

@@ -49,3 +49,4 @@ export {
   subscriptionKeys,
 } from './use-subscription';
 export { useEntityActivity, activityKeys } from './use-activity';
+export { useCommandCenter, dashboardKeys } from './use-dashboard';
