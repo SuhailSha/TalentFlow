@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@repo/database';
 import { PrismaService } from '../../database/prisma.service';
 import type { UpdateOrgProfileDto } from './dto/update-org-profile.dto';
 import type { UpdateOrgSettingsDto } from './dto/update-org-settings.dto';

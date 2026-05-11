@@ -374,6 +374,23 @@ enum UsageMetric {
   @@map("usage_metric")
 }
 
+// ── Communication & Delivery ─────────────────────────────────────────────────
+
+// Lifecycle: PENDING -> QUEUED -> SENT | FAILED | RETRYING -> SENT | FAILED
+// BOUNCED: provider reported a bounce post-delivery
+// SKIPPED: intentional no-send (e.g. user opted out, missing config in dev)
+enum EmailDeliveryStatus {
+  PENDING    // record created, not yet queued
+  QUEUED     // queued for processing by the email worker
+  RETRYING   // previous attempt failed; another in flight
+  SENT       // provider accepted the message
+  FAILED     // exhausted retries; manual intervention may be required
+  BOUNCED    // provider reported a hard bounce
+  SKIPPED    // intentionally not sent
+
+  @@map("email_delivery_status")
+}
+
 // ── Submissions ───────────────────────────────────────────────────────────────
 
 // Lifecycle FSM — see lifecycle.constants.ts for transition rules.

@@ -105,6 +105,8 @@ model Organization {
   subscriptions    Subscription[]      @relation("OrgSubscription")
   usageRecords     UsageRecord[]       @relation("OrgUsageRecords")
   recruiterProfiles RecruiterProfile[] @relation("OrgRecruiterProfiles")
+  // Communication & delivery
+  emailDeliveries  EmailDelivery[]     @relation("OrgEmailDeliveries")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   @@index([slug])
@@ -191,6 +193,8 @@ model User {
   sentInvitations      UserInvitation[]    @relation("SentInvitations")
   revokedInvitations   UserInvitation[]    @relation("RevokedInvitations")
   recruiterProfile     RecruiterProfile?   @relation("UserRecruiterProfile")
+  // Communication & delivery
+  receivedEmails       EmailDelivery[]     @relation("UserEmailDeliveries")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Composite unique: same email cannot exist twice within one org.

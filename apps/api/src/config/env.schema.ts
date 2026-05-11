@@ -56,6 +56,30 @@ export const envSchema = z.object({
   LOG_LEVEL: z
     .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
     .default('info'),
+
+  // ─── Application URL ──────────────────────────────────────────────────────
+  // Public URL of the frontend, used to build absolute links in emails
+  // (invitation accept links, password reset, etc.).
+  APP_URL: z.string().url().default('http://localhost:3000'),
+
+  // ─── Email delivery ───────────────────────────────────────────────────────
+  // console  -> logs to stdout and writes .eml files under STORAGE_LOCAL_PATH/emails/
+  //             (zero-config dev default — no SMTP server needed)
+  // smtp     -> nodemailer-backed SMTP (works for prod with SES/Mailgun/Postfix/etc.)
+  // sendgrid -> stub; throws "not implemented" until enabled
+  // postmark -> stub; throws "not implemented" until enabled
+  EMAIL_DRIVER: z.enum(['console', 'smtp', 'sendgrid', 'postmark']).default('console'),
+
+  // Sender identity used by all outbound mail.
+  EMAIL_FROM_ADDRESS: z.string().email().default('no-reply@recruitment.local'),
+  EMAIL_FROM_NAME:    z.string().min(1).default('Recruitment Platform'),
+
+  // SMTP — only required when EMAIL_DRIVER=smtp.
+  SMTP_HOST:     z.string().optional(),
+  SMTP_PORT:     z.coerce.number().int().min(1).max(65535).default(587),
+  SMTP_SECURE:   z.string().default('false').transform(s => s === 'true' || s === '1'),
+  SMTP_USER:     z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

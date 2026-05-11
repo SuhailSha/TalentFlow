@@ -65,6 +65,8 @@ export type {
   Subscription,
   UsageRecord,
   RecruiterProfile,
+  // Communication domain
+  EmailDelivery,
 } from '@prisma/client';
 
 // Enum values — exported as values so @IsEnum() decorators can use them at runtime.
@@ -108,4 +110,6 @@ export {
   InvitationStatus,
   SubscriptionStatus,
   UsageMetric,
+  // Communication domain
+  EmailDeliveryStatus,
 } from '@prisma/client';

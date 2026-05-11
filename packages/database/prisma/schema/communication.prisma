@@ -1,0 +1,75 @@
+// ─── Communication & Delivery ────────────────────────────────────────────────
+//
+// Tracks every outbound email delivery attempt. Every send is recorded BEFORE
+// the network call so retries and failures are inspectable. The actual sending
+// path is the EmailWorker (BullMQ) — this table is the durable record.
+//
+// Relationship to other domains:
+//   - resourceType/resourceId are a polymorphic back-reference to the entity
+//     that triggered the email (UserInvitation, Reminder, Interview, etc.)
+//   - recipientUserId is set when the recipient is a known platform user
+//   - For unknown recipients (invited candidates, external contacts),
+//     recipientEmail is the only identifier.
+
+model EmailDelivery {
+  // ── Identity ──────────────────────────────────────────────────────────────
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Envelope ──────────────────────────────────────────────────────────────
+
+  // Logical template name (e.g. "user_invitation", "reminder_due_soon").
+  // Workers look this up in the template registry.
+  template String @db.VarChar(100)
+
+  // Provider that handled this delivery: "console" | "smtp" | "sendgrid" | "postmark"
+  provider String @db.VarChar(50)
+
+  recipientEmail  String  @db.VarChar(255) @map("recipient_email")
+  recipientUserId String? @db.Uuid @map("recipient_user_id")
+
+  subject String @db.VarChar(255)
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  status EmailDeliveryStatus @default(PENDING)
+
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime? @map("last_attempt_at")
+  sentAt        DateTime? @map("sent_at")
+  failedAt      DateTime? @map("failed_at")
+
+  failureReason String? @db.Text @map("failure_reason")
+
+  // ── Provider tracking ─────────────────────────────────────────────────────
+  // Provider-issued message ID; useful for webhook event correlation later.
+  providerMessageId String? @db.VarChar(255) @map("provider_message_id")
+
+  // Full last response from the provider (for debugging) — kept JSON for flexibility.
+  providerResponse Json? @map("provider_response")
+
+  // ── Polymorphic back-reference ────────────────────────────────────────────
+  // resourceType is the Prisma model name; resourceId is its primary key.
+  // Example: ("UserInvitation", "abc-def-123") for an invitation email.
+  resourceType String? @db.VarChar(100) @map("resource_type")
+  resourceId   String? @db.VarChar(255) @map("resource_id")
+
+  // ── Free-form context ─────────────────────────────────────────────────────
+  metadata Json?
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  organization  Organization @relation("OrgEmailDeliveries", fields: [organizationId], references: [id], onDelete: Cascade)
+  recipientUser User?        @relation("UserEmailDeliveries", fields: [recipientUserId], references: [id], onDelete: SetNull)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([organizationId])
+  @@index([status])
+  @@index([recipientEmail])
+  // Polymorphic lookup: "all emails sent for this invitation" / "for this reminder"
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("email_deliveries")
+}

@@ -16,6 +16,7 @@ import { WorkflowModule } from './common/workflow/workflow.module';
 import { ActivityModule } from './common/activity/activity.module';
 import { TransactionModule } from './common/transaction/transaction.module';
 import { DatabaseModule } from './database';
+import { EmailModule } from './email/email.module';
 import { HealthModule } from './health/health.module';
 import { LoggerModule } from './logger/logger.module';
 import { QueueModule } from './queue/queue.module';
@@ -77,6 +78,9 @@ import { SearchModule } from './modules/search/search.module';
 
     // ── File Storage ───────────────────────────────────────────────────────
     StorageModule.register(),
+
+    // ── Email delivery ─────────────────────────────────────────────────────
+    EmailModule.register(),
 
     // ── Feature Modules ────────────────────────────────────────────────────
     AuthModule,
