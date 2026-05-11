@@ -1,4 +1,5 @@
 export type { NavItem, NavGroup, BreadcrumbItem } from './navigation';
+export type { ActivityVerb, ActivityEntry, EntityType } from './activity';
 export type {
   ReminderType, ReminderStatus, ReminderPriority, ReminderActivityAction,
   ReminderListItem, ReminderDetail, ReminderActivityView,

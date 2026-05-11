@@ -48,3 +48,4 @@ export {
   useSubscription, usePlans, useUsageRecords, useSeatStats,
   subscriptionKeys,
 } from './use-subscription';
+export { useEntityActivity, activityKeys } from './use-activity';
