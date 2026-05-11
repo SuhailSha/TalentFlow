@@ -96,6 +96,9 @@ model Organization {
   // Interview domain
   interviews      Interview[]
   interviewNotes  InterviewNote[]
+  // Reminder/Notification domain
+  reminders       Reminder[]     @relation("OrgReminders")
+  notifications   Notification[] @relation("OrgNotifications")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   @@index([slug])
@@ -173,6 +176,11 @@ model User {
   interviewStatusChanges   InterviewStatusHistory[]  @relation("InterviewStatusHistoryActor")
   interviewFeedbackGiven   InterviewFeedback[]       @relation("InterviewFeedbackAuthor")
   interviewParticipations  InterviewParticipant[]    @relation("InterviewParticipantUser")
+  // Reminder/Notification domain
+  assignedReminders    Reminder[]          @relation("ReminderAssignee")
+  createdReminders     Reminder[]          @relation("ReminderCreatedBy")
+  reminderActivities   ReminderActivity[]  @relation("ReminderActivityActor")
+  notifications        Notification[]      @relation("NotificationRecipient")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Composite unique: same email cannot exist twice within one org.

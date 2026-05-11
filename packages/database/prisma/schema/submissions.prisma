@@ -104,6 +104,7 @@ model Submission {
   notes           SubmissionNote[]
   statusHistory   SubmissionStatusHistory[]
   interviews      Interview[]
+  reminders       Reminder[]               @relation("SubmissionReminders")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Tenant isolation — always the first filter.

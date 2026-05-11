@@ -264,6 +264,84 @@ enum InterviewParticipantRole {
   @@map("interview_participant_role")
 }
 
+// ── Reminders & Notifications ─────────────────────────────────────────────────
+
+// What kind of operational attention this reminder requires.
+// CUSTOM = manually created by a recruiter; all others are system-generated.
+enum ReminderType {
+  UPCOMING_INTERVIEW              // interview scheduled within the next 24–48 h
+  INTERVIEW_FEEDBACK_PENDING      // feedback not submitted after interview completed
+  OVERDUE_SUBMISSION_FOLLOWUP     // submission has been idle too long
+  CANDIDATE_AVAILABILITY_FOLLOWUP // need to re-confirm candidate availability
+  RECRUITER_ACTION_REQUIRED       // generic recruiter task / follow-up
+  STALLED_WORKFLOW                // pipeline item has not moved in N days
+  OVERDUE_INTERVIEW_SCHEDULING    // submission is in SHORTLISTED with no interview
+  PENDING_RECRUITER_REVIEW        // waiting for recruiter decision or review
+  INTERVIEW_CONFIRMATION_NEEDED   // interview not confirmed by candidate/interviewer
+  CUSTOM                          // manually created by a recruiter
+
+  @@map("reminder_type")
+}
+
+// Lifecycle FSM:
+//   PENDING → ACKNOWLEDGED → SNOOZED → PENDING (loop until resolved)
+//   PENDING | ACKNOWLEDGED | SNOOZED → COMPLETED (positive resolution)
+//   PENDING | ACKNOWLEDGED → DISMISSED (recruiter chose to ignore)
+//   SNOOZED → PENDING (auto-restored when snoozedUntil passes)
+//   PENDING | ACKNOWLEDGED → EXPIRED (past due_at with no action — set by job)
+enum ReminderStatus {
+  PENDING       // active — needs attention
+  ACKNOWLEDGED  // seen; not yet acted on
+  SNOOZED       // deferred; auto-restores to PENDING at snoozedUntil
+  COMPLETED     // action taken; workflow resolved
+  DISMISSED     // recruiter chose not to act (with optional reason)
+  EXPIRED       // past due date with no action; set by scheduled job
+
+  @@map("reminder_status")
+}
+
+enum ReminderPriority {
+  CRITICAL  // overdue or blocking — surface immediately
+  HIGH      // due today or soon — surface prominently
+  MEDIUM    // due this week — normal visibility
+  LOW       // informational / nice-to-have
+
+  @@map("reminder_priority")
+}
+
+enum ReminderActivityAction {
+  CREATED
+  VIEWED
+  ACKNOWLEDGED
+  SNOOZED
+  COMPLETED
+  DISMISSED
+  ESCALATED
+  REOPENED
+  UPDATED
+
+  @@map("reminder_activity_action")
+}
+
+// Delivery channel — IN_APP is the only channel in Phase 1.
+// EMAIL and SMS are reserved for future notification delivery phases.
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+
+  @@map("notification_channel")
+}
+
+enum NotificationStatus {
+  PENDING    // created, not yet delivered
+  DELIVERED  // delivered to channel (e.g. sent to websocket / email queue)
+  READ       // recipient confirmed read
+  FAILED     // delivery failed (relevant for email/SMS)
+
+  @@map("notification_status")
+}
+
 // ── Submissions ───────────────────────────────────────────────────────────────
 
 // Lifecycle FSM — see lifecycle.constants.ts for transition rules.

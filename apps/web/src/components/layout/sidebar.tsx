@@ -2,12 +2,14 @@
 
 import {
   BarChart3,
+  Bell,
   Briefcase,
   Building2,
   CalendarClock,
   FileText,
   LayoutDashboard,
   Users,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -22,7 +24,8 @@ import type { NavGroup } from '@/types';
 const navGroups: NavGroup[] = [
   {
     items: [
-      { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { title: 'Dashboard',     href: '/dashboard',      icon: LayoutDashboard },
+      { title: 'Action Center', href: '/action-center',  icon: Zap },
     ],
   },
   {
@@ -32,6 +35,7 @@ const navGroups: NavGroup[] = [
       { title: 'Jobs', href: '/jobs', icon: FileText },
       { title: 'Submissions', href: '/submissions', icon: Briefcase },
       { title: 'Interviews', href: '/interviews', icon: CalendarClock },
+      { title: 'Reminders',  href: '/reminders',  icon: Bell },
     ],
   },
   {

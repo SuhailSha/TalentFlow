@@ -127,6 +127,7 @@ model JobDescription {
   notes          JobNote[]
   submissions    Submission[]
   interviews     Interview[]
+  reminders      Reminder[]     @relation("JobReminders")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Tenant isolation — always the first filter in every query.

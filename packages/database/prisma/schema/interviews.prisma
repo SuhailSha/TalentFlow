@@ -121,6 +121,7 @@ model Interview {
   notes           InterviewNote[]
   statusHistory   InterviewStatusHistory[]
   participants    InterviewParticipant[]
+  reminders       Reminder[]               @relation("InterviewReminders")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   @@index([organizationId])

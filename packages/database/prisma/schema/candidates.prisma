@@ -105,6 +105,7 @@ model Candidate {
   notes           CandidateNote[]
   submissions     Submission[]
   interviews      Interview[]
+  reminders       Reminder[]       @relation("CandidateReminders")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Level-1 duplicate detection: same email is unique within an org.

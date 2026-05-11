@@ -25,6 +25,8 @@ import { JobsModule } from './modules/jobs/jobs.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { SubmissionsModule } from './modules/submissions/submissions.module';
 import { InterviewsModule } from './modules/interviews/interviews.module';
+import { RemindersModule } from './modules/reminders/reminders.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -49,7 +51,7 @@ import { InterviewsModule } from './modules/interviews/interviews.module';
     EventEmitterModule.forRoot({
       wildcard: true,
       delimiter: '.',
-      maxListeners: 20,
+      maxListeners: 30,
       verboseMemoryLeak: true,
     }),
 
@@ -78,6 +80,8 @@ import { InterviewsModule } from './modules/interviews/interviews.module';
     VendorsModule,
     SubmissionsModule,
     InterviewsModule,
+    RemindersModule,
+    NotificationsModule,
   ],
   providers: [
     {

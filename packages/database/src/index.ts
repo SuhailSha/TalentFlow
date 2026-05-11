@@ -54,6 +54,10 @@ export type {
   InterviewNote,
   InterviewStatusHistory,
   InterviewParticipant,
+  // Reminder/Notification domain
+  Reminder,
+  ReminderActivity,
+  Notification,
 } from '@prisma/client';
 
 // Enum values — exported as values so @IsEnum() decorators can use them at runtime.
@@ -86,4 +90,11 @@ export {
   InterviewType,
   FeedbackRecommendation,
   InterviewParticipantRole,
+  // Reminder/Notification domain
+  ReminderType,
+  ReminderStatus,
+  ReminderPriority,
+  ReminderActivityAction,
+  NotificationChannel,
+  NotificationStatus,
 } from '@prisma/client';

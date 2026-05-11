@@ -77,6 +77,19 @@ export const EventNames = {
   INTERVIEW_FAILED:          'interview.failed',
   INTERVIEW_NO_SHOW:         'interview.no_show',
 
+  // ── Reminders domain ─────────────────────────────────────────────────────────
+  REMINDER_CREATED:      'reminder.created',
+  REMINDER_UPDATED:      'reminder.updated',
+  REMINDER_ACKNOWLEDGED: 'reminder.acknowledged',
+  REMINDER_SNOOZED:      'reminder.snoozed',
+  REMINDER_COMPLETED:    'reminder.completed',
+  REMINDER_DISMISSED:    'reminder.dismissed',
+  REMINDER_OVERDUE:      'reminder.overdue',   // fired by future scheduled job
+
+  // ── Notifications domain ──────────────────────────────────────────────────────
+  NOTIFICATION_CREATED: 'notification.created',
+  NOTIFICATION_READ:    'notification.read',
+
   // ── System / platform ───────────────────────────────────────────────────────
   AUTH_LOGIN:              'auth.login',
   AUTH_LOGOUT:             'auth.logout',

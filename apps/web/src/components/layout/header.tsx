@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Loader2, LogOut, Menu, Search, Settings, User } from 'lucide-react';
+import { Loader2, LogOut, Menu, Search, Settings, User } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
+import { NotificationBell } from './notification-bell';
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -46,10 +47,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        {/* Notifications — wired in Step 6+ */}
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
-        </Button>
+        <NotificationBell />
 
         {/* Settings */}
         <Button variant="ghost" size="icon" aria-label="Settings">

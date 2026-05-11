@@ -57,6 +57,16 @@ export const Permission = {
   INTERVIEWS_UPDATE: 'interviews:update',
   INTERVIEWS_DELETE: 'interviews:delete',
 
+  // ── Reminders ────────────────────────────────────────────────────────────
+  REMINDERS_READ:   'reminders:read',
+  REMINDERS_CREATE: 'reminders:create',
+  REMINDERS_UPDATE: 'reminders:update',
+  REMINDERS_DELETE: 'reminders:delete',
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+  NOTIFICATIONS_READ:   'notifications:read',
+  NOTIFICATIONS_MANAGE: 'notifications:manage',
+
   // ── Reports ──────────────────────────────────────────────────────────────
   REPORTS_READ: 'reports:read',
   REPORTS_EXPORT: 'reports:export',
