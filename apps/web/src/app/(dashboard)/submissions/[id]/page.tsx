@@ -1,51 +1,71 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { ChevronRight, Briefcase, User, Building2 } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { formatDistanceToNow } from 'date-fns';
+import {
+  Activity, AlertCircle, ArrowRight, Bell, Briefcase, Building2,
+  Calendar, CheckCircle2, ChevronDown, Clock, FileText, MessageSquare,
+  PauseCircle, PlayCircle, Send, Sparkles, Trash2, User, XCircle,
+} from 'lucide-react';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  ActivityTimeline,
+  NextActionsPanel,
+  OverdueIndicator,
+  RelatedEntityCard,
+  StaleIndicator,
+  WorkspaceFact,
+  WorkspaceHeader,
+  WorkspaceShell,
+  type NextAction,
+} from '@/components/workspace';
 import {
   useSubmission,
   useChangeSubmissionStatus,
   useAddSubmissionNote,
   useDeleteSubmission,
 } from '@/hooks/use-submissions';
+import { useInterviews } from '@/hooks/use-interviews';
+import { useReminders } from '@/hooks/use-reminders';
+import { useEntityActivity } from '@/hooks/use-activity';
 import type { SubmissionStatus } from '@/types/submissions';
+import type { InterviewStatus } from '@/types/interviews';
+import type { ReminderStatus } from '@/types/reminders';
+import { cn } from '@/lib/utils';
 
-const STATUS_COLORS: Record<SubmissionStatus, string> = {
+// ── Lookups ───────────────────────────────────────────────────────────────────
+
+const STATUS_LABELS: Record<SubmissionStatus, string> = {
+  DRAFT: 'Draft', SUBMITTED: 'Submitted', UNDER_REVIEW: 'Under Review',
+  SHORTLISTED: 'Shortlisted', INTERVIEW: 'Interview', OFFERED: 'Offered',
+  PLACED: 'Placed', REJECTED: 'Rejected', WITHDRAWN: 'Withdrawn',
+  ON_HOLD: 'On Hold', CLOSED: 'Closed',
+};
+
+const STATUS_TONE: Record<SubmissionStatus, string> = {
   DRAFT:        'bg-gray-100 text-gray-700',
-  SUBMITTED:    'bg-blue-100 text-blue-800',
+  SUBMITTED:    'bg-blue-100 text-blue-700',
   UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
-  SHORTLISTED:  'bg-purple-100 text-purple-800',
-  INTERVIEW:    'bg-indigo-100 text-indigo-800',
-  OFFERED:      'bg-orange-100 text-orange-800',
-  PLACED:       'bg-green-100 text-green-800',
-  REJECTED:     'bg-red-100 text-red-800',
+  SHORTLISTED:  'bg-purple-100 text-purple-700',
+  INTERVIEW:    'bg-indigo-100 text-indigo-700',
+  OFFERED:      'bg-orange-100 text-orange-700',
+  PLACED:       'bg-green-100 text-green-700',
+  REJECTED:     'bg-red-100 text-red-700',
   WITHDRAWN:    'bg-gray-100 text-gray-500',
-  ON_HOLD:      'bg-amber-100 text-amber-800',
+  ON_HOLD:      'bg-amber-100 text-amber-700',
   CLOSED:       'bg-slate-100 text-slate-600',
 };
 
-const STATUS_LABELS: Record<SubmissionStatus, string> = {
-  DRAFT:        'Draft',
-  SUBMITTED:    'Submitted',
-  UNDER_REVIEW: 'Under Review',
-  SHORTLISTED:  'Shortlisted',
-  INTERVIEW:    'Interview',
-  OFFERED:      'Offered',
-  PLACED:       'Placed',
-  REJECTED:     'Rejected',
-  WITHDRAWN:    'Withdrawn',
-  ON_HOLD:      'On Hold',
-  CLOSED:       'Closed',
-};
-
-// FSM allowed transitions (mirrors backend SUBMISSION_FSM)
 const TRANSITIONS: Record<SubmissionStatus, SubmissionStatus[]> = {
   DRAFT:        ['SUBMITTED', 'WITHDRAWN'],
   SUBMITTED:    ['UNDER_REVIEW', 'REJECTED', 'WITHDRAWN', 'ON_HOLD'],
@@ -60,31 +80,244 @@ const TRANSITIONS: Record<SubmissionStatus, SubmissionStatus[]> = {
   CLOSED:       [],
 };
 
+const PIPELINE_STAGES: SubmissionStatus[] = [
+  'DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'PLACED',
+];
+
+const TERMINAL_STATUSES: SubmissionStatus[] = ['PLACED', 'REJECTED', 'WITHDRAWN', 'CLOSED'];
+
+const INTERVIEW_STATUS_TONE: Record<InterviewStatus, 'gray' | 'amber' | 'indigo' | 'green' | 'red' | 'blue'> = {
+  SCHEDULED: 'blue',
+  CONFIRMED: 'indigo',
+  RESCHEDULED: 'amber',
+  IN_PROGRESS: 'indigo',
+  COMPLETED: 'gray',
+  FEEDBACK_PENDING: 'amber',
+  PASSED: 'green',
+  FAILED: 'red',
+  NO_SHOW: 'red',
+  CANCELLED: 'gray',
+};
+
+const REMINDER_TONE: Record<ReminderStatus, 'gray' | 'amber' | 'blue' | 'green' | 'red'> = {
+  PENDING: 'blue',
+  ACKNOWLEDGED: 'amber',
+  SNOOZED: 'gray',
+  COMPLETED: 'green',
+  DISMISSED: 'gray',
+  EXPIRED: 'red',
+};
+
+// ── Pipeline progress bar ─────────────────────────────────────────────────────
+
+function PipelineProgress({ status }: { status: SubmissionStatus }) {
+  // Terminal non-PLACED statuses don't live on the linear pipeline.
+  const currentIndex = PIPELINE_STAGES.indexOf(status);
+  const isTerminalNonPlaced = TERMINAL_STATUSES.includes(status) && status !== 'PLACED' && status !== 'CLOSED';
+  const isOnHold = status === 'ON_HOLD';
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">Pipeline stage</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isTerminalNonPlaced ? (
+          <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <XCircle className="h-4 w-4" />
+            Closed at <strong>{STATUS_LABELS[status]}</strong>. No further progression.
+          </div>
+        ) : isOnHold ? (
+          <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+            <PauseCircle className="h-4 w-4" />
+            Pipeline is on hold. Resume to continue.
+          </div>
+        ) : (
+          <ol className="grid grid-cols-7 gap-1.5">
+            {PIPELINE_STAGES.map((s, i) => {
+              const reached = currentIndex >= i;
+              const isCurrent = currentIndex === i;
+              return (
+                <li key={s} className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={cn(
+                      'h-1.5 w-full rounded-full',
+                      reached ? 'bg-primary' : 'bg-muted',
+                    )}
+                  />
+                  <span className={cn(
+                    'text-[10px] uppercase tracking-wide',
+                    isCurrent ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                  )}>
+                    {STATUS_LABELS[s]}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
 function SkeletonDetail() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-8 w-64" />
-      <div className="grid gap-6 md:grid-cols-2">
-        <Skeleton className="h-48" />
-        <Skeleton className="h-48" />
+      <Skeleton className="h-10 w-96" />
+      <Skeleton className="h-20" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-4">
+          <Skeleton className="h-40" />
+          <Skeleton className="h-60" />
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-40" />
+          <Skeleton className="h-60" />
+        </div>
       </div>
     </div>
   );
 }
 
-export default function SubmissionDetailPage() {
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function SubmissionWorkspacePage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+
   const { data: submission, isLoading, isError } = useSubmission(id);
+  const { data: interviewsResp } = useInterviews({ submissionId: id, limit: 50 });
+  const { data: remindersResp } = useReminders({ submissionId: id, limit: 20 });
+  const { data: activity = [], isLoading: activityLoading } = useEntityActivity('submission', id, 30);
+
   const changeStatus = useChangeSubmissionStatus(id);
   const addNote = useAddSubmissionNote(id);
   const deleteSubmission = useDeleteSubmission();
 
   const [noteText, setNoteText] = useState('');
-  const [newStatus, setNewStatus] = useState<SubmissionStatus | ''>('');
   const [statusReason, setStatusReason] = useState('');
 
-  if (isLoading) return <SkeletonDetail />;
+  const interviews = interviewsResp?.data ?? [];
+  const reminders = remindersResp?.data ?? [];
 
+  const allowedTransitions = useMemo(
+    () => (submission ? TRANSITIONS[submission.status] : []),
+    [submission],
+  );
+
+  // Find interviews needing recruiter attention
+  const pendingFeedbackInterview = interviews.find(
+    (i) => i.status === 'FEEDBACK_PENDING' || i.status === 'COMPLETED',
+  );
+  const upcomingInterview = interviews.find(
+    (i) => (i.status === 'SCHEDULED' || i.status === 'CONFIRMED' || i.status === 'RESCHEDULED')
+      && i.scheduledAt && new Date(i.scheduledAt).getTime() > Date.now(),
+  );
+  const openReminders = reminders.filter(
+    (r) => r.status === 'PENDING' || r.status === 'ACKNOWLEDGED' || r.status === 'SNOOZED',
+  );
+  const overdueReminders = openReminders.filter(
+    (r) => r.dueAt && new Date(r.dueAt).getTime() < Date.now(),
+  );
+
+  // ── Next actions logic ──────────────────────────────────────────────────────
+  const nextActions: NextAction[] = useMemo(() => {
+    if (!submission) return [];
+    const actions: NextAction[] = [];
+    const s = submission.status;
+
+    if (s === 'DRAFT') {
+      actions.push({
+        id: 'submit', label: 'Submit to client', icon: Send, primary: true,
+        hint: 'Mark as formally submitted',
+        onClick: () => changeStatus.mutate({ status: 'SUBMITTED' }),
+      });
+    }
+    if (s === 'SUBMITTED') {
+      actions.push({
+        id: 'review', label: 'Mark as under review', icon: PlayCircle, primary: true,
+        hint: 'Client has begun reviewing',
+        onClick: () => changeStatus.mutate({ status: 'UNDER_REVIEW' }),
+      });
+    }
+    if (s === 'UNDER_REVIEW') {
+      actions.push({
+        id: 'shortlist', label: 'Shortlist candidate', icon: CheckCircle2, primary: true,
+        hint: 'Client wants to interview',
+        onClick: () => changeStatus.mutate({ status: 'SHORTLISTED' }),
+      });
+    }
+    if (s === 'SHORTLISTED') {
+      actions.push({
+        id: 'schedule', label: 'Schedule interview', icon: Calendar, primary: true,
+        hint: 'Move forward to the interview round',
+        href: `/interviews/new?submissionId=${id}&candidateId=${submission.candidate.id}&jobId=${submission.job.id}`,
+      });
+    }
+    if (s === 'INTERVIEW') {
+      if (pendingFeedbackInterview) {
+        actions.push({
+          id: 'feedback', label: 'Submit interview feedback', icon: FileText, urgent: true,
+          hint: `${pendingFeedbackInterview.roundLabel ?? `Round ${pendingFeedbackInterview.round}`} is awaiting feedback`,
+          href: `/interviews/${pendingFeedbackInterview.id}`,
+        });
+      } else if (!upcomingInterview) {
+        actions.push({
+          id: 'schedule-next', label: 'Schedule next round', icon: Calendar, primary: true,
+          href: `/interviews/new?submissionId=${id}&candidateId=${submission.candidate.id}&jobId=${submission.job.id}`,
+        });
+      } else {
+        actions.push({
+          id: 'view-interview', label: 'Open scheduled interview', icon: Calendar,
+          hint: `Scheduled for ${new Date(upcomingInterview.scheduledAt!).toLocaleString()}`,
+          href: `/interviews/${upcomingInterview.id}`,
+        });
+      }
+      actions.push({
+        id: 'offer', label: 'Extend offer', icon: Sparkles,
+        hint: 'Candidate cleared interviews',
+        onClick: () => changeStatus.mutate({ status: 'OFFERED' }),
+      });
+    }
+    if (s === 'OFFERED') {
+      actions.push({
+        id: 'place', label: 'Confirm placement', icon: CheckCircle2, primary: true,
+        hint: 'Offer accepted',
+        onClick: () => changeStatus.mutate({ status: 'PLACED' }),
+      });
+    }
+    if (s === 'ON_HOLD') {
+      actions.push({
+        id: 'resume', label: 'Resume submission', icon: PlayCircle, primary: true,
+        hint: 'Return to active pipeline',
+        onClick: () => changeStatus.mutate({ status: 'SUBMITTED' }),
+      });
+    }
+    if (s === 'PLACED' || s === 'REJECTED' || s === 'WITHDRAWN') {
+      actions.push({
+        id: 'close', label: 'Close submission', icon: XCircle,
+        hint: 'Mark engagement as complete',
+        onClick: () => changeStatus.mutate({ status: 'CLOSED' }),
+      });
+    }
+    if (overdueReminders.length > 0) {
+      actions.unshift({
+        id: 'overdue-reminders',
+        label: `${overdueReminders.length} overdue reminder${overdueReminders.length > 1 ? 's' : ''}`,
+        icon: Bell, urgent: true,
+        hint: 'Address overdue items',
+        href: `/reminders?submissionId=${id}`,
+      });
+    }
+    return actions;
+  }, [submission, id, pendingFeedbackInterview, upcomingInterview, overdueReminders, changeStatus]);
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+
+  if (isLoading) return <SkeletonDetail />;
   if (isError || !submission) {
     return (
       <Card>
@@ -100,280 +333,332 @@ export default function SubmissionDetailPage() {
 
   const c = submission.candidate;
   const j = submission.job;
-  const allowedTransitions = TRANSITIONS[submission.status] ?? [];
-
-  function handleStatusChange() {
-    if (!newStatus) return;
-    changeStatus.mutate(
-      { status: newStatus, reason: statusReason || undefined },
-      {
-        onSuccess: () => {
-          setNewStatus('');
-          setStatusReason('');
-        },
-      },
-    );
-  }
 
   function handleAddNote() {
     if (!noteText.trim()) return;
-    addNote.mutate(
-      { content: noteText.trim() },
-      { onSuccess: () => setNoteText('') },
-    );
+    addNote.mutate({ content: noteText.trim() }, { onSuccess: () => setNoteText('') });
+  }
+
+  function handleDelete() {
+    deleteSubmission.mutate(id, { onSuccess: () => router.push('/submissions') });
   }
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1 text-sm text-muted-foreground">
-        <Link href="/submissions" className="hover:text-foreground">Submissions</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">
-          {c.firstName} {c.lastName} — {j.reqId}
-        </span>
-      </nav>
-
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl font-semibold">
-              {c.firstName} {c.lastName}
-            </h1>
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[submission.status]}`}
-            >
+      <WorkspaceHeader
+        eyebrow="Submission"
+        title={`${c.firstName} ${c.lastName}`}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-1.5">
+            <Briefcase className="h-3.5 w-3.5" />
+            <Link href={`/jobs/${j.id}`} className="hover:underline">{j.reqId} · {j.title}</Link>
+            {j.department && <span className="text-muted-foreground">— {j.department}</span>}
+          </span>
+        }
+        breadcrumbs={[
+          { title: 'Submissions', href: '/submissions' },
+          { title: `${c.firstName} ${c.lastName} → ${j.reqId}` },
+        ]}
+        badges={
+          <>
+            <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium', STATUS_TONE[submission.status])}>
               {STATUS_LABELS[submission.status]}
             </span>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {j.reqId} · {j.title}
-            {j.department ? ` — ${j.department}` : ''}
-          </p>
-        </div>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => deleteSubmission.mutate(id)}
-          disabled={deleteSubmission.isPending}
-        >
-          Archive
-        </Button>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Left column: candidate + job + rates */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Candidate
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1 text-sm">
-              <p className="font-medium">
-                <Link href={`/candidates/${c.id}`} className="hover:underline">
-                  {c.firstName} {c.lastName}
-                </Link>
-              </p>
-              <p className="text-muted-foreground">{c.email}</p>
-              {c.currentTitle && <p className="text-muted-foreground">{c.currentTitle}</p>}
-              {c.location && <p className="text-muted-foreground">{c.location}</p>}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
-                Job
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1 text-sm">
-              <p className="font-medium">
-                <Link href={`/jobs/${j.id}`} className="hover:underline">
-                  {j.title}
-                </Link>
-              </p>
-              <p className="text-muted-foreground">{j.reqId}</p>
-              {j.department && <p className="text-muted-foreground">{j.department}</p>}
-            </CardContent>
-          </Card>
-
-          {submission.vendor && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Vendor
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm">
-                <Link href={`/vendors/${submission.vendor.id}`} className="hover:underline font-medium">
-                  {submission.vendor.companyName}
-                </Link>
-              </CardContent>
-            </Card>
-          )}
-
-          {(submission.billRate !== null || submission.payRate !== null) && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Rates</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm space-y-1">
-                {submission.billRate !== null && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Bill rate</span>
-                    <span>{submission.currency} {submission.billRate}/hr</span>
-                  </div>
-                )}
-                {submission.payRate !== null && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Pay rate</span>
-                    <span>{submission.currency} {submission.payRate}/hr</span>
-                  </div>
-                )}
-                {submission.offerSalary !== null && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Offer salary</span>
-                    <span>{submission.currency} {submission.offerSalary?.toLocaleString()}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {submission.coverNote && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Cover note</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{submission.coverNote}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Right column: status transition + notes + history */}
-        <div className="space-y-4">
-          {allowedTransitions.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Advance pipeline</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value as SubmissionStatus | '')}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Select next status</option>
+            <StaleIndicator lastActivityAt={submission.updatedAt} thresholdDays={7} />
+            {pendingFeedbackInterview && (
+              <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                <AlertCircle className="h-3 w-3" />
+                Feedback pending
+              </span>
+            )}
+            {overdueReminders.length > 0 && (
+              <span className="inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
+                <Bell className="h-3 w-3" />
+                {overdueReminders.length} overdue
+              </span>
+            )}
+          </>
+        }
+        actions={
+          <>
+            {allowedTransitions.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm">
+                    Advance status <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>Move to</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
                   {allowedTransitions.map((s) => (
-                    <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                    <DropdownMenuItem
+                      key={s}
+                      onClick={() => changeStatus.mutate({ status: s, reason: statusReason || undefined })}
+                    >
+                      <ArrowRight className="mr-2 h-4 w-4" />
+                      {STATUS_LABELS[s]}
+                    </DropdownMenuItem>
                   ))}
-                </select>
-                <textarea
-                  placeholder="Reason (optional)"
-                  value={statusReason}
-                  onChange={(e) => setStatusReason(e.target.value)}
-                  rows={2}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <Button
-                  size="sm"
-                  onClick={handleStatusChange}
-                  disabled={!newStatus || changeStatus.isPending}
-                >
-                  {changeStatus.isPending ? 'Saving…' : 'Update status'}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Button variant="outline" size="sm" onClick={handleDelete} disabled={deleteSubmission.isPending}>
+              <Trash2 className="mr-1 h-4 w-4" /> Archive
+            </Button>
+          </>
+        }
+        facts={
+          <>
+            <WorkspaceFact label="Owner">
+              {submission.owner.firstName} {submission.owner.lastName}
+            </WorkspaceFact>
+            <WorkspaceFact label="Submitted">
+              {submission.submittedAt
+                ? new Date(submission.submittedAt).toLocaleDateString()
+                : '—'}
+            </WorkspaceFact>
+            <WorkspaceFact label="Last activity">
+              {formatDistanceToNow(new Date(submission.updatedAt), { addSuffix: true })}
+            </WorkspaceFact>
+            <WorkspaceFact label="Bill / Pay rate">
+              {submission.billRate !== null || submission.payRate !== null
+                ? `${submission.currency} ${submission.billRate ?? '—'} / ${submission.payRate ?? '—'}`
+                : '—'}
+            </WorkspaceFact>
+          </>
+        }
+      />
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm">Add note</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <textarea
-                placeholder="Write a note…"
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                rows={3}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <Button
-                size="sm"
-                onClick={handleAddNote}
-                disabled={!noteText.trim() || addNote.isPending}
-              >
-                {addNote.isPending ? 'Saving…' : 'Add note'}
-              </Button>
-            </CardContent>
-          </Card>
+      <WorkspaceShell
+        rail={
+          <>
+            <NextActionsPanel
+              actions={nextActions}
+              emptyMessage={submission.status === 'CLOSED' ? 'Engagement is closed.' : 'No actions required.'}
+            />
 
-          {submission.notes.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Activity</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {submission.notes.map((n) => (
-                  <div key={n.id} className="border-b last:border-0 pb-3 last:pb-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">{n.authorName ?? n.authorEmail}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(n.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-sm mt-1 whitespace-pre-wrap">{n.content}</p>
-                    {n.isSystem && (
-                      <Badge variant="outline" className="text-xs mt-1">system</Badge>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {submission.statusHistory.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Status history</CardTitle>
+                <CardTitle className="text-sm">Context</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {submission.statusHistory.map((h) => (
-                  <div key={h.id} className="flex items-center gap-2 text-xs">
-                    <span className="text-muted-foreground">
-                      {new Date(h.createdAt).toLocaleDateString()}
-                    </span>
-                    {h.fromStatus && (
-                      <>
-                        <span
-                          className={`inline-flex rounded-full px-1.5 py-0.5 font-medium ${STATUS_COLORS[h.fromStatus]}`}
-                        >
-                          {STATUS_LABELS[h.fromStatus]}
-                        </span>
-                        <span className="text-muted-foreground">→</span>
-                      </>
-                    )}
-                    <span
-                      className={`inline-flex rounded-full px-1.5 py-0.5 font-medium ${STATUS_COLORS[h.toStatus]}`}
-                    >
-                      {STATUS_LABELS[h.toStatus]}
-                    </span>
-                    <span className="text-muted-foreground ml-auto">{h.changedByName}</span>
-                  </div>
-                ))}
+                <RelatedEntityCard
+                  eyebrow="Candidate"
+                  icon={User}
+                  title={`${c.firstName} ${c.lastName}`}
+                  subtitle={c.currentTitle ?? c.email}
+                  href={`/candidates/${c.id}`}
+                />
+                <RelatedEntityCard
+                  eyebrow="Job"
+                  icon={Briefcase}
+                  title={j.title}
+                  subtitle={j.reqId + (j.department ? ` · ${j.department}` : '')}
+                  href={`/jobs/${j.id}`}
+                />
+                {submission.vendor && (
+                  <RelatedEntityCard
+                    eyebrow="Vendor"
+                    icon={Building2}
+                    title={submission.vendor.companyName}
+                    href={`/vendors/${submission.vendor.id}`}
+                  />
+                )}
               </CardContent>
             </Card>
-          )}
-        </div>
-      </div>
+
+            <Card>
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm">Activity</CardTitle>
+                <span className="text-xs text-muted-foreground">{activity.length}</span>
+              </CardHeader>
+              <CardContent>
+                <ActivityTimeline
+                  entries={activity}
+                  loading={activityLoading}
+                  emptyMessage="No recorded activity yet."
+                />
+              </CardContent>
+            </Card>
+          </>
+        }
+      >
+        <PipelineProgress status={submission.status} />
+
+        {/* Interviews */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Calendar className="h-4 w-4" />
+              Interviews
+              <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{interviews.length}</span>
+            </CardTitle>
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/interviews/new?submissionId=${id}&candidateId=${c.id}&jobId=${j.id}`}>
+                <Calendar className="mr-1 h-3.5 w-3.5" />
+                Schedule
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {interviews.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No interviews scheduled yet.</p>
+            ) : (
+              interviews.map((iv) => (
+                <RelatedEntityCard
+                  key={iv.id}
+                  eyebrow={iv.roundLabel ?? `Round ${iv.round}`}
+                  icon={Calendar}
+                  title={`${iv.type} · ${iv.interviewerName ?? 'No interviewer'}`}
+                  subtitle={
+                    iv.scheduledAt
+                      ? new Date(iv.scheduledAt).toLocaleString()
+                      : 'Not scheduled'
+                  }
+                  status={iv.status}
+                  statusTone={INTERVIEW_STATUS_TONE[iv.status]}
+                  href={`/interviews/${iv.id}`}
+                  meta={
+                    iv.status === 'FEEDBACK_PENDING' || iv.status === 'COMPLETED' ? (
+                      <span className="inline-flex items-center gap-1 text-amber-700">
+                        <AlertCircle className="h-3 w-3" />
+                        Feedback
+                      </span>
+                    ) : undefined
+                  }
+                />
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Reminders */}
+        {openReminders.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Bell className="h-4 w-4" />
+                Open reminders
+                <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{openReminders.length}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {openReminders.map((r) => (
+                <RelatedEntityCard
+                  key={r.id}
+                  eyebrow={r.priority}
+                  icon={Bell}
+                  title={r.title}
+                  subtitle={r.description ?? undefined}
+                  status={r.status}
+                  statusTone={REMINDER_TONE[r.status]}
+                  href={`/reminders?id=${r.id}`}
+                  meta={<OverdueIndicator dueAt={r.dueAt} />}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Add note + notes list */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <MessageSquare className="h-4 w-4" />
+              Notes
+              <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{submission.notes.length}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Add a note about this submission…"
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                rows={2}
+              />
+              <Button size="sm" onClick={handleAddNote} disabled={!noteText.trim() || addNote.isPending}>
+                {addNote.isPending ? 'Saving…' : 'Add note'}
+              </Button>
+            </div>
+
+            {submission.notes.length > 0 && (
+              <div className="space-y-3 border-t pt-3">
+                {submission.notes.map((n) => (
+                  <div key={n.id} className="text-sm">
+                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{n.authorName ?? n.authorEmail ?? 'System'}</span>
+                      <span>{formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}</span>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{n.content}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Status reason input — only shown when a status change is in flight */}
+        {allowedTransitions.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Activity className="h-4 w-4" />
+                Status change reason
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Optional context for the next status change (e.g., 'Client confirmed shortlist on call')"
+                value={statusReason}
+                onChange={(e) => setStatusReason(e.target.value)}
+                rows={2}
+              />
+              <p className="mt-2 text-xs text-muted-foreground">
+                If set, the next status transition (via Advance status) will record this reason.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Status history (compact) */}
+        {submission.statusHistory.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Clock className="h-4 w-4" />
+                Status history
+                <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{submission.statusHistory.length}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {submission.statusHistory.map((h) => (
+                <div key={h.id} className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">
+                    {new Date(h.createdAt).toLocaleDateString()}
+                  </span>
+                  {h.fromStatus && (
+                    <>
+                      <span className={cn('inline-flex rounded px-1.5 py-0.5 font-medium', STATUS_TONE[h.fromStatus])}>
+                        {STATUS_LABELS[h.fromStatus]}
+                      </span>
+                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                    </>
+                  )}
+                  <span className={cn('inline-flex rounded px-1.5 py-0.5 font-medium', STATUS_TONE[h.toStatus])}>
+                    {STATUS_LABELS[h.toStatus]}
+                  </span>
+                  <span className="ml-auto text-muted-foreground">{h.changedByName}</span>
+                  {h.reason && (
+                    <p className="basis-full pl-1 text-xs italic text-muted-foreground">{h.reason}</p>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </WorkspaceShell>
     </div>
   );
 }
