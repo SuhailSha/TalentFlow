@@ -342,6 +342,38 @@ enum NotificationStatus {
   @@map("notification_status")
 }
 
+// ── Organization Management ───────────────────────────────────────────────────
+
+enum InvitationStatus {
+  PENDING   // email sent; awaiting acceptance
+  ACCEPTED  // user clicked link and completed registration
+  EXPIRED   // token TTL elapsed (72 h default)
+  REVOKED   // admin explicitly cancelled the invitation
+
+  @@map("invitation_status")
+}
+
+enum SubscriptionStatus {
+  TRIALING   // within free trial period
+  ACTIVE     // paid and current
+  PAST_DUE   // payment failed; grace period active
+  CANCELLED  // admin cancelled; access until period end
+  EXPIRED    // period ended; access blocked
+
+  @@map("subscription_status")
+}
+
+enum UsageMetric {
+  ACTIVE_SEATS         // current non-deactivated users in org
+  TOTAL_CANDIDATES     // all-time candidates created
+  ACTIVE_JOBS          // currently OPEN job descriptions
+  ACTIVE_VENDORS       // currently ACTIVE vendors
+  MONTHLY_SUBMISSIONS  // submissions created in the current calendar month
+  MONTHLY_INTERVIEWS   // interviews scheduled in the current calendar month
+
+  @@map("usage_metric")
+}
+
 // ── Submissions ───────────────────────────────────────────────────────────────
 
 // Lifecycle FSM — see lifecycle.constants.ts for transition rules.

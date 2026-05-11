@@ -12,7 +12,7 @@
  *   5. Demo candidates    — 12 realistic candidates with skills + notes
  */
 
-import { PrismaClient, SkillCategory, NoteType, CandidateSource } from '@prisma/client';
+import { PrismaClient, OrgPlan, SkillCategory, NoteType, CandidateSource } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -137,7 +137,99 @@ async function seedRoles(): Promise<Map<string, string>> {
   return roleIds;
 }
 
-// ── 2. Demo organisation ──────────────────────────────────────────────────────
+// ── 2. Plans ──────────────────────────────────────────────────────────────────
+
+interface PlanSeed {
+  code: OrgPlan;
+  displayName: string;
+  description: string;
+  maxSeats: number;
+  maxCandidates: number;
+  maxActiveJobs: number;
+  maxVendors: number;
+  maxMonthlySubmissions: number;
+  maxMonthlyInterviews: number;
+  features: string[];
+}
+
+const PLAN_SEEDS: PlanSeed[] = [
+  {
+    code: 'STARTER',
+    displayName: 'Starter',
+    description: 'For small teams just getting started with recruitment.',
+    maxSeats: 3,
+    maxCandidates: 200,
+    maxActiveJobs: 5,
+    maxVendors: 10,
+    maxMonthlySubmissions: 50,
+    maxMonthlyInterviews: 30,
+    features: ['basic_reporting', 'email_support'],
+  },
+  {
+    code: 'PROFESSIONAL',
+    displayName: 'Professional',
+    description: 'For growing recruitment teams with active pipelines.',
+    maxSeats: 15,
+    maxCandidates: 2000,
+    maxActiveJobs: 50,
+    maxVendors: 100,
+    maxMonthlySubmissions: 500,
+    maxMonthlyInterviews: 300,
+    features: ['custom_roles', 'analytics', 'api_access', 'priority_support', 'basic_reporting'],
+  },
+  {
+    code: 'ENTERPRISE',
+    displayName: 'Enterprise',
+    description: 'Unlimited scale for large recruitment operations.',
+    maxSeats: -1,
+    maxCandidates: -1,
+    maxActiveJobs: -1,
+    maxVendors: -1,
+    maxMonthlySubmissions: -1,
+    maxMonthlyInterviews: -1,
+    features: ['custom_roles', 'analytics', 'api_access', 'dedicated_support', 'sso', 'audit_export', 'basic_reporting'],
+  },
+];
+
+async function seedPlans(): Promise<Map<OrgPlan, string>> {
+  console.log('\n📋  Plans\n');
+  const planIds = new Map<OrgPlan, string>();
+
+  for (const p of PLAN_SEEDS) {
+    const plan = await prisma.plan.upsert({
+      where: { code: p.code },
+      update: {
+        displayName: p.displayName,
+        description: p.description,
+        maxSeats: p.maxSeats,
+        maxCandidates: p.maxCandidates,
+        maxActiveJobs: p.maxActiveJobs,
+        maxVendors: p.maxVendors,
+        maxMonthlySubmissions: p.maxMonthlySubmissions,
+        maxMonthlyInterviews: p.maxMonthlyInterviews,
+        features: p.features,
+      },
+      create: {
+        code: p.code,
+        displayName: p.displayName,
+        description: p.description,
+        maxSeats: p.maxSeats,
+        maxCandidates: p.maxCandidates,
+        maxActiveJobs: p.maxActiveJobs,
+        maxVendors: p.maxVendors,
+        maxMonthlySubmissions: p.maxMonthlySubmissions,
+        maxMonthlyInterviews: p.maxMonthlyInterviews,
+        features: p.features,
+      },
+    });
+    planIds.set(p.code, plan.id);
+    log('+', p.displayName, `${p.maxSeats === -1 ? 'unlimited' : p.maxSeats} seats`);
+  }
+
+  return planIds;
+}
+
+// ── 3. Demo organisation ──────────────────────────────────────────────────────
 
 async function seedOrg(): Promise<string> {
   console.log('\n🏢  Demo organization\n');
@@ -737,11 +829,35 @@ async function seedCandidates(
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+async function seedOrgSubscription(orgId: string, planId: string): Promise<void> {
+  const existing = await prisma.subscription.findFirst({ where: { organizationId: orgId } });
+  if (existing) {
+    log('↻', 'demo subscription', 'already exists');
+    return;
+  }
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  await prisma.subscription.create({
+    data: {
+      organizationId: orgId,
+      planId,
+      status: 'ACTIVE',
+      currentPeriodStart: now,
+      currentPeriodEnd: end,
+      seatLimit: 15,
+      seatsUsed: 3,
+    },
+  });
+  log('+', 'demo subscription', 'PROFESSIONAL / ACTIVE');
+}
+
 async function main(): Promise<void> {
   console.log('🌱  Starting seed...');
 
   const roleIds = await seedRoles();
+  const planIds = await seedPlans();
   const orgId = await seedOrg();
+  await seedOrgSubscription(orgId, planIds.get('PROFESSIONAL')!);
   const userIds = await seedUsers(orgId, roleIds);
   const skillIds = await seedSkills();
 

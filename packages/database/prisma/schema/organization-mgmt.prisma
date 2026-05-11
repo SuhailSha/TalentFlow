@@ -1,0 +1,260 @@
+// ─── Organization Management ──────────────────────────────────────────────────
+//
+// Models for org settings, invitations, plans, subscriptions, usage tracking,
+// and recruiter profiles. These extend the foundation layer (Organization, User)
+// without modifying those core models directly.
+
+// ─── UserInvitation ───────────────────────────────────────────────────────────
+//
+// Tracks every invitation sent to bring a new user into an organization.
+// Lifecycle: PENDING → ACCEPTED (terminal) | EXPIRED (cron) | REVOKED (admin)
+//
+// Security: only the SHA-256 hash of the token is stored.
+// The raw token is emailed to the invitee and never stored.
+
+model UserInvitation {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid @map("organization_id")
+
+  // Invitee identity — email is captured at invite time for audit trail.
+  email     String @db.VarChar(255)
+  firstName String @db.VarChar(100) @map("first_name")
+  lastName  String @db.VarChar(100) @map("last_name")
+
+  // SHA-256 hex of the one-time token. Raw token is only in the email.
+  tokenHash String @unique @db.VarChar(64) @map("token_hash")
+
+  // Role IDs to assign on acceptance. Stored as an array of UUID strings.
+  roleIds String[] @map("role_ids") @db.Uuid
+
+  status    InvitationStatus @default(PENDING)
+  expiresAt DateTime         @map("expires_at")
+
+  // Relational references for actor tracking.
+  invitedById String? @db.Uuid @map("invited_by_id")
+  revokedById String? @db.Uuid @map("revoked_by_id")
+
+  // Set when the invitee completes registration.
+  acceptedAt DateTime? @map("accepted_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  organization Organization @relation("OrgInvitations", fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User?        @relation("SentInvitations", fields: [invitedById], references: [id], onDelete: SetNull)
+  revokedBy    User?        @relation("RevokedInvitations", fields: [revokedById], references: [id], onDelete: SetNull)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([organizationId])
+  @@index([email])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("user_invitations")
+}
+
+// ─── OrganizationSettings ─────────────────────────────────────────────────────
+//
+// One-to-one with Organization. Structured operational settings that are too
+// numerous and typed to store in the Organization.settings JSON blob.
+// Stored as separate columns for queryability.
+
+model OrganizationSettings {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @unique @db.Uuid @map("organization_id")
+
+  // ── Locale ────────────────────────────────────────────────────────────────
+  timezone   String @default("UTC") @db.VarChar(100)
+  dateFormat String @default("DD/MM/YYYY") @db.VarChar(20) @map("date_format")
+  timeFormat String @default("24h") @db.VarChar(10) @map("time_format")
+
+  // Days of the week considered working days (0=Sun … 6=Sat).
+  workingDays Int[] @map("working_days")
+
+  // ── Branding ──────────────────────────────────────────────────────────────
+  primaryColor   String? @db.VarChar(9)   @map("primary_color")    // hex e.g. "#4F46E5"
+  accentColor    String? @db.VarChar(9)   @map("accent_color")
+  faviconUrl     String? @db.Text         @map("favicon_url")
+
+  // ── Workflow defaults ─────────────────────────────────────────────────────
+  // Number of days before a submission is considered stale and auto-reminder fires.
+  submissionStaleDays Int @default(7) @map("submission_stale_days")
+
+  // Number of days of inactivity before a workflow reminder fires.
+  workflowStaleDays Int @default(3) @map("workflow_stale_days")
+
+  // Whether interviewers are required to submit feedback after every interview.
+  requireInterviewFeedback Boolean @default(true) @map("require_interview_feedback")
+
+  // ── Notification prefs ────────────────────────────────────────────────────
+  // Global org-level toggles. Individual users can further narrow via preferences.
+  emailNotificationsEnabled Boolean @default(true)  @map("email_notifications_enabled")
+  inAppNotificationsEnabled Boolean @default(true)  @map("in_app_notifications_enabled")
+
+  // ── Onboarding ────────────────────────────────────────────────────────────
+  // Tracks which onboarding steps have been completed so the UI can guide new orgs.
+  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  onboardingSteps     String[] @map("onboarding_steps")  // e.g. ["profile", "first_job", "first_candidate"]
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  organization Organization @relation("OrgSettings", fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_settings")
+}
+
+// ─── Plan ─────────────────────────────────────────────────────────────────────
+//
+// Immutable plan definitions seeded at deploy time. Org admins cannot modify
+// plans — only Anthropic-level admins seed them.
+// -1 = unlimited for any limit field.
+
+model Plan {
+  id   String  @id @default(uuid()) @db.Uuid
+  code OrgPlan @unique
+
+  displayName String @db.VarChar(100) @map("display_name")
+  description String @db.Text
+
+  // ── Seat limits ───────────────────────────────────────────────────────────
+  maxSeats Int @map("max_seats") // -1 = unlimited
+
+  // ── Entity limits (per month or total) ────────────────────────────────────
+  maxCandidates       Int @map("max_candidates")        // -1 = unlimited; total all-time
+  maxActiveJobs       Int @map("max_active_jobs")       // -1 = unlimited; OPEN jobs at once
+  maxVendors          Int @map("max_vendors")           // -1 = unlimited; ACTIVE vendors
+  maxMonthlySubmissions Int @map("max_monthly_submissions") // -1 = unlimited; per calendar month
+  maxMonthlyInterviews  Int @map("max_monthly_interviews")  // -1 = unlimited; per calendar month
+
+  // ── Feature flags ─────────────────────────────────────────────────────────
+  // Named features enabled on this plan.
+  // e.g. ["custom_roles", "api_access", "analytics", "priority_support"]
+  features String[]
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+// ─── Subscription ─────────────────────────────────────────────────────────────
+//
+// An org's active subscription to a plan. One active subscription per org
+// at any time (enforced by application layer; multiple rows allowed for history).
+// externalId: reserved for future Stripe/payment gateway subscription ID.
+
+model Subscription {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid @map("organization_id")
+  planId         String @db.Uuid @map("plan_id")
+
+  status SubscriptionStatus @default(TRIALING)
+
+  // Billing period — both nullable for lifetime/free plans.
+  currentPeriodStart DateTime? @map("current_period_start")
+  currentPeriodEnd   DateTime? @map("current_period_end")
+
+  // Effective seat limit — may differ from Plan.maxSeats (e.g. add-on seats).
+  seatLimit  Int @default(5) @map("seat_limit")
+  seatsUsed  Int @default(0) @map("seats_used")   // denormalized; refreshed by job
+
+  // Reserved for future payment gateway integration (Stripe subscription ID, etc.).
+  externalId String? @db.VarChar(255) @map("external_id")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  organization Organization @relation("OrgSubscription", fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([organizationId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("subscriptions")
+}
+
+// ─── UsageRecord ──────────────────────────────────────────────────────────────
+//
+// Monthly usage counters per metric per org. Updated by scheduled jobs and
+// on write paths for monthly counters (submissions, interviews).
+// One row per (organizationId, metric, period) — the unique constraint enforces this.
+// period format: "YYYY-MM" (e.g. "2025-06").
+
+model UsageRecord {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @db.Uuid @map("organization_id")
+
+  metric UsageMetric
+  value  Int         @default(0)
+
+  // "YYYY-MM" — null for non-periodic metrics (e.g. ACTIVE_SEATS, TOTAL_CANDIDATES).
+  period String? @db.VarChar(7)
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  organization Organization @relation("OrgUsageRecords", fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@unique([organizationId, metric, period])
+  @@index([organizationId])
+  @@index([metric])
+  @@map("usage_records")
+}
+
+// ─── RecruiterProfile ─────────────────────────────────────────────────────────
+//
+// Extended profile for users who act as recruiters. One-to-one with User.
+// Separating this from the core User model keeps the hot users table lean.
+
+model RecruiterProfile {
+  id             String @id @default(uuid()) @db.Uuid
+  userId         String @unique @db.Uuid @map("user_id")
+  organizationId String @db.Uuid @map("organization_id")
+
+  // ── Professional details ──────────────────────────────────────────────────
+  bio             String? @db.Text
+  linkedInUrl     String? @db.VarChar(500) @map("linkedin_url")
+
+  // Specialization areas — e.g. ["backend", "fintech", "contract"].
+  specializations String[]
+
+  // ── Hierarchy ─────────────────────────────────────────────────────────────
+  // Team lead / manager this recruiter reports to.
+  managerId String? @db.Uuid @map("manager_id")
+
+  // ── Denormalized performance counters ─────────────────────────────────────
+  // Refreshed by a scheduled job; not authoritative — use UsageRecord for billing.
+  totalPlacements    Int @default(0) @map("total_placements")
+  activeCandidates   Int @default(0) @map("active_candidates")
+  activeSubmissions  Int @default(0) @map("active_submissions")
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  user         User             @relation("UserRecruiterProfile", fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization     @relation("OrgRecruiterProfiles", fields: [organizationId], references: [id], onDelete: Cascade)
+  manager      RecruiterProfile? @relation("RecruiterManager", fields: [managerId], references: [id], onDelete: SetNull)
+  reports      RecruiterProfile[] @relation("RecruiterManager")
+
+  // ── Indexes ───────────────────────────────────────────────────────────────
+  @@index([organizationId])
+  @@index([managerId])
+  @@map("recruiter_profiles")
+}

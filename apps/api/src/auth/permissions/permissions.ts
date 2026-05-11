@@ -28,6 +28,19 @@ export const Permission = {
   ORG_READ: 'org:read',
   ORG_UPDATE: 'org:update',
 
+  // ── Organization Settings ────────────────────────────────────────────────
+  SETTINGS_READ: 'settings:read',
+  SETTINGS_UPDATE: 'settings:update',
+
+  // ── Invitations ──────────────────────────────────────────────────────────
+  INVITATIONS_READ: 'invitations:read',
+  INVITATIONS_CREATE: 'invitations:create',
+  INVITATIONS_REVOKE: 'invitations:revoke',
+
+  // ── Subscription ─────────────────────────────────────────────────────────
+  SUBSCRIPTION_READ: 'subscription:read',
+  SUBSCRIPTION_MANAGE: 'subscription:manage',
+
   // ── Candidates (Step 6) ──────────────────────────────────────────────────
   CANDIDATES_READ: 'candidates:read',
   CANDIDATES_CREATE: 'candidates:create',

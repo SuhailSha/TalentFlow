@@ -8,6 +8,7 @@ import {
   CalendarClock,
   FileText,
   LayoutDashboard,
+  Settings,
   Users,
   Zap,
 } from 'lucide-react';
@@ -48,6 +49,12 @@ const navGroups: NavGroup[] = [
     title: 'Reports',
     items: [
       { title: 'Analytics', href: '/analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    title: 'Settings',
+    items: [
+      { title: 'Settings', href: '/settings', icon: Settings },
     ],
   },
 ];

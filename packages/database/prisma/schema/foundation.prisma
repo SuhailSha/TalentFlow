@@ -99,6 +99,12 @@ model Organization {
   // Reminder/Notification domain
   reminders       Reminder[]     @relation("OrgReminders")
   notifications   Notification[] @relation("OrgNotifications")
+  // Org-mgmt domain
+  userInvitations      UserInvitation[]      @relation("OrgInvitations")
+  organizationSettings OrganizationSettings? @relation("OrgSettings")
+  subscriptions    Subscription[]      @relation("OrgSubscription")
+  usageRecords     UsageRecord[]       @relation("OrgUsageRecords")
+  recruiterProfiles RecruiterProfile[] @relation("OrgRecruiterProfiles")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   @@index([slug])
@@ -181,6 +187,10 @@ model User {
   createdReminders     Reminder[]          @relation("ReminderCreatedBy")
   reminderActivities   ReminderActivity[]  @relation("ReminderActivityActor")
   notifications        Notification[]      @relation("NotificationRecipient")
+  // Org-mgmt domain
+  sentInvitations      UserInvitation[]    @relation("SentInvitations")
+  revokedInvitations   UserInvitation[]    @relation("RevokedInvitations")
+  recruiterProfile     RecruiterProfile?   @relation("UserRecruiterProfile")
 
   // ── Indexes ───────────────────────────────────────────────────────────────
   // Composite unique: same email cannot exist twice within one org.

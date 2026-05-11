@@ -58,6 +58,13 @@ export type {
   Reminder,
   ReminderActivity,
   Notification,
+  // Org-mgmt domain
+  UserInvitation,
+  OrganizationSettings,
+  Plan,
+  Subscription,
+  UsageRecord,
+  RecruiterProfile,
 } from '@prisma/client';
 
 // Enum values — exported as values so @IsEnum() decorators can use them at runtime.
@@ -97,4 +104,8 @@ export {
   ReminderActivityAction,
   NotificationChannel,
   NotificationStatus,
+  // Org-mgmt domain
+  InvitationStatus,
+  SubscriptionStatus,
+  UsageMetric,
 } from '@prisma/client';

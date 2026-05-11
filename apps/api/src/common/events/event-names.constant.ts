@@ -90,6 +90,22 @@ export const EventNames = {
   NOTIFICATION_CREATED: 'notification.created',
   NOTIFICATION_READ:    'notification.read',
 
+  // ── Organization / User / Invitation domain ──────────────────────────────────
+  ORG_UPDATED:             'org.updated',
+  ORG_SETTINGS_UPDATED:    'org.settings_updated',
+  USER_INVITED:            'user.invited',
+  USER_INVITATION_ACCEPTED: 'user.invitation_accepted',
+  USER_INVITATION_REVOKED: 'user.invitation_revoked',
+  USER_ACTIVATED:          'user.activated',
+  USER_DEACTIVATED:        'user.deactivated',
+  USER_ROLE_ASSIGNED:      'user.role_assigned',
+  USER_ROLE_REMOVED:       'user.role_removed',
+  USER_PROFILE_UPDATED:    'user.profile_updated',
+  ROLE_CREATED:            'role.created',
+  ROLE_UPDATED:            'role.updated',
+  ROLE_DELETED:            'role.deleted',
+  SUBSCRIPTION_UPDATED:    'subscription.updated',
+
   // ── System / platform ───────────────────────────────────────────────────────
   AUTH_LOGIN:              'auth.login',
   AUTH_LOGOUT:             'auth.logout',

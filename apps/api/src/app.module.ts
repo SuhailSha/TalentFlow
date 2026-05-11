@@ -27,6 +27,10 @@ import { SubmissionsModule } from './modules/submissions/submissions.module';
 import { InterviewsModule } from './modules/interviews/interviews.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { OrganizationModule } from './modules/organization/organization.module';
+import { UsersModule } from './modules/users/users.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { SubscriptionModule } from './modules/subscription/subscription.module';
 
 @Module({
   imports: [
@@ -82,6 +86,10 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     InterviewsModule,
     RemindersModule,
     NotificationsModule,
+    OrganizationModule,
+    UsersModule,
+    RolesModule,
+    SubscriptionModule,
   ],
   providers: [
     {
