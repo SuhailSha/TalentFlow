@@ -32,6 +32,7 @@ import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     RolesModule,
     SubscriptionModule,
     DashboardModule,
+    SearchModule,
   ],
   providers: [
     {

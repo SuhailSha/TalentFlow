@@ -12,19 +12,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
 import { NotificationBell } from './notification-bell';
 
 interface HeaderProps {
-  onMenuToggle?: () => void;
+  onMenuToggle?:  () => void;
+  onOpenPalette?: () => void;
 }
 
 function getInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
-export function Header({ onMenuToggle }: HeaderProps) {
+export function Header({ onMenuToggle, onOpenPalette }: HeaderProps) {
   const { user, logout, isLoggingOut } = useAuth();
 
   return (
@@ -35,15 +35,19 @@ export function Header({ onMenuToggle }: HeaderProps) {
         <span className="sr-only">Toggle sidebar</span>
       </Button>
 
-      {/* Search bar */}
+      {/* Search bar — triggers command palette */}
       <div className="flex-1 max-w-sm">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search candidates, jobs…"
-            className="pl-8 bg-muted/50 border-0 focus-visible:ring-1"
-          />
-        </div>
+        <button
+          type="button"
+          onClick={onOpenPalette}
+          className="flex w-full items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <Search className="h-4 w-4" />
+          <span className="flex-1 text-left">Search candidates, jobs…</span>
+          <kbd className="ml-auto hidden rounded border bg-background px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground sm:inline-block">
+            Ctrl K
+          </kbd>
+        </button>
       </div>
 
       <div className="ml-auto flex items-center gap-2">
