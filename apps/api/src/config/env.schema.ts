@@ -80,6 +80,15 @@ export const envSchema = z.object({
   SMTP_SECURE:   z.string().default('false').transform(s => s === 'true' || s === '1'),
   SMTP_USER:     z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
+
+  // Worker concurrency for the email queue. Higher = more parallel SMTP calls;
+  // keep modest to stay under SMTP provider rate limits.
+  EMAIL_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(4),
+
+  // Dedup window for EmailService.send when an idempotencyKey is provided.
+  // Within this window, a same-key send in non-terminal state short-circuits
+  // to the existing delivery row (no second email goes out).
+  EMAIL_DEDUP_WINDOW_SECONDS: z.coerce.number().int().min(10).max(86_400).default(300),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

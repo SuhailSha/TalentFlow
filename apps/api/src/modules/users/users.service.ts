@@ -164,12 +164,18 @@ export class UsersService {
     const acceptUrl = `${appUrl}/accept-invitation?token=${rawToken}`;
 
     try {
+      // Idempotency key includes the token hash so manual resend (which
+      // rotates the token) produces a new send. Auto-replays of the same
+      // event (e.g. duplicate event emissions) dedup against the existing
+      // delivery within the EMAIL_DEDUP_WINDOW.
+      const tokenFragment = invitation.tokenHash.slice(0, 12);
       await this.email.send({
         template:       'user_invitation',
         to:             invitation.email,
         organizationId: invitation.organizationId,
         resourceType:   'UserInvitation',
         resourceId:     invitation.id,
+        idempotencyKey: `invitation:${invitation.id}:${tokenFragment}`,
         payload: {
           inviterName,
           organizationName,

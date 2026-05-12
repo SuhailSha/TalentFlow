@@ -86,13 +86,21 @@ export class QueueModule {
             logger.log(`Connecting to Redis: ${redisUrl.replace(/:\/\/.*@/, '://***@')}`);
             return {
               connection: {
-                // ioredis connection options
-                // Parse from URL — ioredis accepts full redis:// URLs.
-                // lazyConnect: false — fail fast at startup if Redis is down.
+                // ioredis options. maxRetriesPerRequest caps how long a
+                // single command waits before failing — protects API
+                // request paths from hanging when Redis is unreachable.
                 maxRetriesPerRequest: 3,
+                // Background reconnect strategy (every 2s, capped).
+                retryStrategy: (times: number) => Math.min(times * 200, 2000),
+                // Quietly drop the noisy ECONNREFUSED log on retry — the
+                // health endpoint surfaces the issue via /health.
+                reconnectOnError: () => true,
               },
-              // BullMQ uses this URL format directly
               url: redisUrl,
+              defaultJobOptions: {
+                removeOnComplete: { age: 7 * 24 * 3600, count: 1_000 },
+                removeOnFail:     { age: 30 * 24 * 3600, count: 5_000 },
+              },
             };
           },
         }),

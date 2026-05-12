@@ -22,6 +22,15 @@ export interface SendEmailParams<T extends EmailTemplateName> {
   /** Polymorphic source reference for tracking. */
   resourceType?:   string;
   resourceId?:     string;
+  /**
+   * Stable dedup key. When two send() calls share this key inside the
+   * EMAIL_DEDUP_WINDOW_SECONDS window AND the prior row is in a non-terminal
+   * state (PENDING/QUEUED/RETRYING) or recently SENT, the second call
+   * returns the existing row instead of creating a new one.
+   *
+   * Pass nothing to force a new send (e.g. admin "Resend" buttons).
+   */
+  idempotencyKey?: string;
   /** Free-form context stored on the delivery row. */
   metadata?:       Record<string, unknown>;
 }
@@ -58,8 +67,28 @@ export class EmailService {
   /**
    * Enqueue an email for delivery.
    * Returns the created EmailDelivery row immediately; actual send is async.
+   *
+   * When `idempotencyKey` is provided and a recent matching row exists,
+   * returns that row instead of creating a new send. See SendEmailParams
+   * for the exact dedup window semantics.
    */
   async send<T extends EmailTemplateName>(params: SendEmailParams<T>): Promise<EmailDelivery> {
+    // Idempotency check — short-circuits before render to keep the hot path
+    // cheap when a key is provided.
+    if (params.idempotencyKey) {
+      const existing = await this.findRecentByIdempotencyKey(
+        params.organizationId,
+        params.idempotencyKey,
+      );
+      if (existing) {
+        this.logger.debug(
+          { deliveryId: existing.id, idempotencyKey: params.idempotencyKey, status: existing.status },
+          'Idempotent send — returning existing delivery',
+        );
+        return existing;
+      }
+    }
+
     const rendered = this.renderer.render(params.template, params.payload);
 
     const queueEnabled = !!this.queue;
@@ -75,6 +104,7 @@ export class EmailService {
         status:          queueEnabled ? EmailDeliveryStatus.QUEUED : EmailDeliveryStatus.PENDING,
         resourceType:    params.resourceType,
         resourceId:      params.resourceId,
+        idempotencyKey:  params.idempotencyKey,
         metadata: {
           ...(params.metadata ?? {}),
           // Persist rendered bodies so retries can replay without re-rendering;
@@ -178,5 +208,42 @@ export class EmailService {
       if (!current) throw err;
       return current;
     }
+  }
+
+  /**
+   * Looks for an existing delivery row matching the idempotency key that is
+   * still "live" (in-flight) or was recently delivered. A row is considered
+   * a dedup hit when:
+   *   - status is PENDING / QUEUED / RETRYING (in-flight, regardless of age) OR
+   *   - status is SENT and createdAt is within the dedup window
+   *
+   * FAILED, BOUNCED, SKIPPED rows do NOT block — those are legitimate retry
+   * triggers; the caller should be allowed to attempt again.
+   */
+  private async findRecentByIdempotencyKey(
+    organizationId: string,
+    idempotencyKey: string,
+  ): Promise<EmailDelivery | null> {
+    const windowSec = this.config.get('EMAIL_DEDUP_WINDOW_SECONDS', { infer: true });
+    const sentCutoff = new Date(Date.now() - windowSec * 1000);
+
+    return this.db.emailDelivery.findFirst({
+      where: {
+        organizationId,
+        idempotencyKey,
+        OR: [
+          {
+            status: {
+              in: [EmailDeliveryStatus.PENDING, EmailDeliveryStatus.QUEUED, EmailDeliveryStatus.RETRYING],
+            },
+          },
+          {
+            status:    EmailDeliveryStatus.SENT,
+            createdAt: { gte: sentCutoff },
+          },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

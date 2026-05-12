@@ -53,6 +53,13 @@ model EmailDelivery {
   resourceType String? @db.VarChar(100) @map("resource_type")
   resourceId   String? @db.VarChar(255) @map("resource_id")
 
+  // ── Idempotency ──────────────────────────────────────────────────────────
+  // Caller-supplied dedup key. When set, EmailService.send checks for a
+  // recent row with the same key in a non-terminal state and returns it
+  // instead of creating a new one. Used to prevent duplicate sends from
+  // double-fired domain events.
+  idempotencyKey String? @db.VarChar(255) @map("idempotency_key")
+
   // ── Free-form context ─────────────────────────────────────────────────────
   metadata Json?
 
@@ -71,5 +78,7 @@ model EmailDelivery {
   // Polymorphic lookup: "all emails sent for this invitation" / "for this reminder"
   @@index([resourceType, resourceId])
   @@index([createdAt])
+  // Dedup lookup: find recent rows for a given idempotency key.
+  @@index([idempotencyKey])
   @@map("email_deliveries")
 }

@@ -110,6 +110,7 @@ export class NotificationsService {
           recipientUserId: reminder.assignee.id,
           resourceType:   'Reminder',
           resourceId:     reminder.id,
+          idempotencyKey: `reminder-due-soon:${reminder.id}`,
           payload: {
             recipientName:       `${reminder.assignee.firstName} ${reminder.assignee.lastName}`.trim(),
             reminderTitle:       reminder.title,
@@ -184,6 +185,7 @@ export class NotificationsService {
         recipientUserId: interviewerUser.id,
         resourceType:   'Interview',
         resourceId:     interview.id,
+        idempotencyKey: `interview-feedback-pending:${interview.id}`,
         payload: {
           recipientName: `${interviewerUser.firstName} ${interviewerUser.lastName}`.trim(),
           candidateName: `${interview.candidate.firstName} ${interview.candidate.lastName}`.trim(),
@@ -248,6 +250,7 @@ export class NotificationsService {
         recipientUserId: interviewerUser.id,
         resourceType:   'Interview',
         resourceId:     interview.id,
+        idempotencyKey: `interview-upcoming:${interview.id}`,
         payload: {
           recipientName:    `${interviewerUser.firstName} ${interviewerUser.lastName}`.trim(),
           candidateName:    `${interview.candidate.firstName} ${interview.candidate.lastName}`.trim(),

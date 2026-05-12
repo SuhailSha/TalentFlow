@@ -89,6 +89,10 @@ export class UpcomingInterviewNotifierCron {
           recipientUserId: interviewer.id,
           resourceType:   'Interview',
           resourceId:     iv.id,
+          // Shares the key with NotificationsService.onInterviewScheduled
+          // so the inline (event-driven) and cron paths converge on the
+          // same dedup row.
+          idempotencyKey: `interview-upcoming:${iv.id}`,
           payload: {
             recipientName:    `${interviewer.firstName} ${interviewer.lastName}`.trim(),
             candidateName:    `${iv.candidate.firstName} ${iv.candidate.lastName}`.trim(),
