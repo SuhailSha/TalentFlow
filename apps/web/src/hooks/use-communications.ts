@@ -1,8 +1,10 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { getCommunicationsStats, listDeliveries } from '@/lib/api/communications';
+import {
+  getCommunicationsStats, listDeliveries, retryDelivery,
+} from '@/lib/api/communications';
 import type { ListDeliveriesParams } from '@/types/communications';
 
 export const communicationsKeys = {
@@ -27,5 +29,15 @@ export function useCommunicationsStats() {
     queryKey: communicationsKeys.stats(),
     queryFn:  getCommunicationsStats,
     staleTime: 60_000,
+  });
+}
+
+export function useRetryDelivery() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => retryDelivery(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: communicationsKeys.all });
+    },
   });
 }

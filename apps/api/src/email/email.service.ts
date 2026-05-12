@@ -117,19 +117,69 @@ export class EmailService {
     });
 
     if (queueEnabled && this.queue) {
-      await this.queue.add(
-        JOB_NAMES.EMAIL_SEND,
-        { deliveryId: delivery.id },
-        // Job-level idempotency: jobId === deliveryId means even if this method
-        // is called twice with the same delivery (shouldn't happen but...), only
-        // one job is registered.
-        { jobId: delivery.id },
-      );
-      this.logger.debug({ deliveryId: delivery.id }, 'Email queued');
-      return delivery;
+      try {
+        await this.queue.add(
+          JOB_NAMES.EMAIL_SEND,
+          { deliveryId: delivery.id },
+          // Job-level idempotency: jobId === deliveryId means even if this method
+          // is called twice with the same delivery (shouldn't happen but...), only
+          // one job is registered.
+          { jobId: delivery.id },
+        );
+        this.logger.debug({ deliveryId: delivery.id }, 'Email queued');
+        return delivery;
+      } catch (err) {
+        // Redis is configured but currently unreachable. Keep the row in
+        // PENDING so DeliveryRetryRecoveryCron or manual retry can re-enqueue
+        // once Redis is back. We deliberately DON'T fall through to the sync
+        // path here — that would silently deliver via a different provider
+        // than the operator configured.
+        this.logger.warn(
+          { err: { message: (err as Error).message }, deliveryId: delivery.id },
+          'Failed to enqueue email (Redis unreachable). Row left in PENDING for recovery cron.',
+        );
+        await this.db.emailDelivery.update({
+          where: { id: delivery.id },
+          data:  { status: EmailDeliveryStatus.PENDING, failureReason: 'Failed to enqueue: Redis unreachable' },
+        });
+        return { ...delivery, status: EmailDeliveryStatus.PENDING };
+      }
     }
 
     // Synchronous fallback for dev environments without Redis.
+    return this.processSynchronously(delivery.id);
+  }
+
+  /**
+   * Manual re-enqueue for a delivery that's stuck in a non-terminal state.
+   * Used by the admin Retry button and by DeliveryRetryRecoveryCron.
+   *
+   * Idempotent: if the row is already SENT, returns the existing row. The
+   * BullMQ jobId === deliveryId guarantees no duplicate job runs.
+   */
+  async requeueDelivery(deliveryId: string, organizationId: string): Promise<EmailDelivery> {
+    const delivery = await this.db.emailDelivery.findFirst({
+      where: { id: deliveryId, organizationId },
+    });
+    if (!delivery) throw new Error(`EmailDelivery ${deliveryId} not found`);
+    if (delivery.status === EmailDeliveryStatus.SENT) return delivery;
+
+    if (this.queue) {
+      await this.queue.add(
+        JOB_NAMES.EMAIL_SEND,
+        { deliveryId: delivery.id },
+        { jobId: delivery.id },
+      );
+      const updated = await this.db.emailDelivery.update({
+        where: { id: delivery.id },
+        data:  { status: EmailDeliveryStatus.QUEUED, failureReason: null },
+      });
+      this.logger.log({ deliveryId }, 'Delivery manually requeued');
+      return updated;
+    }
+
+    // No queue active — process synchronously so the admin's click still
+    // results in a send attempt.
     return this.processSynchronously(delivery.id);
   }
 

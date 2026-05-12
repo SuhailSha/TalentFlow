@@ -19,10 +19,24 @@ export interface QueueStats {
   counts:    QueueCounts;
 }
 
+export type RedisConnectionState =
+  | 'wait' | 'connecting' | 'connect' | 'ready'
+  | 'reconnecting' | 'end' | 'close' | 'unknown';
+
+export interface RedisConnectionStatus {
+  enabled:            boolean;
+  state:              RedisConnectionState;
+  lastConnectedAt:    string | null;
+  lastDisconnectedAt: string | null;
+  lastErrorMessage:   string | null;
+  reconnectCount:     number;
+}
+
 export interface QueueHealth {
-  enabled: boolean;
-  totals:  QueueCounts;
-  queues:  QueueStats[];
+  enabled:    boolean;
+  connection: RedisConnectionStatus;
+  totals:     QueueCounts;
+  queues:     QueueStats[];
   process: {
     nodeVersion:   string;
     uptimeSeconds: number;

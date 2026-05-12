@@ -3,6 +3,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import type { Job, Queue } from 'bullmq';
 
 import { QUEUE_NAMES, type QueueName } from './queue.constants';
+import { RedisConnectionMonitor, type RedisConnectionStatus } from './redis-connection.monitor';
 
 export interface QueueCounts {
   waiting:   number;
@@ -21,6 +22,8 @@ export interface QueueStats {
 export interface QueueHealthResponse {
   /** Whether Redis is enabled and queues are functional. */
   enabled: boolean;
+  /** Live Redis connection state + reconnect counters. */
+  connection: RedisConnectionStatus;
   /** Aggregate counts across all queues. Empty when disabled. */
   totals:  QueueCounts;
   /** Per-queue breakdown. Empty when disabled. */
@@ -64,6 +67,7 @@ export class QueueMonitorService {
   private readonly logger = new Logger(QueueMonitorService.name);
 
   constructor(
+    private readonly connection: RedisConnectionMonitor,
     @Optional() @InjectQueue(QUEUE_NAMES.NOTIFICATION_EMAIL) private readonly emailQueue?:    Queue,
     @Optional() @InjectQueue(QUEUE_NAMES.NOTIFICATION_PUSH)  private readonly pushQueue?:     Queue,
     @Optional() @InjectQueue(QUEUE_NAMES.RESUME_PARSE)       private readonly resumeQueue?:   Queue,
@@ -93,12 +97,15 @@ export class QueueMonitorService {
     };
 
     const queues = this.getAllQueues();
+    const connection = this.connection.getStatus();
+
     if (queues.size === 0) {
       return {
-        enabled: false,
-        totals:  { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
-        queues:  [],
-        process: processInfo,
+        enabled:    false,
+        connection,
+        totals:     { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
+        queues:     [],
+        process:    processInfo,
       };
     }
 
@@ -136,7 +143,13 @@ export class QueueMonitorService {
       delayed:   acc.delayed   + q.counts.delayed,
     }), { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 });
 
-    return { enabled: true, totals, queues: results, process: processInfo };
+    return {
+      enabled:    true,
+      connection,
+      totals,
+      queues:     results,
+      process:    processInfo,
+    };
   }
 
   async getFailedJobs(queueName: QueueName, limit = 20): Promise<FailedJobView[]> {

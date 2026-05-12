@@ -18,9 +18,12 @@ import {
 import {
   useCommunicationsStats,
   useEmailDeliveries,
+  useRetryDelivery,
 } from '@/hooks/use-communications';
 import { useQueueHealth } from '@/hooks/use-queue';
 import { useDebounce } from '@/hooks/use-debounce';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { toast } from 'sonner';
 import type { EmailDeliveryStatus } from '@/types/settings';
 import { cn } from '@/lib/utils';
 
@@ -64,6 +67,39 @@ function QueueFailedJobsSection() {
   const { data } = useQueueHealth();
   if (!data?.enabled) return null;
   return <FailedJobsCard queueName="notification-email" />;
+}
+
+/**
+ * Retry button shown only on FAILED / PENDING / BOUNCED rows. Calls the
+ * delivery-level retry endpoint which re-enqueues (when Redis is on) or
+ * synchronously re-attempts (when off). Idempotent on the server.
+ */
+function DeliveryRetryButton({
+  deliveryId, status,
+}: { deliveryId: string; status: EmailDeliveryStatus }) {
+  const retry = useRetryDelivery();
+  if (status !== 'FAILED' && status !== 'PENDING' && status !== 'BOUNCED') {
+    return null;
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-6 text-xs"
+      disabled={retry.isPending}
+      onClick={() =>
+        retry.mutate(deliveryId, {
+          onSuccess: () => toast.success('Retry queued'),
+          onError:   (err) => toast.error(getApiErrorMessage(err)),
+        })
+      }
+    >
+      {retry.isPending
+        ? <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+        : <RefreshCw className="mr-1 h-3 w-3" />}
+      Retry
+    </Button>
+  );
 }
 
 export default function CommunicationsLogPage() {
@@ -183,6 +219,7 @@ export default function CommunicationsLogPage() {
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Subject</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Provider</th>
                     <th className="px-3 py-2 text-left font-medium text-muted-foreground">Attempts</th>
+                    <th className="px-3 py-2 text-right font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -220,6 +257,9 @@ export default function CommunicationsLogPage() {
                           <Badge variant="outline" className="text-[10px]">{d.provider}</Badge>
                         </td>
                         <td className="px-3 py-2 text-xs tabular-nums">{d.attempts}</td>
+                        <td className="px-3 py-2 text-right">
+                          <DeliveryRetryButton deliveryId={d.id} status={d.status} />
+                        </td>
                       </tr>
                     );
                   })}

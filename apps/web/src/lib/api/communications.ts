@@ -22,3 +22,10 @@ export async function getCommunicationsStats(): Promise<CommunicationsStats> {
   );
   return data.data;
 }
+
+export async function retryDelivery(id: string): Promise<EmailDelivery> {
+  const { data } = await apiClient.post<ApiResponse<EmailDelivery>>(
+    `/communications/deliveries/${id}/retry`,
+  );
+  return data.data;
+}

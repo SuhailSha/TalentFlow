@@ -1,13 +1,18 @@
 'use client';
 
-import { Activity, AlertCircle, Cpu, PowerOff } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import {
+  Activity, AlertCircle, AlertTriangle, CheckCircle2, Cpu, PowerOff, RefreshCw,
+} from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQueueHealth } from '@/hooks/use-queue';
 import { cn } from '@/lib/utils';
-import type { QueueCounts, QueueStats } from '@/types/queue';
+import type {
+  QueueCounts, QueueStats, RedisConnectionState, RedisConnectionStatus,
+} from '@/types/queue';
 
 const QUEUE_DISPLAY_NAMES: Record<string, string> = {
   'notification-email': 'Email',
@@ -16,6 +21,57 @@ const QUEUE_DISPLAY_NAMES: Record<string, string> = {
   'report-generate':    'Reports',
   'cleanup-scheduled':  'Cleanup',
 };
+
+const STATE_TONE: Record<RedisConnectionState, string> = {
+  ready:        'border-green-300 bg-green-50 text-green-700',
+  connect:      'border-blue-300 bg-blue-50 text-blue-700',
+  connecting:   'border-blue-300 bg-blue-50 text-blue-700',
+  wait:         'border-gray-300 bg-gray-50 text-gray-700',
+  reconnecting: 'border-amber-300 bg-amber-50 text-amber-700',
+  end:          'border-red-300 bg-red-50 text-red-700',
+  close:        'border-red-300 bg-red-50 text-red-700',
+  unknown:      'border-gray-300 bg-gray-50 text-gray-600',
+};
+
+const STATE_LABEL: Record<RedisConnectionState, string> = {
+  ready:        'Connected',
+  connect:      'Connecting',
+  connecting:   'Connecting',
+  wait:         'Waiting',
+  reconnecting: 'Reconnecting',
+  end:          'Disconnected',
+  close:        'Disconnected',
+  unknown:      'Unknown',
+};
+
+function ConnectionPill({ status }: { status: RedisConnectionStatus }) {
+  const Icon =
+    status.state === 'ready' ? CheckCircle2 :
+    status.state === 'reconnecting' ? RefreshCw :
+    status.state === 'end' || status.state === 'close' ? AlertTriangle :
+    Activity;
+  const titleParts = [
+    status.lastConnectedAt && `Last connected: ${new Date(status.lastConnectedAt).toLocaleString()}`,
+    status.lastDisconnectedAt && `Last disconnected: ${new Date(status.lastDisconnectedAt).toLocaleString()}`,
+    status.reconnectCount > 0 && `Reconnect attempts: ${status.reconnectCount}`,
+    status.lastErrorMessage && `Last error: ${status.lastErrorMessage}`,
+  ].filter(Boolean).join('\n');
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        STATE_TONE[status.state],
+      )}
+      title={titleParts}
+    >
+      <Icon className={cn('h-3 w-3', status.state === 'reconnecting' && 'animate-spin')} />
+      Redis: {STATE_LABEL[status.state]}
+      {status.reconnectCount > 0 && (
+        <span className="opacity-70">· {status.reconnectCount} reconnects</span>
+      )}
+    </span>
+  );
+}
 
 function CountChip({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
@@ -87,16 +143,21 @@ export function QueueHealthCard() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium">
-          <Activity className="h-4 w-4" />
-          Queue health
-          {data?.enabled === false && (
-            <Badge variant="outline" className="ml-2 text-[10px] border-amber-300 text-amber-700">
-              <PowerOff className="mr-1 h-3 w-3" />
-              Redis disabled
-            </Badge>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
+            <Activity className="h-4 w-4" />
+            Queue health
+            {data?.enabled === false && (
+              <Badge variant="outline" className="ml-2 text-[10px] border-amber-300 text-amber-700">
+                <PowerOff className="mr-1 h-3 w-3" />
+                Redis disabled
+              </Badge>
+            )}
+          </CardTitle>
+          {data?.enabled && data.connection && (
+            <ConnectionPill status={data.connection} />
           )}
-        </CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading ? (
@@ -127,13 +188,23 @@ export function QueueHealthCard() {
         )}
 
         {data && (
-          <div className="flex items-center gap-3 border-t pt-2 text-[11px] text-muted-foreground">
-            <Cpu className="h-3 w-3" />
-            <span>API process · Node {data.process.nodeVersion}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-2 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Cpu className="h-3 w-3" />
+              API process · Node {data.process.nodeVersion}
+            </span>
             <span>·</span>
             <span>Up {Math.floor(data.process.uptimeSeconds / 60)}m</span>
             <span>·</span>
             <span>Heap {data.process.memoryHeapMB} MB</span>
+            {data.enabled && data.connection.lastConnectedAt && (
+              <>
+                <span>·</span>
+                <span>
+                  Redis last connected {formatDistanceToNow(new Date(data.connection.lastConnectedAt), { addSuffix: true })}
+                </span>
+              </>
+            )}
           </div>
         )}
       </CardContent>

@@ -42,7 +42,10 @@ export class DeliveryRetryRecoveryCron {
     const cutoff = new Date(Date.now() - STUCK_QUEUED_MINUTES * 60 * 1000);
     const stuck = await this.db.emailDelivery.findMany({
       where: {
-        status:    EmailDeliveryStatus.QUEUED,
+        // PENDING happens when Redis was unreachable at send-time and the
+        // row was created without an associated BullMQ job. QUEUED is the
+        // worker-crash case (job exists in BullMQ but never processed).
+        status:    { in: [EmailDeliveryStatus.PENDING, EmailDeliveryStatus.QUEUED] },
         createdAt: { lt: cutoff },
         // Don't requeue rows that were already attempted recently — the worker
         // may just be slow rather than dead.
@@ -57,6 +60,7 @@ export class DeliveryRetryRecoveryCron {
 
     if (stuck.length === 0) return;
 
+    let recoveredCount = 0;
     for (const row of stuck) {
       try {
         await this.queue.add(
@@ -64,11 +68,21 @@ export class DeliveryRetryRecoveryCron {
           { deliveryId: row.id },
           { jobId: row.id },
         );
+        // Promote PENDING -> QUEUED so the next cron run doesn't re-enqueue
+        // (BullMQ would reject duplicate jobId anyway, but the log noise is
+        // worth avoiding).
+        await this.db.emailDelivery.update({
+          where: { id: row.id },
+          data:  { status: EmailDeliveryStatus.QUEUED, failureReason: null },
+        });
+        recoveredCount++;
       } catch (err) {
         this.logger.error({ err, deliveryId: row.id }, 'Failed to re-enqueue stuck delivery');
       }
     }
 
-    this.logger.log({ recoveredCount: stuck.length }, 'Re-enqueued stuck email deliveries');
+    if (recoveredCount > 0) {
+      this.logger.log({ recoveredCount }, 'Re-enqueued stuck email deliveries');
+    }
   }
 }

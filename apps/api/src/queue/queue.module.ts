@@ -7,6 +7,7 @@ import { QueueController } from './queue.controller';
 import { QueueMonitorService } from './queue-monitor.service';
 import { QUEUE_NAMES } from './queue.constants';
 import { QueueHealthIndicator } from './queue.health';
+import { RedisConnectionMonitor } from './redis-connection.monitor';
 
 /**
  * QueueModule — BullMQ / Redis queue infrastructure.
@@ -74,8 +75,10 @@ export class QueueModule {
           },
           // Monitor service still works without Redis — returns enabled=false.
           QueueMonitorService,
+          // Connection monitor reports state=unknown when Redis is off.
+          RedisConnectionMonitor,
         ],
-        exports: [QueueHealthIndicator, QueueMonitorService],
+        exports: [QueueHealthIndicator, QueueMonitorService, RedisConnectionMonitor],
       };
     }
 
@@ -121,11 +124,12 @@ export class QueueModule {
         ),
       ],
       controllers: [QueueController],
-      providers: [QueueHealthIndicator, QueueMonitorService],
+      providers: [QueueHealthIndicator, QueueMonitorService, RedisConnectionMonitor],
       exports: [
         BullModule,         // re-exports Queue tokens for @InjectQueue()
         QueueHealthIndicator,
         QueueMonitorService,
+        RedisConnectionMonitor,
       ],
     };
   }
