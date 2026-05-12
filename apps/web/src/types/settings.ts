@@ -110,6 +110,20 @@ export interface ListUsersParams {
 // ── Invitation types ───────────────────────────────────────────────────────────
 
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+export type EmailDeliveryStatus =
+  | 'PENDING' | 'QUEUED' | 'RETRYING' | 'SENT' | 'FAILED' | 'BOUNCED' | 'SKIPPED';
+
+export interface EmailDeliverySummary {
+  id:            string;
+  template:      string;
+  provider:      string;
+  status:        EmailDeliveryStatus;
+  attempts:      number;
+  sentAt:        string | null;
+  failedAt:      string | null;
+  failureReason: string | null;
+  createdAt:     string;
+}
 
 export interface UserInvitation {
   id: string;
@@ -121,7 +135,25 @@ export interface UserInvitation {
   acceptedAt: string | null;
   revokedAt: string | null;
   createdAt: string;
-  invitedBy: { id: string; firstName: string; lastName: string; email: string } | null;
+  invitedBy?: { id: string; firstName: string; lastName: string; email: string } | null;
+  /** Latest email delivery for this invitation, when surfaced by the API. */
+  lastDelivery?: EmailDeliverySummary | null;
+}
+
+export interface InvitationPreview {
+  email:            string;
+  firstName:        string;
+  lastName:         string;
+  organizationName: string;
+  inviterName:      string | null;
+  expiresAt:        string;
+}
+
+export interface AcceptInvitationDto {
+  token:      string;
+  password:   string;
+  firstName?: string;
+  lastName?:  string;
 }
 
 // ── Role types ─────────────────────────────────────────────────────────────────

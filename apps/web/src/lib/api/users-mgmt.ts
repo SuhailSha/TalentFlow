@@ -33,6 +33,11 @@ export async function revokeInvitation(id: string): Promise<void> {
   await apiClient.post(`/users/invitations/${id}/revoke`);
 }
 
+export async function resendInvitation(id: string): Promise<UserInvitation> {
+  const { data } = await apiClient.post<ApiResponse<UserInvitation>>(`/users/invitations/${id}/resend`);
+  return data.data;
+}
+
 export async function activateUser(id: string): Promise<UserListItem> {
   const { data } = await apiClient.post<ApiResponse<UserListItem>>(`/users/${id}/activate`);
   return data.data;

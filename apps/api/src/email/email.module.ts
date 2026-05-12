@@ -63,6 +63,9 @@ export class EmailModule {
     const redisEnabled = process.env['REDIS_ENABLED'] === 'true';
     return {
       module: EmailModule,
+      // Global so feature modules can inject EmailService without importing
+      // this dynamic module (which would re-instantiate the provider tree).
+      global: true,
       imports: [ConfigModule, DatabaseModule],
       providers: [
         emailProviderFactory,

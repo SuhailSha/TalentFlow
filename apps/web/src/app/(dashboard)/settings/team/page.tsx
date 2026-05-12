@@ -1,7 +1,7 @@
 'use client';
 
 import { formatDistanceToNow } from 'date-fns';
-import { Loader2, Mail, UserPlus } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Loader2, Mail, RefreshCw, UserPlus, XCircle } from 'lucide-react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -21,16 +21,20 @@ import {
   useDeactivateUser,
   useInvitations,
   useInviteUser,
+  useResendInvitation,
   useRevokeInvitation,
   useUsers,
 } from '@/hooks/use-users-mgmt';
 import {
   INVITATION_STATUS_LABELS,
   USER_STATUS_LABELS,
+  type EmailDeliveryStatus,
+  type EmailDeliverySummary,
   type InvitationStatus,
   type InviteUserDto,
   type UserStatus,
 } from '@/types/settings';
+import { cn } from '@/lib/utils';
 
 // ── Status badge variants ──────────────────────────────────────────────────────
 
@@ -47,6 +51,54 @@ const invStatusVariant: Record<InvitationStatus, 'default' | 'secondary' | 'outl
   EXPIRED:  'outline',
   REVOKED:  'destructive',
 };
+
+// ── Delivery status pill ───────────────────────────────────────────────────────
+
+const DELIVERY_TONE: Record<EmailDeliveryStatus, string> = {
+  PENDING:  'bg-gray-100 text-gray-700',
+  QUEUED:   'bg-blue-100 text-blue-700',
+  RETRYING: 'bg-amber-100 text-amber-700',
+  SENT:     'bg-green-100 text-green-700',
+  FAILED:   'bg-red-100 text-red-700',
+  BOUNCED:  'bg-red-100 text-red-700',
+  SKIPPED:  'bg-gray-100 text-gray-600',
+};
+
+function DeliveryPill({ delivery }: { delivery: EmailDeliverySummary | null | undefined }) {
+  if (!delivery) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+        <Clock className="h-3 w-3" />
+        No email
+      </span>
+    );
+  }
+  const Icon =
+    delivery.status === 'SENT' ? CheckCircle2 :
+    delivery.status === 'FAILED' || delivery.status === 'BOUNCED' ? AlertTriangle :
+    delivery.status === 'RETRYING' ? RefreshCw :
+    delivery.status === 'SKIPPED' ? XCircle :
+    Clock;
+  const titleParts = [
+    `Status: ${delivery.status}`,
+    delivery.attempts > 0 ? `Attempts: ${delivery.attempts}` : null,
+    delivery.sentAt ? `Sent: ${new Date(delivery.sentAt).toLocaleString()}` : null,
+    delivery.failureReason ? `Reason: ${delivery.failureReason}` : null,
+    `Provider: ${delivery.provider}`,
+  ].filter(Boolean).join(' • ');
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        DELIVERY_TONE[delivery.status],
+      )}
+      title={titleParts}
+    >
+      <Icon className="h-3 w-3" />
+      {delivery.status}
+    </span>
+  );
+}
 
 // ── Invite Member Dialog ───────────────────────────────────────────────────────
 
@@ -248,6 +300,9 @@ function MembersTab() {
 function InvitationsTab() {
   const { data: invitations, isLoading, error } = useInvitations();
   const revoke = useRevokeInvitation();
+  const resend = useResendInvitation();
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [revokingId,  setRevokingId]  = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -265,6 +320,15 @@ function InvitationsTab() {
     return <p className="py-10 text-center text-sm text-muted-foreground">No invitations found.</p>;
   }
 
+  const handleResend = (id: string) => {
+    setResendingId(id);
+    resend.mutate(id, { onSettled: () => setResendingId(null) });
+  };
+  const handleRevoke = (id: string) => {
+    setRevokingId(id);
+    revoke.mutate(id, { onSettled: () => setRevokingId(null) });
+  };
+
   return (
     <div className="overflow-x-auto rounded-md border">
       <table className="w-full text-sm">
@@ -273,46 +337,68 @@ function InvitationsTab() {
             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Name</th>
             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Expires At</th>
-            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Invited By</th>
+            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email delivery</th>
+            <th className="px-4 py-3 text-left font-medium text-muted-foreground">Expires</th>
             <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y">
-          {invitations.map((inv) => (
-            <tr key={inv.id} className="hover:bg-muted/30">
-              <td className="px-4 py-3">{inv.email}</td>
-              <td className="px-4 py-3">
-                {inv.firstName} {inv.lastName}
-              </td>
-              <td className="px-4 py-3">
-                <Badge variant={invStatusVariant[inv.status]}>
-                  {INVITATION_STATUS_LABELS[inv.status]}
-                </Badge>
-              </td>
-              <td className="px-4 py-3 text-muted-foreground text-xs">
-                {formatDistanceToNow(new Date(inv.expiresAt), { addSuffix: true })}
-              </td>
-              <td className="px-4 py-3 text-muted-foreground text-xs">
-                {inv.invitedBy
-                  ? `${inv.invitedBy.firstName} ${inv.invitedBy.lastName}`
-                  : '—'}
-              </td>
-              <td className="px-4 py-3 text-right">
-                {inv.status === 'PENDING' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs text-destructive hover:text-destructive"
-                    onClick={() => revoke.mutate(inv.id)}
-                    disabled={revoke.isPending}
-                  >
-                    Revoke
-                  </Button>
-                )}
-              </td>
-            </tr>
-          ))}
+          {invitations.map((inv) => {
+            const canActOnInvitation = inv.status === 'PENDING' || inv.status === 'EXPIRED';
+            return (
+              <tr key={inv.id} className="hover:bg-muted/30">
+                <td className="px-4 py-3">{inv.email}</td>
+                <td className="px-4 py-3">{inv.firstName} {inv.lastName}</td>
+                <td className="px-4 py-3">
+                  <Badge variant={invStatusVariant[inv.status]}>
+                    {INVITATION_STATUS_LABELS[inv.status]}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-0.5">
+                    <DeliveryPill delivery={inv.lastDelivery} />
+                    {inv.lastDelivery?.failureReason && (
+                      <span className="max-w-[18ch] truncate text-[10px] text-red-700" title={inv.lastDelivery.failureReason}>
+                        {inv.lastDelivery.failureReason}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">
+                  {formatDistanceToNow(new Date(inv.expiresAt), { addSuffix: true })}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex justify-end gap-1">
+                    {canActOnInvitation && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleResend(inv.id)}
+                        disabled={resendingId === inv.id}
+                      >
+                        {resendingId === inv.id
+                          ? <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          : <RefreshCw className="mr-1 h-3 w-3" />}
+                        Resend
+                      </Button>
+                    )}
+                    {inv.status === 'PENDING' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-destructive hover:text-destructive"
+                        onClick={() => handleRevoke(inv.id)}
+                        disabled={revokingId === inv.id}
+                      >
+                        Revoke
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

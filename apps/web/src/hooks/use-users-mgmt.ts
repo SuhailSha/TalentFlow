@@ -10,6 +10,7 @@ import {
   inviteUser,
   listInvitations,
   listUsers,
+  resendInvitation,
   revokeInvitation,
 } from '@/lib/api/users-mgmt';
 import type { AssignRolesDto, InviteUserDto, ListUsersParams } from '@/types/settings';
@@ -67,6 +68,17 @@ export function useRevokeInvitation() {
 
   return useMutation({
     mutationFn: (id: string) => revokeInvitation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userMgmtKeys.invitations() });
+    },
+  });
+}
+
+export function useResendInvitation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => resendInvitation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userMgmtKeys.invitations() });
     },

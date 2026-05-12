@@ -36,22 +36,37 @@ export class TemplateRenderer {
     const htmlFn    = this.compile(this.htmlCache,    name, def.html);
     const textFn    = this.compile(this.textCache,    name, def.text);
 
+    // Subject and text are non-HTML contexts. Handlebars' default escaping
+    // turns `=` into `&#x3D;` which breaks copy/paste of links in plain-text
+    // mail clients. Decode the few entities Handlebars introduces.
     return {
-      subject: subjectFn(payload as Record<string, unknown>),
+      subject: decodeNonHtml(subjectFn(payload as Record<string, unknown>)),
       html:    htmlFn(payload as Record<string, unknown>),
-      text:    textFn(payload as Record<string, unknown>),
+      text:    decodeNonHtml(textFn(payload as Record<string, unknown>)),
     };
   }
 
   private compile(
     cache: Map<string, HandlebarsTemplateDelegate>,
-    name: string,
+    cacheKey: string,
     source: string,
   ): HandlebarsTemplateDelegate {
-    const cached = cache.get(name);
+    const cached = cache.get(cacheKey);
     if (cached) return cached;
-    const compiled = Handlebars.compile(source, { noEscape: false });
-    cache.set(name, compiled);
+    const compiled = Handlebars.compile(source);
+    cache.set(cacheKey, compiled);
     return compiled;
   }
+}
+
+/** Undo the small set of HTML entities Handlebars' escapeExpression introduces. */
+function decodeNonHtml(s: string): string {
+  return s
+    .replace(/&#x3D;/g, '=')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x60;/g, '`')
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g,   '<')
+    .replace(/&gt;/g,   '>')
+    .replace(/&amp;/g,  '&');
 }

@@ -22,6 +22,8 @@ export type {
   UserStatus, UserListItem, UserDetail, RecruiterProfileView,
   InviteUserDto, AssignRolesDto, ListUsersParams,
   InvitationStatus, UserInvitation,
+  EmailDeliveryStatus, EmailDeliverySummary,
+  InvitationPreview, AcceptInvitationDto,
   RoleListItem, CreateRoleDto, UpdateRoleDto,
   SubscriptionStatus, Plan, Subscription, SeatStats, UsageMetric, UsageRecord,
 } from './settings';

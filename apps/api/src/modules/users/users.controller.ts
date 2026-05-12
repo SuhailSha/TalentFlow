@@ -75,6 +75,17 @@ export class UsersController {
     return ok(await this.service.revokeInvitation(user, id), req.requestId);
   }
 
+  @Post('invitations/:id/resend')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions(Permission.INVITATIONS_CREATE)
+  async resendInvitation(
+    @CurrentUser() user: RequestUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ) {
+    return ok(await this.service.resendInvitation(user, id), req.requestId);
+  }
+
   @Post(':id/activate')
   @HttpCode(HttpStatus.OK)
   @RequirePermissions(Permission.USERS_UPDATE)

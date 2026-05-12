@@ -211,6 +211,148 @@ export class AuthService {
     return bcrypt.hash(plaintext, 12);
   }
 
+  // ── Invitation acceptance ─────────────────────────────────────────────────
+
+  /**
+   * Public preview of an invitation by raw token.
+   * Used by the /accept-invitation page to render the form preamble.
+   * Auto-marks invitations as EXPIRED if their TTL has passed.
+   */
+  async previewInvitation(rawToken: string): Promise<{
+    email: string;
+    firstName: string;
+    lastName: string;
+    organizationName: string;
+    inviterName: string | null;
+    expiresAt: string;
+  }> {
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const invitation = await this.prisma.userInvitation.findUnique({
+      where: { tokenHash },
+      include: {
+        organization: { select: { name: true } },
+        invitedBy:    { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+    if (invitation.status === 'REVOKED') {
+      throw new UnauthorizedException('This invitation has been revoked.');
+    }
+    if (invitation.status === 'ACCEPTED') {
+      throw new UnauthorizedException('This invitation has already been accepted.');
+    }
+    if (invitation.expiresAt < new Date()) {
+      if (invitation.status !== 'EXPIRED') {
+        await this.prisma.userInvitation.update({
+          where: { id: invitation.id },
+          data:  { status: 'EXPIRED' },
+        });
+      }
+      throw new UnauthorizedException('This invitation has expired.');
+    }
+
+    return {
+      email:           invitation.email,
+      firstName:       invitation.firstName,
+      lastName:        invitation.lastName,
+      organizationName: invitation.organization.name,
+      inviterName:     invitation.invitedBy
+        ? `${invitation.invitedBy.firstName} ${invitation.invitedBy.lastName}`.trim()
+        : null,
+      expiresAt:       invitation.expiresAt.toISOString(),
+    };
+  }
+
+  /**
+   * Accept an invitation: create the user account, assign roles from the
+   * invitation, mark accepted, and issue an authenticated session.
+   *
+   * Wrapped in a transaction so a half-completed acceptance (e.g. role assign
+   * fails after user create) doesn't leave dangling rows.
+   */
+  async acceptInvitation(params: {
+    rawToken: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
+    ipAddress: string;
+    userAgent: string;
+  }): Promise<{ accessToken: string; refreshToken: string; userProfile: UserProfile }> {
+    const tokenHash = createHash('sha256').update(params.rawToken).digest('hex');
+    const invitation = await this.prisma.userInvitation.findUnique({
+      where: { tokenHash },
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+    if (invitation.status === 'REVOKED') {
+      throw new UnauthorizedException('This invitation has been revoked.');
+    }
+    if (invitation.status === 'ACCEPTED') {
+      throw new UnauthorizedException('This invitation has already been accepted.');
+    }
+    if (invitation.expiresAt < new Date()) {
+      await this.prisma.userInvitation.update({
+        where: { id: invitation.id },
+        data:  { status: 'EXPIRED' },
+      });
+      throw new UnauthorizedException('This invitation has expired.');
+    }
+
+    // Reject if a user with this email already exists in the org (shouldn't
+    // happen if invite endpoint validates, but the invitation may have been
+    // created before that check existed).
+    const existing = await this.prisma.user.findFirst({
+      where: { organizationId: invitation.organizationId, email: invitation.email },
+    });
+    if (existing) {
+      throw new UnauthorizedException('An account with this email already exists.');
+    }
+
+    const passwordHash = await this.hashPassword(params.password);
+    const firstName = params.firstName?.trim() || invitation.firstName;
+    const lastName  = params.lastName?.trim()  || invitation.lastName;
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          organizationId: invitation.organizationId,
+          email:          invitation.email,
+          passwordHash,
+          firstName,
+          lastName,
+          displayName:    `${firstName} ${lastName}`.trim(),
+          status:         'ACTIVE',
+          emailVerified:  true,
+        },
+      });
+
+      if (invitation.roleIds.length > 0) {
+        await tx.userRole.createMany({
+          data: invitation.roleIds.map((roleId) => ({
+            userId:         created.id,
+            roleId,
+            organizationId: invitation.organizationId,
+            grantedBy:      invitation.invitedById ?? undefined,
+          })),
+        });
+      }
+
+      await tx.userInvitation.update({
+        where: { id: invitation.id },
+        data:  { status: 'ACCEPTED', acceptedAt: new Date() },
+      });
+
+      return created;
+    });
+
+    return this.login(user, params.ipAddress, params.userAgent);
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   private issueAccessToken(user: User, roles: string[], permissions: string[]): string {

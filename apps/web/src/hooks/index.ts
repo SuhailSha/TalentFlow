@@ -35,7 +35,7 @@ export {
 } from './use-organization';
 export {
   useUsers, useUser, useInvitations,
-  useInviteUser, useRevokeInvitation,
+  useInviteUser, useRevokeInvitation, useResendInvitation,
   useActivateUser, useDeactivateUser, useAssignUserRoles,
   userMgmtKeys,
 } from './use-users-mgmt';
