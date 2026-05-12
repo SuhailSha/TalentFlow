@@ -46,6 +46,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { SelectionCheckbox, useTableSelection } from '@/components/bulk';
 import {
   useAcknowledgeReminder,
   useCompleteReminder,
@@ -57,6 +58,7 @@ import {
   useReopenReminder,
   useSnoozeReminder,
 } from '@/hooks/use-reminders';
+import { ReminderBulkActions } from './bulk-actions';
 import {
   REMINDER_PRIORITY_LABELS,
   REMINDER_STATUS_LABELS,
@@ -197,7 +199,13 @@ function CreateReminderDialog({ onClose }: { onClose: () => void }) {
 
 // ── Reminder Row ───────────────────────────────────────────────────────────────
 
-function ReminderRow({ reminder }: { reminder: ReminderListItem }) {
+interface ReminderRowProps {
+  reminder:   ReminderListItem;
+  isSelected: boolean;
+  onToggle:   (id: string) => void;
+}
+
+function ReminderRow({ reminder, isSelected, onToggle }: ReminderRowProps) {
   const acknowledge = useAcknowledgeReminder();
   const complete    = useCompleteReminder();
   const snooze      = useSnoozeReminder();
@@ -208,7 +216,15 @@ function ReminderRow({ reminder }: { reminder: ReminderListItem }) {
   const isActive = ['PENDING', 'ACKNOWLEDGED', 'SNOOZED'].includes(reminder.status);
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border bg-card p-3 hover:bg-accent/30 transition-colors">
+    <div className={`flex items-start gap-3 rounded-lg border bg-card p-3 transition-colors ${isSelected ? 'border-primary/40 bg-primary/5' : 'hover:bg-accent/30'}`}>
+      <span className="pt-1">
+        <SelectionCheckbox
+          checked={isSelected}
+          onChange={() => onToggle(reminder.id)}
+          stopPropagation={false}
+          aria-label={`Select reminder ${reminder.title}`}
+        />
+      </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <Badge variant={priorityVariant[reminder.priority]} className="text-[10px]">
@@ -313,6 +329,9 @@ export default function RemindersPage() {
   const { data, isLoading, isFetching, refetch } = useReminders(params);
   const { data: stats } = useReminderStats();
 
+  const items = data?.data ?? [];
+  const selection = useTableSelection<ReminderListItem>(items);
+
   return (
     <div className="flex flex-col gap-6 p-6">
       {/* Header */}
@@ -396,22 +415,45 @@ export default function RemindersPage() {
 
       {/* List */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-sm font-medium text-muted-foreground">
             {data?.meta.total ?? 0} reminder{data?.meta.total !== 1 ? 's' : ''}
           </CardTitle>
+          {items.length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <SelectionCheckbox
+                checked={selection.isAllSelected}
+                indeterminate={selection.isIndeterminate}
+                onChange={(c) => (c ? selection.selectAll() : selection.clear())}
+                aria-label={selection.isAllSelected ? 'Clear selection' : 'Select all visible'}
+                stopPropagation={false}
+              />
+              <span>
+                {selection.selectedCount > 0
+                  ? `${selection.selectedCount} of ${items.length} selected`
+                  : `Select all ${items.length}`}
+              </span>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
           {isLoading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : data?.data.length === 0 ? (
+          ) : items.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
               No reminders found
             </div>
           ) : (
-            data?.data.map(r => <ReminderRow key={r.id} reminder={r} />)
+            items.map(r => (
+              <ReminderRow
+                key={r.id}
+                reminder={r}
+                isSelected={selection.isSelected(r.id)}
+                onToggle={selection.toggle}
+              />
+            ))
           )}
         </CardContent>
       </Card>
@@ -420,6 +462,12 @@ export default function RemindersPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <CreateReminderDialog onClose={() => setCreateOpen(false)} />
       </Dialog>
+
+      <ReminderBulkActions
+        selectedIds={Array.from(selection.selectedIds)}
+        selectedCount={selection.selectedCount}
+        onClear={selection.clear}
+      />
     </div>
   );
 }

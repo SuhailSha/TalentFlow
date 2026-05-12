@@ -67,3 +67,6 @@ export {
 export {
   useBulkChangeInterviewStatus, useBulkAddInterviewNote,
 } from './use-interviews-bulk';
+export {
+  useBulkSnoozeReminders, useBulkCompleteReminders, useBulkDismissReminders,
+} from './use-reminders-bulk';
