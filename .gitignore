@@ -59,3 +59,8 @@ cookies.txt
 # Embedded PostgreSQL data directory (local dev without Docker)
 .pg-data/
 *.err
+
+# ─── Local storage / dev artifacts ───────────────────────────────────────────
+# STORAGE_DRIVER=local writes here; ConsoleEmailProvider writes .eml dumps under emails/
+apps/api/uploads/
+uploads/
