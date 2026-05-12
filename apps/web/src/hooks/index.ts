@@ -60,3 +60,7 @@ export {
   useBulkChangeSubmissionStatus, useBulkAssignSubmissions,
   useBulkArchiveSubmissions, useBulkAddReminderToSubmissions,
 } from './use-submissions-bulk';
+export {
+  useBulkChangeCandidateStatus, useBulkAddCandidateNote,
+  useBulkAddCandidateReminder, useBulkDeleteCandidates,
+} from './use-candidates-bulk';

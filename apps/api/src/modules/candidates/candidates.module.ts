@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 
+import { RemindersModule } from '../reminders/reminders.module';
+import { CandidatesBulkController } from './candidates-bulk.controller';
+import { CandidatesBulkService } from './candidates-bulk.service';
 import { CandidatesController, SkillsController } from './candidates.controller';
 import { CandidatesRepository } from './candidates.repository';
 import { CandidatesService } from './candidates.service';
@@ -9,8 +12,9 @@ import { SkillsService } from './skills.service';
 // CandidatesService injects EventEmitter2 which is globally available.
 
 @Module({
-  controllers: [CandidatesController, SkillsController],
-  providers: [CandidatesService, SkillsService, CandidatesRepository],
-  exports: [CandidatesService, SkillsService],
+  imports:     [RemindersModule],
+  controllers: [CandidatesController, SkillsController, CandidatesBulkController],
+  providers:   [CandidatesService, SkillsService, CandidatesRepository, CandidatesBulkService],
+  exports:     [CandidatesService, SkillsService],
 })
 export class CandidatesModule {}

@@ -10,9 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SelectionCheckbox, useTableSelection } from '@/components/bulk';
 import { useCandidates } from '@/hooks/use-candidates';
 import type { CandidateListItem, CandidateStatus, AvailabilityStatus, ListCandidatesParams } from '@/types/candidates';
 import { useDebounce } from '@/hooks/use-debounce';
+import { CandidateBulkActions } from './bulk-actions';
 
 const STATUS_COLORS: Record<CandidateStatus, string> = {
   ACTIVE: 'bg-green-100 text-green-800',
@@ -30,13 +32,27 @@ const AVAILABILITY_LABELS: Record<AvailabilityStatus, string> = {
   NOT_LOOKING: 'Not looking',
 };
 
-function CandidateRow({ candidate }: { candidate: CandidateListItem }) {
+interface CandidateRowProps {
+  candidate:  CandidateListItem;
+  isSelected: boolean;
+  onToggle:   (id: string) => void;
+}
+
+function CandidateRow({ candidate, isSelected, onToggle }: CandidateRowProps) {
   return (
     <Link
       href={`/candidates/${candidate.id}`}
-      className="block rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors"
+      className={`block rounded-lg border bg-card p-4 transition-colors ${isSelected ? 'border-primary/40 bg-primary/5' : 'hover:bg-muted/50'}`}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start gap-3">
+        <span className="pt-0.5">
+          <SelectionCheckbox
+            checked={isSelected}
+            onChange={() => onToggle(candidate.id)}
+            aria-label={`Select ${candidate.fullName}`}
+          />
+        </span>
+        <div className="flex flex-1 items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm">{candidate.fullName}</span>
@@ -71,6 +87,7 @@ function CandidateRow({ candidate }: { candidate: CandidateListItem }) {
             </p>
           )}
         </div>
+      </div>
       </div>
 
       {candidate.topSkills.length > 0 && (
@@ -132,6 +149,9 @@ export default function CandidatesPage() {
   }, []);
 
   const totalPages = data?.meta.totalPages ?? 1;
+
+  const items = data?.data ?? [];
+  const selection = useTableSelection<CandidateListItem>(items);
 
   return (
     <div className="space-y-6">
@@ -197,8 +217,32 @@ export default function CandidatesPage() {
         </Card>
       ) : (
         <>
+          {items.length > 0 && (
+            <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+              <SelectionCheckbox
+                checked={selection.isAllSelected}
+                indeterminate={selection.isIndeterminate}
+                onChange={(c) => (c ? selection.selectAll() : selection.clear())}
+                aria-label={selection.isAllSelected ? 'Clear selection' : 'Select all visible'}
+                stopPropagation={false}
+              />
+              <span>
+                {selection.selectedCount > 0
+                  ? `${selection.selectedCount} of ${items.length} selected`
+                  : `Select all ${items.length} on this page`}
+              </span>
+            </div>
+          )}
+
           <div className="space-y-3">
-            {data?.data.map((c) => <CandidateRow key={c.id} candidate={c} />)}
+            {items.map((c) => (
+              <CandidateRow
+                key={c.id}
+                candidate={c}
+                isSelected={selection.isSelected(c.id)}
+                onToggle={selection.toggle}
+              />
+            ))}
           </div>
 
           {/* Pagination */}
@@ -229,6 +273,12 @@ export default function CandidatesPage() {
           )}
         </>
       )}
+
+      <CandidateBulkActions
+        selectedIds={Array.from(selection.selectedIds)}
+        selectedCount={selection.selectedCount}
+        onClear={selection.clear}
+      />
     </div>
   );
 }
