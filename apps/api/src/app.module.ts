@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import { validateEnv } from './config';
@@ -34,6 +35,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { SearchModule } from './modules/search/search.module';
+import { ScheduledModule } from './scheduled/scheduled.module';
 
 @Module({
   imports: [
@@ -61,6 +63,10 @@ import { SearchModule } from './modules/search/search.module';
       maxListeners: 30,
       verboseMemoryLeak: true,
     }),
+
+    // ── Cron scheduler ─────────────────────────────────────────────────────
+    // Required for @Cron decorators in ScheduledModule. Discovery is global.
+    ScheduleModule.forRoot(),
 
     // ── Database ───────────────────────────────────────────────────────────
     DatabaseModule,
@@ -98,6 +104,7 @@ import { SearchModule } from './modules/search/search.module';
     SubscriptionModule,
     DashboardModule,
     SearchModule,
+    ScheduledModule,
   ],
   providers: [
     {
