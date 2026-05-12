@@ -6,6 +6,7 @@ export type {
 export type {
   QueueName, QueueCounts, QueueStats, QueueHealth, FailedJobView,
 } from './queue';
+export type { BulkItemResult, BulkOperationResult } from './bulk';
 export type {
   CommandCenter, CommandCenterMetrics,
   UrgentReminderItem, PendingFeedbackItem, UpcomingInterviewItem,

@@ -8,8 +8,10 @@ import { PageHeader } from '@/components/common/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SelectionCheckbox, useTableSelection } from '@/components/bulk';
 import { useSubmissions, useSubmissionStats } from '@/hooks/use-submissions';
 import type { SubmissionListItem, SubmissionStatus, ListSubmissionsParams } from '@/types/submissions';
+import { SubmissionBulkActions } from './bulk-actions';
 
 const STATUS_COLORS: Record<SubmissionStatus, string> = {
   DRAFT:        'bg-gray-100 text-gray-700',
@@ -43,16 +45,30 @@ const ACTIVE_STATUSES: SubmissionStatus[] = [
   'DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'ON_HOLD',
 ];
 
-function SubmissionRow({ submission }: { submission: SubmissionListItem }) {
+interface SubmissionRowProps {
+  submission:  SubmissionListItem;
+  isSelected:  boolean;
+  onToggle:    (id: string) => void;
+}
+
+function SubmissionRow({ submission, isSelected, onToggle }: SubmissionRowProps) {
   const c = submission.candidate;
   const j = submission.job;
 
   return (
     <Link
       href={`/submissions/${submission.id}`}
-      className="block rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors"
+      className={`block rounded-lg border bg-card p-4 transition-colors ${isSelected ? 'border-primary/40 bg-primary/5' : 'hover:bg-muted/50'}`}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start gap-3">
+        <span className="pt-0.5">
+          <SelectionCheckbox
+            checked={isSelected}
+            onChange={() => onToggle(submission.id)}
+            aria-label={`Select submission for ${c.firstName} ${c.lastName}`}
+          />
+        </span>
+        <div className="flex flex-1 items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm">
@@ -91,6 +107,7 @@ function SubmissionRow({ submission }: { submission: SubmissionListItem }) {
             </p>
           )}
         </div>
+      </div>
       </div>
     </Link>
   );
@@ -154,6 +171,9 @@ export default function SubmissionsPage() {
 
   const totalPages = data?.meta.totalPages ?? 1;
 
+  const items = data?.data ?? [];
+  const selection = useTableSelection<SubmissionListItem>(items);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -212,8 +232,32 @@ export default function SubmissionsPage() {
         </Card>
       ) : (
         <>
+          {items.length > 0 && (
+            <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+              <SelectionCheckbox
+                checked={selection.isAllSelected}
+                indeterminate={selection.isIndeterminate}
+                onChange={(c) => (c ? selection.selectAll() : selection.clear())}
+                aria-label={selection.isAllSelected ? 'Clear selection' : 'Select all visible'}
+                stopPropagation={false}
+              />
+              <span>
+                {selection.selectedCount > 0
+                  ? `${selection.selectedCount} of ${items.length} selected`
+                  : `Select all ${items.length} on this page`}
+              </span>
+            </div>
+          )}
+
           <div className="space-y-3">
-            {data?.data.map((s) => <SubmissionRow key={s.id} submission={s} />)}
+            {items.map((s) => (
+              <SubmissionRow
+                key={s.id}
+                submission={s}
+                isSelected={selection.isSelected(s.id)}
+                onToggle={selection.toggle}
+              />
+            ))}
           </div>
 
           {totalPages > 1 && (
@@ -243,6 +287,12 @@ export default function SubmissionsPage() {
           )}
         </>
       )}
+
+      <SubmissionBulkActions
+        selectedIds={Array.from(selection.selectedIds)}
+        selectedCount={selection.selectedCount}
+        onClear={selection.clear}
+      />
     </div>
   );
 }

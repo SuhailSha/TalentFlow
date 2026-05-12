@@ -56,3 +56,7 @@ export {
 export {
   useQueueHealth, useFailedJobs, useRetryFailedJob, useRemoveFailedJob, queueKeys,
 } from './use-queue';
+export {
+  useBulkChangeSubmissionStatus, useBulkAssignSubmissions,
+  useBulkArchiveSubmissions, useBulkAddReminderToSubmissions,
+} from './use-submissions-bulk';
