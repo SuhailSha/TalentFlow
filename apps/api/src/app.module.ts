@@ -35,6 +35,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { SearchModule } from './modules/search/search.module';
+import { CommunicationsModule } from './modules/communications/communications.module';
 import { ScheduledModule } from './scheduled/scheduled.module';
 
 @Module({
@@ -104,6 +105,7 @@ import { ScheduledModule } from './scheduled/scheduled.module';
     SubscriptionModule,
     DashboardModule,
     SearchModule,
+    CommunicationsModule,
     ScheduledModule,
   ],
   providers: [

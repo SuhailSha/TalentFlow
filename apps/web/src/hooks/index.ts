@@ -50,3 +50,4 @@ export {
 } from './use-subscription';
 export { useEntityActivity, activityKeys } from './use-activity';
 export { useCommandCenter, dashboardKeys } from './use-dashboard';
+export { useEmailDeliveries, useCommunicationsStats, communicationsKeys } from './use-communications';

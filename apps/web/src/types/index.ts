@@ -1,6 +1,9 @@
 export type { NavItem, NavGroup, BreadcrumbItem } from './navigation';
 export type { ActivityVerb, ActivityEntry, EntityType } from './activity';
 export type {
+  EmailDelivery, ListDeliveriesParams, CommunicationsStats,
+} from './communications';
+export type {
   CommandCenter, CommandCenterMetrics,
   UrgentReminderItem, PendingFeedbackItem, UpcomingInterviewItem,
   StalledSubmissionItem, RecruiterWorkloadItem,

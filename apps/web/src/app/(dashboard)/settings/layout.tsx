@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, CreditCard, Shield, Users } from 'lucide-react';
+import { Building2, CreditCard, Mail, Shield, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -11,6 +11,7 @@ const settingsNav = [
   { title: 'Team Members',         href: '/settings/team',         icon: Users },
   { title: 'Roles & Permissions',  href: '/settings/roles',        icon: Shield },
   { title: 'Subscription & Billing', href: '/settings/subscription', icon: CreditCard },
+  { title: 'Communication log',      href: '/settings/communications', icon: Mail },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
