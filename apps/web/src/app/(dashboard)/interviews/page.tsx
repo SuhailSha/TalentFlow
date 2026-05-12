@@ -8,7 +8,9 @@ import { PageHeader } from '@/components/common/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SelectionCheckbox, useTableSelection } from '@/components/bulk';
 import { useInterviews, useInterviewStats } from '@/hooks/use-interviews';
+import { InterviewBulkActions } from './bulk-actions';
 import type {
   InterviewListItem,
   InterviewStatus,
@@ -36,7 +38,13 @@ const STATUS_COLORS: Record<InterviewStatus, string> = {
 const NEEDS_ACTION_STATUSES: InterviewStatus[] = ['FEEDBACK_PENDING', 'NO_SHOW'];
 const UPCOMING_STATUSES: InterviewStatus[] = ['SCHEDULED', 'CONFIRMED', 'RESCHEDULED'];
 
-function InterviewRow({ interview }: { interview: InterviewListItem }) {
+interface InterviewRowProps {
+  interview:  InterviewListItem;
+  isSelected: boolean;
+  onToggle:   (id: string) => void;
+}
+
+function InterviewRow({ interview, isSelected, onToggle }: InterviewRowProps) {
   const c = interview.candidate;
   const j = interview.job;
   const hasNextSteps = (FSM_TRANSITIONS[interview.status] ?? []).length > 0;
@@ -44,9 +52,17 @@ function InterviewRow({ interview }: { interview: InterviewListItem }) {
   return (
     <Link
       href={`/interviews/${interview.id}`}
-      className="block rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors"
+      className={`block rounded-lg border bg-card p-4 transition-colors ${isSelected ? 'border-primary/40 bg-primary/5' : 'hover:bg-muted/50'}`}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start gap-3">
+        <span className="pt-0.5">
+          <SelectionCheckbox
+            checked={isSelected}
+            onChange={() => onToggle(interview.id)}
+            aria-label={`Select interview with ${c.firstName} ${c.lastName}`}
+          />
+        </span>
+        <div className="flex flex-1 items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm">
@@ -93,6 +109,7 @@ function InterviewRow({ interview }: { interview: InterviewListItem }) {
             <p className="text-xs text-muted-foreground">{interview.interviewerName}</p>
           )}
         </div>
+      </div>
       </div>
     </Link>
   );
@@ -163,6 +180,9 @@ export default function InterviewsPage() {
 
   const totalPages = data?.meta.totalPages ?? 1;
 
+  const items = data?.data ?? [];
+  const selection = useTableSelection<InterviewListItem>(items);
+
   const tabs: { key: TabFilter; label: string }[] = [
     { key: 'needs_action', label: 'Needs Action' },
     { key: 'upcoming',     label: 'Upcoming' },
@@ -231,8 +251,32 @@ export default function InterviewsPage() {
         </Card>
       ) : (
         <>
+          {items.length > 0 && (
+            <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+              <SelectionCheckbox
+                checked={selection.isAllSelected}
+                indeterminate={selection.isIndeterminate}
+                onChange={(c) => (c ? selection.selectAll() : selection.clear())}
+                aria-label={selection.isAllSelected ? 'Clear selection' : 'Select all visible'}
+                stopPropagation={false}
+              />
+              <span>
+                {selection.selectedCount > 0
+                  ? `${selection.selectedCount} of ${items.length} selected`
+                  : `Select all ${items.length} on this page`}
+              </span>
+            </div>
+          )}
+
           <div className="space-y-3">
-            {data?.data.map((i) => <InterviewRow key={i.id} interview={i} />)}
+            {items.map((iv) => (
+              <InterviewRow
+                key={iv.id}
+                interview={iv}
+                isSelected={selection.isSelected(iv.id)}
+                onToggle={selection.toggle}
+              />
+            ))}
           </div>
 
           {totalPages > 1 && (
@@ -262,6 +306,12 @@ export default function InterviewsPage() {
           )}
         </>
       )}
+
+      <InterviewBulkActions
+        selectedIds={Array.from(selection.selectedIds)}
+        selectedCount={selection.selectedCount}
+        onClear={selection.clear}
+      />
     </div>
   );
 }

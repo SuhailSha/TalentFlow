@@ -64,3 +64,6 @@ export {
   useBulkChangeCandidateStatus, useBulkAddCandidateNote,
   useBulkAddCandidateReminder, useBulkDeleteCandidates,
 } from './use-candidates-bulk';
+export {
+  useBulkChangeInterviewStatus, useBulkAddInterviewNote,
+} from './use-interviews-bulk';
