@@ -645,7 +645,7 @@ function InterviewWorkspaceContent({ interview }: { interview: InterviewDetail }
                 rows={2}
               />
               <p className="mt-2 text-xs text-muted-foreground">
-                Applied to the next status transition via "Advance status".
+                Applied to the next status transition via &quot;Advance status&quot;.
               </p>
             </CardContent>
           </Card>

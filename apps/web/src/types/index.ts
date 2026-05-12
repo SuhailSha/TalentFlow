@@ -4,6 +4,9 @@ export type {
   EmailDelivery, ListDeliveriesParams, CommunicationsStats,
 } from './communications';
 export type {
+  QueueName, QueueCounts, QueueStats, QueueHealth, FailedJobView,
+} from './queue';
+export type {
   CommandCenter, CommandCenterMetrics,
   UrgentReminderItem, PendingFeedbackItem, UpcomingInterviewItem,
   StalledSubmissionItem, RecruiterWorkloadItem,

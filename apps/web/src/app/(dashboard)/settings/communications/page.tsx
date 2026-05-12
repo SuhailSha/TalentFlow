@@ -10,11 +10,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { MetricTile } from '@/components/workspace';
+import {
+  FailedJobsCard,
+  MetricTile,
+  QueueHealthCard,
+} from '@/components/workspace';
 import {
   useCommunicationsStats,
   useEmailDeliveries,
 } from '@/hooks/use-communications';
+import { useQueueHealth } from '@/hooks/use-queue';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { EmailDeliveryStatus } from '@/types/settings';
 import { cn } from '@/lib/utils';
@@ -49,6 +54,17 @@ const TEMPLATE_LABELS: Record<string, string> = {
   interview_feedback_pending: 'Interview feedback pending',
   interview_upcoming:         'Upcoming interview',
 };
+
+/**
+ * Renders FailedJobsCard only when Redis is active. When the queue is
+ * disabled there are no BullMQ jobs to list (sync fallback path), so the
+ * card would just render an empty state — hide it for clarity.
+ */
+function QueueFailedJobsSection() {
+  const { data } = useQueueHealth();
+  if (!data?.enabled) return null;
+  return <FailedJobsCard queueName="notification-email" />;
+}
 
 export default function CommunicationsLogPage() {
   const [page, setPage] = useState(1);
@@ -108,6 +124,10 @@ export default function CommunicationsLogPage() {
           loading={!stats}
         />
       </div>
+
+      {/* Queue + failed jobs (operational reliability) */}
+      <QueueHealthCard />
+      <QueueFailedJobsSection />
 
       {/* Filters + table */}
       <Card>

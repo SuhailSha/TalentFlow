@@ -11,3 +11,5 @@ export {
   UrgencyIndicator,
   DueSoonIndicator,
 } from './status-indicators';
+export { QueueHealthCard } from './queue-health-card';
+export { FailedJobsCard } from './failed-jobs-card';

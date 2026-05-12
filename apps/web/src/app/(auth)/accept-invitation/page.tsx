@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -30,6 +30,22 @@ const acceptSchema = z.object({
 type AcceptForm = z.infer<typeof acceptSchema>;
 
 export default function AcceptInvitationPage() {
+  // useSearchParams must be inside a Suspense boundary under Next 15's app
+  // router, otherwise the page can't be prerendered.
+  return (
+    <Suspense fallback={
+      <Card className="w-full">
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    }>
+      <AcceptInvitationInner />
+    </Suspense>
+  );
+}
+
+function AcceptInvitationInner() {
   const params = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();

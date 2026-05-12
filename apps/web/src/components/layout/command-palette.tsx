@@ -71,7 +71,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       />
       <CommandList>
         {query.trim().length >= 2 && !isFetching && !hasResults && (
-          <CommandEmpty>No matches for "{query}".</CommandEmpty>
+          <CommandEmpty>No matches for &quot;{query}&quot;.</CommandEmpty>
         )}
 
         {/* Search results grouped by type */}

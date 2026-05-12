@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { type DynamicModule, Logger, Module } from '@nestjs/common';
 
 import type { EnvConfig } from '../config';
+import { QueueController } from './queue.controller';
+import { QueueMonitorService } from './queue-monitor.service';
 import { QUEUE_NAMES } from './queue.constants';
 import { QueueHealthIndicator } from './queue.health';
 
@@ -61,6 +63,7 @@ export class QueueModule {
         module: QueueModule,
         global: true,
         imports: [],
+        controllers: [QueueController],
         providers: [
           // Stub health indicator that always reports "disabled"
           {
@@ -69,8 +72,10 @@ export class QueueModule {
               check: async () => ({ queue: { status: 'disabled' } }),
             } as unknown as QueueHealthIndicator,
           },
+          // Monitor service still works without Redis — returns enabled=false.
+          QueueMonitorService,
         ],
-        exports: [QueueHealthIndicator],
+        exports: [QueueHealthIndicator, QueueMonitorService],
       };
     }
 
@@ -115,10 +120,12 @@ export class QueueModule {
           { name: QUEUE_NAMES.CLEANUP_SCHEDULED },
         ),
       ],
-      providers: [QueueHealthIndicator],
+      controllers: [QueueController],
+      providers: [QueueHealthIndicator, QueueMonitorService],
       exports: [
         BullModule,         // re-exports Queue tokens for @InjectQueue()
         QueueHealthIndicator,
+        QueueMonitorService,
       ],
     };
   }

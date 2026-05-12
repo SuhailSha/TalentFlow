@@ -51,3 +51,6 @@ export {
 export { useEntityActivity, activityKeys } from './use-activity';
 export { useCommandCenter, dashboardKeys } from './use-dashboard';
 export { useEmailDeliveries, useCommunicationsStats, communicationsKeys } from './use-communications';
+export {
+  useQueueHealth, useFailedJobs, useRetryFailedJob, useRemoveFailedJob, queueKeys,
+} from './use-queue';
