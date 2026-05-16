@@ -12,8 +12,25 @@
  *   5. Demo candidates    — 12 realistic candidates with skills + notes
  */
 
-import { PrismaClient, OrgPlan, SkillCategory, NoteType, CandidateSource } from '@prisma/client';
+import {
+  PrismaClient, OrgPlan, SkillCategory, NoteType, CandidateSource,
+  VendorStatus, VendorPriority, VendorType,
+  JobStatus, JobPriority, EmploymentType, WorkMode,
+  SubmissionStatus,
+  InterviewStatus, InterviewType,
+  ReminderType, ReminderPriority, ReminderStatus,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+
+// ── Time helpers ──────────────────────────────────────────────────────────────
+// Operational seed data uses these to age records into "fresh" / "stalled"
+// buckets so the workspace health signals exercise meaningfully.
+
+const HOUR = 60 * 60 * 1000;
+const DAY  = 24 * HOUR;
+const daysAgo  = (n: number) => new Date(Date.now() - n * DAY);
+const daysFromNow = (n: number) => new Date(Date.now() + n * DAY);
+const hoursFromNow = (n: number) => new Date(Date.now() + n * HOUR);
 
 const prisma = new PrismaClient();
 
@@ -827,6 +844,749 @@ async function seedCandidates(
   }
 }
 
+// ── 6. Demo vendors ───────────────────────────────────────────────────────────
+//
+// The vendor workspace and the vendor list page both depend on a realistic mix
+// of vendor states (ACTIVE/PROSPECT/INACTIVE/BLOCKED), priorities, and
+// downstream operational data (submissions, interviews, reminders).
+//
+// What we seed:
+//   • Apex Talent          ACTIVE / STRATEGIC — busy pipeline, recent activity
+//   • Bridgewater Partners ACTIVE / HIGH      — active but with stalled rows
+//   • CodeCraft Recruiting ACTIVE / NORMAL    — light pipeline
+//   • DeltaForce Staffing  PROSPECT           — under evaluation, no submissions
+//   • Echo Consulting      INACTIVE           — dormant; historical placements
+//   • Forge Outsourcing    BLOCKED            — flagged; do not engage
+
+interface VendorContactSeed {
+  firstName: string;
+  lastName: string;
+  title: string;
+  email: string;
+  phone?: string;
+  isPrimary: boolean;
+}
+
+interface VendorSeed {
+  companyName: string;
+  vendorCode: string;
+  website: string;
+  type: VendorType;
+  status: VendorStatus;
+  priority: VendorPriority;
+  city: string;
+  country: string;
+  domains: string[];
+  description: string;
+  commissionRate?: number;
+  paymentTermsDays?: number;
+  lastActivityDaysAgo: number | null;
+  lastContactedDaysAgo: number | null;
+  activatedDaysAgo: number | null;
+  contacts: VendorContactSeed[];
+  notes: Array<{ content: string; type: NoteType }>;
+}
+
+const DEMO_VENDORS: VendorSeed[] = [
+  {
+    companyName: 'Apex Talent Group',
+    vendorCode: 'APEX-001',
+    website: 'https://apex-talent.example.com',
+    type: 'STAFFING_AGENCY',
+    status: 'ACTIVE',
+    priority: 'STRATEGIC',
+    city: 'San Francisco',
+    country: 'United States',
+    domains: ['Software Engineering', 'Data Science', 'DevOps'],
+    description: 'Strategic staffing partner — primary source for senior engineering roles in West Coast tech.',
+    commissionRate: 22.5,
+    paymentTermsDays: 45,
+    lastActivityDaysAgo: 1,
+    lastContactedDaysAgo: 3,
+    activatedDaysAgo: 380,
+    contacts: [
+      { firstName: 'Rachel', lastName: 'Stein',   title: 'Account Director', email: 'rachel@apex-talent.example.com', phone: '+1-415-555-1001', isPrimary: true },
+      { firstName: 'Diego',  lastName: 'Morales', title: 'Senior Recruiter', email: 'diego@apex-talent.example.com',  phone: '+1-415-555-1002', isPrimary: false },
+    ],
+    notes: [
+      { content: 'Q4 QBR completed. Apex committed to 3 senior engineering hires this quarter. On track.', type: 'MEETING' },
+      { content: 'Negotiated commission down from 25% to 22.5% in exchange for exclusivity on Staff+ roles.', type: 'NOTE' },
+    ],
+  },
+  {
+    companyName: 'Bridgewater Partners',
+    vendorCode: 'BRDG-002',
+    website: 'https://bridgewater-partners.example.com',
+    type: 'RECRUITMENT_PARTNER',
+    status: 'ACTIVE',
+    priority: 'HIGH',
+    city: 'London',
+    country: 'United Kingdom',
+    domains: ['Financial Services', 'Backend Engineering'],
+    description: 'EU/UK recruitment partner specializing in fintech and regulated industries.',
+    commissionRate: 20.0,
+    paymentTermsDays: 30,
+    lastActivityDaysAgo: 12,
+    lastContactedDaysAgo: 18,
+    activatedDaysAgo: 220,
+    contacts: [
+      { firstName: 'Olivia', lastName: 'Hartmann', title: 'Managing Partner', email: 'olivia@bridgewater.example.com', phone: '+44-20-7946-2001', isPrimary: true },
+    ],
+    notes: [
+      { content: 'Pipeline has gone quiet — two stale submissions still open. Reach out next week to unblock.', type: 'NOTE' },
+    ],
+  },
+  {
+    companyName: 'CodeCraft Recruiting',
+    vendorCode: 'CCFT-003',
+    website: 'https://codecraft.example.com',
+    type: 'STAFFING_AGENCY',
+    status: 'ACTIVE',
+    priority: 'NORMAL',
+    city: 'Austin',
+    country: 'United States',
+    domains: ['Frontend Engineering', 'Mobile'],
+    description: 'Mid-market staffing agency — quick turnaround for mid-level engineering roles.',
+    commissionRate: 25.0,
+    paymentTermsDays: 30,
+    lastActivityDaysAgo: 5,
+    lastContactedDaysAgo: 9,
+    activatedDaysAgo: 95,
+    contacts: [
+      { firstName: 'Marcus', lastName: 'Chen', title: 'Recruiter', email: 'marcus@codecraft.example.com', phone: '+1-512-555-3001', isPrimary: true },
+    ],
+    notes: [],
+  },
+  {
+    companyName: 'DeltaForce Staffing',
+    vendorCode: 'DLTA-004',
+    website: 'https://deltaforce.example.com',
+    type: 'CONSULTING_FIRM',
+    status: 'PROSPECT',
+    priority: 'NORMAL',
+    city: 'Toronto',
+    country: 'Canada',
+    domains: ['Data Engineering', 'Analytics'],
+    description: 'New prospect — exploring partnership. Demo scheduled.',
+    lastActivityDaysAgo: 2,
+    lastContactedDaysAgo: 2,
+    activatedDaysAgo: null,
+    contacts: [
+      { firstName: 'Priya', lastName: 'Nair', title: 'BD Lead', email: 'priya@deltaforce.example.com', isPrimary: true },
+    ],
+    notes: [
+      { content: 'Intro call scheduled for next Tuesday. They claim deep bench of Snowflake/dbt talent.', type: 'CALL' },
+    ],
+  },
+  {
+    companyName: 'Echo Consulting',
+    vendorCode: 'ECHO-005',
+    website: 'https://echo-consulting.example.com',
+    type: 'CONSULTING_FIRM',
+    status: 'INACTIVE',
+    priority: 'LOW',
+    city: 'Berlin',
+    country: 'Germany',
+    domains: ['Legacy Systems', 'Java'],
+    description: 'Past partner — dormant since their book of business shifted away from our verticals.',
+    commissionRate: 18.0,
+    paymentTermsDays: 60,
+    lastActivityDaysAgo: 180,
+    lastContactedDaysAgo: 210,
+    activatedDaysAgo: 700,
+    contacts: [
+      { firstName: 'Stefan', lastName: 'Becker', title: 'Partner', email: 'stefan@echo-consulting.example.com', isPrimary: true },
+    ],
+    notes: [
+      { content: 'Marked inactive after 6 months of no submissions. Keep relationship warm for reactivation.', type: 'NOTE' },
+    ],
+  },
+  {
+    companyName: 'Forge Outsourcing',
+    vendorCode: 'FORG-006',
+    website: 'https://forge-out.example.com',
+    type: 'STAFFING_AGENCY',
+    status: 'BLOCKED',
+    priority: 'LOW',
+    city: 'Mumbai',
+    country: 'India',
+    domains: ['Offshore Development'],
+    description: 'Blocked — repeated compliance issues with candidate background checks.',
+    lastActivityDaysAgo: 90,
+    lastContactedDaysAgo: 95,
+    activatedDaysAgo: 400,
+    contacts: [],
+    notes: [
+      { content: 'BLOCKED 2025-11 after two background-check fabrications. Do not re-engage without legal review.', type: 'STATUS_CHANGE' },
+    ],
+  },
+];
+
+async function seedVendors(
+  orgId: string,
+  adminUserId: string,
+): Promise<Map<string, string>> {
+  console.log('\n🏭  Demo vendors\n');
+  const vendorIds = new Map<string, string>();
+
+  for (const v of DEMO_VENDORS) {
+    const existing = await prisma.vendor.findFirst({
+      where: { organizationId: orgId, companyName: v.companyName, deletedAt: null },
+    });
+    if (existing) {
+      log('↻', v.companyName, 'already exists');
+      vendorIds.set(v.companyName, existing.id);
+      continue;
+    }
+
+    const primaryContact = v.contacts.find((c) => c.isPrimary);
+
+    const vendor = await prisma.vendor.create({
+      data: {
+        organizationId: orgId,
+        companyName: v.companyName,
+        vendorCode: v.vendorCode,
+        website: v.website,
+        type: v.type,
+        status: v.status,
+        priority: v.priority,
+        city: v.city,
+        country: v.country,
+        domains: v.domains,
+        description: v.description,
+        commissionRate: v.commissionRate,
+        paymentTermsDays: v.paymentTermsDays,
+        relationshipOwnerId: adminUserId,
+        primaryContactName:  primaryContact ? `${primaryContact.firstName} ${primaryContact.lastName}` : null,
+        primaryContactEmail: primaryContact?.email ?? null,
+        primaryContactPhone: primaryContact?.phone ?? null,
+        activatedAt:     v.activatedDaysAgo     != null ? daysAgo(v.activatedDaysAgo)     : null,
+        lastActivityAt:  v.lastActivityDaysAgo  != null ? daysAgo(v.lastActivityDaysAgo)  : null,
+        lastContactedAt: v.lastContactedDaysAgo != null ? daysAgo(v.lastContactedDaysAgo) : null,
+        createdBy: adminUserId,
+        updatedBy: adminUserId,
+      },
+    });
+    vendorIds.set(v.companyName, vendor.id);
+
+    for (const c of v.contacts) {
+      await prisma.vendorContact.create({
+        data: {
+          vendorId: vendor.id,
+          organizationId: orgId,
+          firstName: c.firstName,
+          lastName:  c.lastName,
+          title:     c.title,
+          email:     c.email,
+          phone:     c.phone ?? null,
+          isPrimary: c.isPrimary,
+          createdBy: adminUserId,
+        },
+      });
+    }
+    for (const n of v.notes) {
+      await prisma.vendorNote.create({
+        data: {
+          vendorId: vendor.id,
+          organizationId: orgId,
+          content: n.content,
+          noteType: n.type,
+          authorId: adminUserId,
+          authorEmail: 'admin@acme-demo.com',
+          authorName: 'Alice Admin',
+        },
+      });
+    }
+
+    log('+', v.companyName, `${v.status} / ${v.priority} / ${v.contacts.length} contacts`);
+  }
+
+  return vendorIds;
+}
+
+// ── 7. Demo jobs ──────────────────────────────────────────────────────────────
+
+interface JobSeed {
+  reqId: string;
+  title: string;
+  department: string;
+  employmentType: EmploymentType;
+  workMode: WorkMode;
+  status: JobStatus;
+  hiringPriority: JobPriority;
+  experienceMin: number;
+  experienceMax: number;
+  salaryMin: number;
+  salaryMax: number;
+  city: string;
+  country: string;
+  description: string;
+  openPositions: number;
+  openedDaysAgo: number | null;
+}
+
+const DEMO_JOBS: JobSeed[] = [
+  {
+    reqId: 'REQ-0001',
+    title: 'Senior Full-Stack Engineer',
+    department: 'Engineering',
+    employmentType: 'FULL_TIME',
+    workMode: 'REMOTE',
+    status: 'OPEN',
+    hiringPriority: 'HIGH',
+    experienceMin: 5,
+    experienceMax: 9,
+    salaryMin: 160000,
+    salaryMax: 210000,
+    city: 'San Francisco',
+    country: 'United States',
+    description: 'Build and own end-to-end features across our React/Node stack. Tight feedback loop with product + design.',
+    openPositions: 2,
+    openedDaysAgo: 35,
+  },
+  {
+    reqId: 'REQ-0002',
+    title: 'Staff Backend Engineer',
+    department: 'Engineering',
+    employmentType: 'FULL_TIME',
+    workMode: 'HYBRID',
+    status: 'OPEN',
+    hiringPriority: 'URGENT',
+    experienceMin: 8,
+    experienceMax: 14,
+    salaryMin: 220000,
+    salaryMax: 280000,
+    city: 'New York',
+    country: 'United States',
+    description: 'Lead platform architecture for our payments domain. Heavy Go/Postgres background required.',
+    openPositions: 1,
+    openedDaysAgo: 22,
+  },
+  {
+    reqId: 'REQ-0003',
+    title: 'Senior Data Engineer',
+    department: 'Data',
+    employmentType: 'FULL_TIME',
+    workMode: 'REMOTE',
+    status: 'OPEN',
+    hiringPriority: 'NORMAL',
+    experienceMin: 4,
+    experienceMax: 8,
+    salaryMin: 130000,
+    salaryMax: 170000,
+    city: 'Austin',
+    country: 'United States',
+    description: 'Own our analytics warehouse. Snowflake, dbt, and Airflow stack. Partner with product analytics.',
+    openPositions: 1,
+    openedDaysAgo: 14,
+  },
+  {
+    reqId: 'REQ-0004',
+    title: 'Engineering Manager — Platform',
+    department: 'Engineering',
+    employmentType: 'FULL_TIME',
+    workMode: 'HYBRID',
+    status: 'FILLED',
+    hiringPriority: 'HIGH',
+    experienceMin: 8,
+    experienceMax: 15,
+    salaryMin: 240000,
+    salaryMax: 310000,
+    city: 'New York',
+    country: 'United States',
+    description: 'Engineering manager for our platform org — coverage across infra, observability, and developer tooling.',
+    openPositions: 1,
+    openedDaysAgo: 90,
+  },
+];
+
+async function seedJobs(orgId: string, adminUserId: string): Promise<Map<string, string>> {
+  console.log('\n💼  Demo jobs\n');
+  const jobIds = new Map<string, string>();
+
+  for (const j of DEMO_JOBS) {
+    const existing = await prisma.jobDescription.findFirst({
+      where: { organizationId: orgId, reqId: j.reqId },
+    });
+    if (existing) {
+      log('↻', j.reqId, 'already exists');
+      jobIds.set(j.reqId, existing.id);
+      continue;
+    }
+    const opened = j.openedDaysAgo != null ? daysAgo(j.openedDaysAgo) : null;
+    const job = await prisma.jobDescription.create({
+      data: {
+        organizationId: orgId,
+        reqId: j.reqId,
+        title: j.title,
+        department: j.department,
+        employmentType: j.employmentType,
+        workMode: j.workMode,
+        status: j.status,
+        hiringPriority: j.hiringPriority,
+        experienceMin: j.experienceMin,
+        experienceMax: j.experienceMax,
+        salaryMin: j.salaryMin,
+        salaryMax: j.salaryMax,
+        salaryCurrency: 'USD',
+        salaryType: 'ANNUAL',
+        city: j.city,
+        country: j.country,
+        description: j.description,
+        openPositions: j.openPositions,
+        filledPositions: j.status === 'FILLED' ? j.openPositions : 0,
+        openedAt: opened,
+        closedAt: j.status === 'FILLED' && opened ? new Date(opened.getTime() + 30 * DAY) : null,
+        hiringManagerId: adminUserId,
+        hiringManagerName: 'Alice Admin',
+        createdBy: adminUserId,
+        updatedBy: adminUserId,
+      },
+    });
+    jobIds.set(j.reqId, job.id);
+    log('+', j.reqId, `${j.title} / ${j.status}`);
+  }
+
+  return jobIds;
+}
+
+// ── 8. Demo submissions, interviews, reminders ────────────────────────────────
+//
+// The submission mix is the centrepiece — it drives every workspace signal:
+// active counts, stalled counts, pipeline funnel, top recruiters, health badges.
+//
+// We craft submissions that exercise:
+//   • Active states (SUBMITTED → INTERVIEW → OFFERED)
+//   • Stalled states (recent updatedAt > 7 days while still active)
+//   • Closed states (PLACED, REJECTED, WITHDRAWN)
+//   • Direct-source (no vendor) and vendor-routed
+//   • Multiple recruiters as owners (admin + recruiter)
+
+interface SubmissionSeed {
+  candidateEmail: string;
+  jobReqId: string;
+  vendorName: string | null;
+  ownerEmail: string;
+  status: SubmissionStatus;
+  createdDaysAgo: number;
+  updatedDaysAgo: number; // drives stalled detection
+  billRate?: number;
+  payRate?: number;
+  offerSalary?: number;
+  coverNote?: string;
+}
+
+const DEMO_SUBMISSIONS: SubmissionSeed[] = [
+  // Apex Talent — busy, healthy pipeline
+  { candidateEmail: 'sarah.chen@email.com',       jobReqId: 'REQ-0001', vendorName: 'Apex Talent Group',     ownerEmail: 'recruiter@acme-demo.com', status: 'INTERVIEW',    createdDaysAgo: 12, updatedDaysAgo: 1, billRate: 180, payRate: 145 },
+  { candidateEmail: 'nina.vasquez@email.com',     jobReqId: 'REQ-0002', vendorName: 'Apex Talent Group',     ownerEmail: 'recruiter@acme-demo.com', status: 'OFFERED',      createdDaysAgo: 25, updatedDaysAgo: 2, offerSalary: 235000 },
+  { candidateEmail: 'ryan.park@email.com',        jobReqId: 'REQ-0002', vendorName: 'Apex Talent Group',     ownerEmail: 'recruiter@acme-demo.com', status: 'SHORTLISTED',  createdDaysAgo: 8,  updatedDaysAgo: 3 },
+  { candidateEmail: 'fatima.al-rashid@email.com', jobReqId: 'REQ-0001', vendorName: 'Apex Talent Group',     ownerEmail: 'admin@acme-demo.com',     status: 'UNDER_REVIEW', createdDaysAgo: 4,  updatedDaysAgo: 2 },
+
+  // Bridgewater — active but with two stalled rows
+  { candidateEmail: 'marcus.okafor@email.com',    jobReqId: 'REQ-0002', vendorName: 'Bridgewater Partners',  ownerEmail: 'recruiter@acme-demo.com', status: 'SUBMITTED',    createdDaysAgo: 20, updatedDaysAgo: 15 }, // STALLED
+  { candidateEmail: 'james.oconnor@email.com',    jobReqId: 'REQ-0001', vendorName: 'Bridgewater Partners',  ownerEmail: 'admin@acme-demo.com',     status: 'ON_HOLD',      createdDaysAgo: 30, updatedDaysAgo: 11 }, // STALLED
+
+  // CodeCraft — small light pipeline
+  { candidateEmail: 'david.kowalski@email.com',   jobReqId: 'REQ-0001', vendorName: 'CodeCraft Recruiting',  ownerEmail: 'recruiter@acme-demo.com', status: 'SUBMITTED',    createdDaysAgo: 6,  updatedDaysAgo: 4 },
+
+  // Direct-sourced (no vendor)
+  { candidateEmail: 'priya.sharma@email.com',     jobReqId: 'REQ-0003', vendorName: null,                    ownerEmail: 'recruiter@acme-demo.com', status: 'INTERVIEW',    createdDaysAgo: 10, updatedDaysAgo: 1 },
+  { candidateEmail: 'aisha.diallo@email.com',     jobReqId: 'REQ-0003', vendorName: null,                    ownerEmail: 'admin@acme-demo.com',     status: 'UNDER_REVIEW', createdDaysAgo: 3,  updatedDaysAgo: 1 },
+
+  // Closed history — feeds top-recruiters + placed history
+  { candidateEmail: 'alex.chen@email.com',        jobReqId: 'REQ-0004', vendorName: 'Apex Talent Group',     ownerEmail: 'recruiter@acme-demo.com', status: 'PLACED',       createdDaysAgo: 80, updatedDaysAgo: 60, offerSalary: 310000 },
+  { candidateEmail: 'emma.lindqvist@email.com',   jobReqId: 'REQ-0001', vendorName: 'Apex Talent Group',     ownerEmail: 'recruiter@acme-demo.com', status: 'REJECTED',     createdDaysAgo: 50, updatedDaysAgo: 40 },
+  { candidateEmail: 'tom.harris@email.com',       jobReqId: 'REQ-0004', vendorName: 'Bridgewater Partners',  ownerEmail: 'admin@acme-demo.com',     status: 'WITHDRAWN',    createdDaysAgo: 55, updatedDaysAgo: 45 },
+];
+
+function stageTimestamps(status: SubmissionStatus, updated: Date) {
+  // Set stage timestamps according to the status reached. Approximations are
+  // fine — they exist so the timeline UI has something to render.
+  const t = updated.getTime();
+  const ts = {
+    submittedAt:   null as Date | null,
+    reviewedAt:    null as Date | null,
+    shortlistedAt: null as Date | null,
+    interviewAt:   null as Date | null,
+    offeredAt:     null as Date | null,
+    placedAt:      null as Date | null,
+    rejectedAt:    null as Date | null,
+    withdrawnAt:   null as Date | null,
+    closedAt:      null as Date | null,
+  };
+  const reaches = (s: SubmissionStatus) => {
+    const order: SubmissionStatus[] = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'PLACED'];
+    const idx = order.indexOf(status);
+    const want = order.indexOf(s);
+    return idx >= 0 && want >= 0 && idx >= want;
+  };
+  if (reaches('SUBMITTED'))    ts.submittedAt   = new Date(t - 6 * DAY);
+  if (reaches('UNDER_REVIEW')) ts.reviewedAt    = new Date(t - 5 * DAY);
+  if (reaches('SHORTLISTED'))  ts.shortlistedAt = new Date(t - 4 * DAY);
+  if (reaches('INTERVIEW'))    ts.interviewAt   = new Date(t - 3 * DAY);
+  if (reaches('OFFERED'))      ts.offeredAt     = new Date(t - 1 * DAY);
+  if (status === 'PLACED')     ts.placedAt      = updated;
+  if (status === 'REJECTED')   ts.rejectedAt    = updated;
+  if (status === 'WITHDRAWN')  ts.withdrawnAt   = updated;
+  if (status === 'PLACED' || status === 'REJECTED' || status === 'WITHDRAWN' || status === 'CLOSED') {
+    ts.closedAt = updated;
+  }
+  return ts;
+}
+
+async function seedSubmissionsAndPipeline(
+  orgId: string,
+  userIds: Map<string, string>,
+  vendorIds: Map<string, string>,
+  jobIds: Map<string, string>,
+): Promise<void> {
+  console.log('\n📝  Demo submissions, interviews, reminders\n');
+
+  // Build a candidate-email → id map by querying once.
+  const candidates = await prisma.candidate.findMany({
+    where: { organizationId: orgId },
+    select: { id: true, email: true },
+  });
+  const candidateByEmail = new Map(candidates.map((c) => [c.email, c.id]));
+
+  let created = 0;
+  let skipped = 0;
+  const submissionIds: string[] = [];
+
+  for (const s of DEMO_SUBMISSIONS) {
+    const candidateId = candidateByEmail.get(s.candidateEmail);
+    const jobId       = jobIds.get(s.jobReqId);
+    const ownerId     = userIds.get(s.ownerEmail);
+    if (!candidateId || !jobId || !ownerId) {
+      log('⚠', s.candidateEmail, `missing candidate/job/owner — skipping`);
+      skipped++;
+      continue;
+    }
+    const vendorId = s.vendorName ? vendorIds.get(s.vendorName) : null;
+
+    // Idempotency: only one submission per (candidate, job, org).
+    const existing = await prisma.submission.findFirst({
+      where: { organizationId: orgId, candidateId, jobId, deletedAt: null },
+      select: { id: true },
+    });
+    if (existing) {
+      submissionIds.push(existing.id);
+      skipped++;
+      continue;
+    }
+
+    const createdAt = daysAgo(s.createdDaysAgo);
+    const updatedAt = daysAgo(s.updatedDaysAgo);
+    const ts = stageTimestamps(s.status, updatedAt);
+
+    const sub = await prisma.submission.create({
+      data: {
+        organizationId: orgId,
+        candidateId,
+        jobId,
+        vendorId: vendorId ?? null,
+        ownerId,
+        createdById: ownerId,
+        status: s.status,
+        billRate: s.billRate,
+        payRate: s.payRate,
+        offerSalary: s.offerSalary,
+        currency: 'USD',
+        coverNote: s.coverNote,
+        createdAt,
+        updatedAt,
+        ...ts,
+      },
+    });
+    submissionIds.push(sub.id);
+
+    // Append the initial status-history entry so the timeline isn't empty.
+    await prisma.submissionStatusHistory.create({
+      data: {
+        submissionId: sub.id,
+        fromStatus: null,
+        toStatus: s.status,
+        changedById: ownerId,
+        createdAt,
+      },
+    });
+    created++;
+  }
+
+  log('+', `${created} submissions`, `${skipped} already existed`);
+
+  // ── Interviews ────────────────────────────────────────────────────────────
+  // Pull the active submissions and attach a few interviews for the workspace
+  // upcoming/feedback widgets.
+
+  const active = await prisma.submission.findMany({
+    where: {
+      organizationId: orgId,
+      status: { in: ['INTERVIEW', 'OFFERED', 'SHORTLISTED'] },
+      deletedAt: null,
+    },
+    select: { id: true, candidateId: true, jobId: true, ownerId: true, status: true, vendorId: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  let interviewsCreated = 0;
+  const interviewIds: string[] = [];
+
+  for (const [i, sub] of active.slice(0, 4).entries()) {
+    const existing = await prisma.interview.findFirst({
+      where: { submissionId: sub.id, deletedAt: null },
+      select: { id: true },
+    });
+    if (existing) {
+      interviewIds.push(existing.id);
+      continue;
+    }
+
+    // Vary upcoming + completed:
+    //   i=0 → CONFIRMED, upcoming tomorrow
+    //   i=1 → SCHEDULED, upcoming in 3 days
+    //   i=2 → FEEDBACK_PENDING, completed 2 days ago
+    //   i=3 → COMPLETED, completed 5 days ago
+    const variants: Array<{ status: InterviewStatus; type: InterviewType; round: number; label: string; scheduledAt: Date; completedAt: Date | null }> = [
+      { status: 'CONFIRMED',        type: 'VIDEO',     round: 1, label: 'Recruiter screen', scheduledAt: hoursFromNow(28), completedAt: null },
+      { status: 'SCHEDULED',        type: 'TECHNICAL', round: 2, label: 'Technical',        scheduledAt: daysFromNow(3),   completedAt: null },
+      { status: 'FEEDBACK_PENDING', type: 'PANEL',     round: 2, label: 'Hiring panel',     scheduledAt: daysAgo(2),       completedAt: daysAgo(2) },
+      { status: 'COMPLETED',        type: 'PHONE',     round: 1, label: 'Initial screen',   scheduledAt: daysAgo(5),       completedAt: daysAgo(5) },
+    ];
+    const variant = variants[i]!;
+
+    const iv = await prisma.interview.create({
+      data: {
+        organizationId: orgId,
+        submissionId: sub.id,
+        candidateId: sub.candidateId,
+        jobId: sub.jobId,
+        ownerId: sub.ownerId,
+        createdById: sub.ownerId,
+        round: variant.round,
+        roundLabel: variant.label,
+        type: variant.type,
+        status: variant.status,
+        scheduledAt: variant.scheduledAt,
+        durationMinutes: 60,
+        timezone: 'America/Los_Angeles',
+        location: variant.type === 'ONSITE' ? '350 Mission St, San Francisco' : 'https://meet.example.com/iv-' + sub.id.slice(0, 8),
+        confirmedAt: variant.status === 'CONFIRMED' ? daysAgo(1) : null,
+        completedAt: variant.completedAt,
+        interviewerName: 'Alice Admin',
+        interviewerEmail: 'admin@acme-demo.com',
+        interviewerId: userIds.get('admin@acme-demo.com') ?? null,
+      },
+    });
+    interviewIds.push(iv.id);
+    interviewsCreated++;
+  }
+
+  log('+', `${interviewsCreated} interviews`, 'mix of upcoming + feedback-pending');
+
+  // ── Reminders ─────────────────────────────────────────────────────────────
+  // The workspace pulls vendor-linked reminders transitively via the vendor's
+  // submissions/interviews. Sprinkle a few so the workspace shows real work.
+
+  const adminId = userIds.get('admin@acme-demo.com')!;
+  const recruiterId = userIds.get('recruiter@acme-demo.com')!;
+
+  const reminderSeeds: Array<{
+    type: ReminderType;
+    title: string;
+    description?: string;
+    priority: ReminderPriority;
+    status: ReminderStatus;
+    dueAt: Date;
+    assigneeId: string;
+    submissionId?: string;
+    interviewId?: string;
+  }> = [];
+
+  // Upcoming interview reminder (CONFIRMED interview tomorrow)
+  if (interviewIds[0]) {
+    reminderSeeds.push({
+      type: 'UPCOMING_INTERVIEW',
+      title: 'Interview tomorrow — confirm calendar invites',
+      description: 'Make sure both interviewer and candidate received the invite.',
+      priority: 'HIGH',
+      status: 'PENDING',
+      dueAt: hoursFromNow(20),
+      assigneeId: recruiterId,
+      interviewId: interviewIds[0],
+    });
+  }
+  // Feedback pending reminder (overdue)
+  if (interviewIds[2]) {
+    reminderSeeds.push({
+      type: 'INTERVIEW_FEEDBACK_PENDING',
+      title: 'Collect feedback from yesterday\'s panel',
+      description: 'Three interviewers — chase Olivia and Marcus.',
+      priority: 'CRITICAL',
+      status: 'PENDING',
+      dueAt: daysAgo(1), // overdue
+      assigneeId: recruiterId,
+      interviewId: interviewIds[2],
+    });
+  }
+  // Stalled workflow on Bridgewater submission
+  const stalledSub = await prisma.submission.findFirst({
+    where: { organizationId: orgId, status: 'SUBMITTED', updatedAt: { lt: daysAgo(7) }, deletedAt: null },
+    select: { id: true },
+  });
+  if (stalledSub) {
+    reminderSeeds.push({
+      type: 'STALLED_WORKFLOW',
+      title: 'Submission stalled 15+ days — chase client',
+      description: 'No response from the client. Try Olivia at Bridgewater.',
+      priority: 'HIGH',
+      status: 'PENDING',
+      dueAt: daysFromNow(1),
+      assigneeId: recruiterId,
+      submissionId: stalledSub.id,
+    });
+  }
+  // Generic recruiter action
+  reminderSeeds.push({
+    type: 'RECRUITER_ACTION_REQUIRED',
+    title: 'Apex QBR prep deck',
+    description: 'Quarterly business review with Apex next week — pull placement numbers.',
+    priority: 'MEDIUM',
+    status: 'PENDING',
+    dueAt: daysFromNow(4),
+    assigneeId: adminId,
+  });
+
+  let remindersCreated = 0;
+  for (const r of reminderSeeds) {
+    // Idempotency by (org, type, title, assignee)
+    const existing = await prisma.reminder.findFirst({
+      where: { organizationId: orgId, type: r.type, title: r.title, assigneeId: r.assigneeId, deletedAt: null },
+      select: { id: true },
+    });
+    if (existing) continue;
+    await prisma.reminder.create({
+      data: {
+        organizationId: orgId,
+        type: r.type,
+        title: r.title,
+        description: r.description,
+        priority: r.priority,
+        status: r.status,
+        dueAt: r.dueAt,
+        assigneeId: r.assigneeId,
+        createdById: adminId,
+        submissionId: r.submissionId ?? null,
+        interviewId: r.interviewId ?? null,
+        isAutoGenerated: r.type !== 'RECRUITER_ACTION_REQUIRED',
+      },
+    });
+    remindersCreated++;
+  }
+  log('+', `${remindersCreated} reminders`, 'upcoming, overdue, stalled');
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function seedOrgSubscription(orgId: string, planId: string): Promise<void> {
@@ -865,6 +1625,9 @@ async function main(): Promise<void> {
   if (!adminId) throw new Error('Admin user not found after seed');
 
   await seedCandidates(orgId, skillIds, adminId);
+  const vendorIds = await seedVendors(orgId, adminId);
+  const jobIds    = await seedJobs(orgId, adminId);
+  await seedSubmissionsAndPipeline(orgId, userIds, vendorIds, jobIds);
 
   console.log('\n✅  Seed complete.\n');
   console.log('──────────────────────────────────────────────────────');
