@@ -44,6 +44,9 @@ export interface VendorListItem {
   priority: VendorPriority;
   location: string | null;
   domains: string[];
+  /** Operational counts attached by the list service (V3+). */
+  activeSubmissionCount?: number;
+  stalledSubmissionCount?: number;
   primaryContactName: string | null;
   primaryContactEmail: string | null;
   relationshipOwnerId: string | null;

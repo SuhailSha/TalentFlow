@@ -57,6 +57,12 @@ export interface VendorListItem {
   priority: VendorPriority;
   location: string | null;
   domains: string[];
+  /**
+   * Operational signals enriched by the service layer when listing.
+   * Omitted on raw single-vendor reads (use the workspace endpoint there).
+   */
+  activeSubmissionCount?: number;
+  stalledSubmissionCount?: number;
   primaryContactName: string | null;
   primaryContactEmail: string | null;
   relationshipOwnerId: string | null;

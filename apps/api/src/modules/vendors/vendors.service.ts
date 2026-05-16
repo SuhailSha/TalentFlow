@@ -11,6 +11,7 @@ import type { RequestUser } from '../../auth/types/request-user.interface';
 import { AppContextService } from '../../common/context/app-context.service';
 import { EventNames } from '../../common/events/event-names.constant';
 import { FsmService, VENDOR_FSM } from '../../common/workflow';
+import { PrismaService } from '../../database/prisma.service';
 import { VendorsRepository } from './vendors.repository';
 import type { CreateVendorContactDto } from './dto/create-vendor-contact.dto';
 import type { CreateVendorDto } from './dto/create-vendor.dto';
@@ -46,6 +47,7 @@ export class VendorsService {
     private readonly events: EventEmitter2,
     private readonly ctx: AppContextService,
     private readonly fsm: FsmService,
+    private readonly db: PrismaService,
   ) {}
 
   private actorContext(actor: RequestUser) {
@@ -64,7 +66,47 @@ export class VendorsService {
     dto: ListVendorsDto,
   ): Promise<{ vendors: VendorListItem[]; total: number }> {
     const { vendors, total } = await this.repo.findMany(organizationId, dto);
-    return { vendors: vendors.map(toVendorListItem), total };
+    if (vendors.length === 0) return { vendors: [], total };
+
+    // Enrich with operational counts in two parallel grouped queries —
+    // one round-trip per signal. Cheap on a page-sized vendor batch.
+    const ids = vendors.map((v) => v.id);
+    const stalledCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const ACTIVE = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'ON_HOLD'] as const;
+
+    const [activeCounts, stalledCounts] = await Promise.all([
+      this.db.submission.groupBy({
+        by: ['vendorId'],
+        where: {
+          organizationId,
+          deletedAt: null,
+          vendorId: { in: ids },
+          status: { in: [...ACTIVE] },
+        },
+        _count: { _all: true },
+      }),
+      this.db.submission.groupBy({
+        by: ['vendorId'],
+        where: {
+          organizationId,
+          deletedAt: null,
+          vendorId: { in: ids },
+          status: { in: [...ACTIVE] },
+          updatedAt: { lt: stalledCutoff },
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const activeByVendor  = new Map(activeCounts .map((g) => [g.vendorId, g._count._all]));
+    const stalledByVendor = new Map(stalledCounts.map((g) => [g.vendorId, g._count._all]));
+
+    const items = vendors.map((v) => ({
+      ...toVendorListItem(v),
+      activeSubmissionCount:  activeByVendor.get(v.id)  ?? 0,
+      stalledSubmissionCount: stalledByVendor.get(v.id) ?? 0,
+    }));
+    return { vendors: items, total };
   }
 
   // ── Single ────────────────────────────────────────────────────────────────

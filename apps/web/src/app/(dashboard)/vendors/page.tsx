@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Building2, Plus, Search } from 'lucide-react';
+import { AlertCircle, Building2, Plus, Search, Zap } from 'lucide-react';
+import { differenceInCalendarDays } from 'date-fns';
 
 import { PageHeader } from '@/components/common/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -47,9 +48,35 @@ const STATUS_FILTERS: { label: string; value: VendorStatus }[] = [
   { label: 'Blocked',  value: 'BLOCKED'  },
 ];
 
+// ── Health signals ────────────────────────────────────────────────────────────
+
+const STALLED_THRESHOLD_DAYS = 30;
+
+/**
+ * Derive at-a-glance signals from the list payload. Mirrors the server-side
+ * rules in VendorWorkspaceService.health so the list and the workspace agree.
+ */
+function getVendorSignals(v: VendorListItem) {
+  const active   = v.activeSubmissionCount  ?? 0;
+  const stalled  = v.stalledSubmissionCount ?? 0;
+  const lastActivity = v.lastActivityAt ? new Date(v.lastActivityAt) : null;
+  const daysSince = lastActivity
+    ? differenceInCalendarDays(new Date(), lastActivity)
+    : null;
+
+  const isInactiveStatus = v.status === 'INACTIVE' || v.status === 'BLOCKED' || v.status === 'ARCHIVED';
+  const isStalled =
+    v.status === 'ACTIVE' &&
+    active === 0 &&
+    (daysSince === null || daysSince >= STALLED_THRESHOLD_DAYS);
+
+  return { active, stalled, daysSince, isInactiveStatus, isStalled };
+}
+
 // ── Vendor row ─────────────────────────────────────────────────────────────────
 
 function VendorRow({ vendor }: { vendor: VendorListItem }) {
+  const signals = getVendorSignals(vendor);
   return (
     <Link
       href={`/vendors/${vendor.id}`}
@@ -68,6 +95,23 @@ function VendorRow({ vendor }: { vendor: VendorListItem }) {
             {vendor.priority !== 'NORMAL' && (
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[vendor.priority]}`}>
                 {vendor.priority}
+              </span>
+            )}
+            {signals.active > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                <Zap className="h-3 w-3" />
+                {signals.active} active
+              </span>
+            )}
+            {signals.stalled > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                <AlertCircle className="h-3 w-3" />
+                {signals.stalled} stalled
+              </span>
+            )}
+            {signals.isStalled && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
+                Stalled relationship
               </span>
             )}
           </div>
