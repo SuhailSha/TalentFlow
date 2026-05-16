@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { VendorWorkspaceService } from './vendor-workspace.service';
 import { VendorsController } from './vendors.controller';
 import { VendorsRepository } from './vendors.repository';
 import { VendorsService } from './vendors.service';
@@ -9,7 +10,7 @@ import { VendorsService } from './vendors.service';
 
 @Module({
   controllers: [VendorsController],
-  providers:   [VendorsService, VendorsRepository],
+  providers:   [VendorsService, VendorsRepository, VendorWorkspaceService],
   exports:     [VendorsService],
 })
 export class VendorsModule {}

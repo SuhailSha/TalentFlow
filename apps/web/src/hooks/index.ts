@@ -70,3 +70,4 @@ export {
 export {
   useBulkSnoozeReminders, useBulkCompleteReminders, useBulkDismissReminders,
 } from './use-reminders-bulk';
+export { useVendorWorkspace, vendorWorkspaceKeys } from './use-vendor-workspace';

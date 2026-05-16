@@ -30,10 +30,14 @@ import { TransitionVendorStatusDto } from './dto/transition-vendor-status.dto';
 import { UpdateVendorContactDto } from './dto/update-vendor-contact.dto';
 import { UpdateVendorDto } from './dto/update-vendor.dto';
 import type { VendorDetail, VendorListItem } from './types/vendor.types';
+import { VendorWorkspaceService } from './vendor-workspace.service';
 
 @Controller('vendors')
 export class VendorsController {
-  constructor(private readonly vendorsService: VendorsService) {}
+  constructor(
+    private readonly vendorsService: VendorsService,
+    private readonly workspaceService: VendorWorkspaceService,
+  ) {}
 
   // ── GET /vendors ───────────────────────────────────────────────────────────
 
@@ -73,6 +77,21 @@ export class VendorsController {
   ): Promise<ApiResponse<VendorDetail>> {
     const vendor = await this.vendorsService.findById(id, user.organizationId);
     return ok(vendor, req.requestId);
+  }
+
+  // ── GET /vendors/:id/workspace ─────────────────────────────────────────────
+  // Single aggregation endpoint backing the operational vendor workspace.
+  // See VendorWorkspaceService for the response shape + health-signal logic.
+
+  @Get(':id/workspace')
+  @RequirePermissions(Permission.VENDORS_READ)
+  async getWorkspace(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: RequestUser,
+    @Req() req: Request,
+  ) {
+    const payload = await this.workspaceService.getWorkspace(id, user.organizationId);
+    return ok(payload, req.requestId);
   }
 
   // ── PATCH /vendors/:id ─────────────────────────────────────────────────────

@@ -8,6 +8,11 @@ export type {
 } from './queue';
 export type { BulkItemResult, BulkOperationResult } from './bulk';
 export type {
+  VendorMetrics, VendorPipelineSummary, VendorActiveSubmission,
+  VendorUpcomingInterview, VendorOpenReminder, VendorRecruiter,
+  VendorHealthSignals, VendorWorkspace,
+} from './vendor-workspace';
+export type {
   CommandCenter, CommandCenterMetrics,
   UrgentReminderItem, PendingFeedbackItem, UpcomingInterviewItem,
   StalledSubmissionItem, RecruiterWorkloadItem,
