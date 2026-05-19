@@ -48,10 +48,12 @@ export function useTableSelection<T>(items: T[], options: Options<T> = {}): Tabl
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
-  // Reset selection when the underlying page changes. Identity-based check
-  // is fine: TanStack Query returns a new array on refetch / page change.
+  // Reset selection when the underlying page changes. The functional updater
+  // returns `prev` unchanged when nothing is selected so we don't loop when
+  // callers pass `data?.data ?? []` and the fallback `[]` is a fresh reference
+  // each render.
   useEffect(() => {
-    setSelectedIds(new Set());
+    setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
   }, [items]);
 
   // Esc to clear globally — recruiters can select, peek at the toolbar,
