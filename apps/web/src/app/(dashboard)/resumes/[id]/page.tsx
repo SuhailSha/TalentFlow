@@ -29,6 +29,7 @@ import { getApiErrorMessage } from '@/lib/api';
 import { RESUME_SOURCE_LABELS, RESUME_STATUS_LABELS } from '@/types';
 import type { ActivityEntry } from '@/types/activity';
 import type { ResumeAccessLogView, ResumeDetail, ResumeStatus, ResumeVersionView } from '@/types';
+import { ParsingCard } from './parsing-card';
 
 const STATUS_STYLES: Record<ResumeStatus, string> = {
   DRAFT:        'bg-slate-100 text-slate-700',
@@ -302,6 +303,9 @@ export default function ResumeDetailPage({ params }: { params: Promise<{ id: str
           </div>
         </CardContent>
       </Card>
+
+      {/* Parsing — R2 */}
+      {v && <ParsingCard resumeId={resume.id} versionId={v.id} />}
 
       {/* Activity timeline */}
       <Card>

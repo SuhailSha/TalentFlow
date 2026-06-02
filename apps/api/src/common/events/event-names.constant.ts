@@ -30,11 +30,12 @@ export const EventNames = {
   CANDIDATE_SKILL_ADDED:    'candidate.skill_added',
   CANDIDATE_SKILL_REMOVED:  'candidate.skill_removed',
 
-  // ── Resume domain (infrastructure ready, feature in Phase 2) ────────────────
+  // ── Resume domain ───────────────────────────────────────────────────────────
   RESUME_UPLOAD_REQUESTED: 'resume.upload_requested',
   RESUME_PARSE_REQUESTED:  'resume.parse_requested',
   RESUME_PARSE_COMPLETED:  'resume.parse_completed',
   RESUME_PARSE_FAILED:     'resume.parse_failed',
+  RESUME_REVIEW_REQUIRED:  'resume.review_required',
   RESUME_REVIEW_COMPLETED: 'resume.review_completed',
 
   // ── Job Description domain (Phase 1B Step 4C.1) ────────────────────────────

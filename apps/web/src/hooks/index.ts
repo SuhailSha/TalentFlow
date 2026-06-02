@@ -79,3 +79,6 @@ export {
 export {
   useExtractionConfig, useUpdateExtractionConfig, extractionConfigKeys,
 } from './use-extraction-config';
+export {
+  useParsingJobs, useReparseResume, useCancelParsingJob, parsingKeys,
+} from './use-parsing';

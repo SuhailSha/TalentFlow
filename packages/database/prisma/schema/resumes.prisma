@@ -69,6 +69,17 @@ enum ResumeParserProvider {
   @@map("resume_parser_provider")
 }
 
+enum ParsingJobStatus {
+  QUEUED        // job created, awaiting worker
+  RUNNING       // worker picked it up
+  SUCCEEDED     // extraction stored, review required
+  FAILED        // unrecoverable error after retries / fallback exhausted
+  CANCELLED     // operator cancelled before completion
+  SUPERSEDED    // newer version uploaded; this attempt is moot
+
+  @@map("parsing_job_status")
+}
+
 // ─── ResumeIntakeBatch ────────────────────────────────────────────────────────
 // Optional grouping for bulk uploads. A solo resume upload from a candidate
 // page doesn't use this — only the bulk-intake flow does. Vendor-blast usage:
@@ -172,6 +183,8 @@ model ResumeVersion {
   resume          Resume   @relation("ResumeVersions", fields: [resumeId], references: [id], onDelete: Cascade)
   currentOf       Resume?  @relation("CurrentVersion")
   accessLogs      ResumeAccessLog[]
+  parsingJobs     ParsingJob[]      @relation("ParsingJobResumeVersion")
+  extractions     ExtractionResult[] @relation("ExtractionResultResumeVersion")
 
   @@unique([resumeId, versionNumber])
   @@index([organizationId, sha256])
@@ -205,6 +218,82 @@ model ResumeAccessLog {
   @@index([organizationId, resumeVersionId, createdAt])
   @@index([organizationId, actorId, createdAt])
   @@map("resume_access_logs")
+}
+
+// ─── ParsingJob ───────────────────────────────────────────────────────────────
+// Reified parsing attempt. One row per attempt (retries create new rows, not
+// status transitions). The row IS the BullMQ jobId so duplicate enqueues are
+// no-ops. errorCode is structured for ops triage; see ParsingErrorCode in
+// apps/api/src/modules/resumes/parsers/errors.ts.
+
+model ParsingJob {
+  id               String            @id @default(uuid()) @db.Uuid
+  resumeVersionId  String            @map("resume_version_id") @db.Uuid
+  organizationId   String            @map("organization_id") @db.Uuid
+
+  provider         ResumeParserProvider
+  providerVersion  String?           @map("provider_version") @db.VarChar(100)
+  status           ParsingJobStatus  @default(QUEUED)
+  attempt          Int               @default(1)
+
+  startedAt        DateTime?         @map("started_at")  @db.Timestamptz
+  finishedAt       DateTime?         @map("finished_at") @db.Timestamptz
+  durationMs       Int?              @map("duration_ms")
+
+  // Structured error category: 'transient' | 'permanent' | 'rate_limit' |
+  // 'provider_unavailable' | 'budget_exceeded' | 'validation_failed'
+  errorCode        String?           @map("error_code") @db.VarChar(64)
+  errorMessage     String?           @map("error_message")
+
+  // Cost + token accounting for AI-backed providers
+  costUsd          Decimal?          @map("cost_usd")     @db.Decimal(10, 4)
+  inputTokens      Int?              @map("input_tokens")
+  outputTokens     Int?              @map("output_tokens")
+
+  extractionResultId String?         @unique @map("extraction_result_id") @db.Uuid
+
+  // Relations
+  resumeVersion    ResumeVersion     @relation("ParsingJobResumeVersion", fields: [resumeVersionId], references: [id], onDelete: Cascade)
+  extractionResult ExtractionResult? @relation(fields: [extractionResultId], references: [id], onDelete: SetNull)
+
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+
+  @@unique([resumeVersionId, attempt])
+  @@index([organizationId, status, startedAt])
+  @@index([organizationId, provider])
+  @@index([organizationId, createdAt])
+  @@map("parsing_jobs")
+}
+
+// ─── ExtractionResult ─────────────────────────────────────────────────────────
+// Structured parser output. The payload is the CANONICAL post-strip shape
+// (see ExtractionPayload type in apps/api/src/modules/resumes/types/extraction-payload.ts).
+// rawText is retained for future re-extraction with newer models. schemaVersion
+// allows downstream consumers to handle multiple shapes during migration.
+
+model ExtractionResult {
+  id                 String   @id @default(uuid()) @db.Uuid
+  parsingJobId       String   @unique @map("parsing_job_id") @db.Uuid
+  resumeVersionId    String   @map("resume_version_id") @db.Uuid
+  organizationId     String   @map("organization_id") @db.Uuid
+
+  schemaVersion      Int      @default(1) @map("schema_version")
+  payload            Json
+  confidence         Json     @default("{}")
+  overallConfidence  Decimal  @default(0) @map("overall_confidence") @db.Decimal(4, 3)
+  rawText            String?  @map("raw_text") @db.Text
+  parserMetadata     Json     @default("{}") @map("parser_metadata")
+
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  parsingJob         ParsingJob?       @relation
+  resumeVersion      ResumeVersion     @relation("ExtractionResultResumeVersion", fields: [resumeVersionId], references: [id], onDelete: Cascade)
+
+  @@index([resumeVersionId])
+  @@index([organizationId, createdAt])
+  @@map("extraction_results")
 }
 
 // ─── OrganizationExtractionConfig ─────────────────────────────────────────────

@@ -8,6 +8,15 @@ import { PrismaService } from '../../database';
 import { DEFAULT_EXTRACTION_RULES, DEFAULT_EXTRACT_FIELDS } from './extraction-config.defaults';
 import type { UpdateExtractionConfigDto } from './dto/update-extraction-config.dto';
 
+/** Recruiter-defined extra field on OrganizationExtractionConfig.customFields. */
+export interface CustomExtractionField {
+  id:           string;
+  label:        string;
+  group:        string;
+  type:         'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN';
+  description?: string;
+}
+
 export interface ExtractionConfigView {
   id:                       string;
   organizationId:           string;

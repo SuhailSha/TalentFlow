@@ -73,6 +73,9 @@ export type {
   ResumeIntakeBatch,
   ResumeAccessLog,
   OrganizationExtractionConfig,
+  // Resume Parsing pipeline (Phase C — R2)
+  ParsingJob,
+  ExtractionResult,
 } from '@prisma/client';
 
 // Enum values — exported as values so @IsEnum() decorators can use them at runtime.
@@ -124,4 +127,6 @@ export {
   ResumeIntakeBatchStatus,
   ResumeAccessAction,
   ResumeParserProvider,
+  // Resume Parsing pipeline (Phase C — R2)
+  ParsingJobStatus,
 } from '@prisma/client';

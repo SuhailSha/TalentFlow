@@ -71,6 +71,10 @@ export type {
   ResumeParserProvider, CustomExtractionField, ExtractFieldsTree,
   ExtractionConfig, UpdateExtractionConfigDto,
 } from './extraction-config';
+export type {
+  ParsingJobStatus, ParsingJobView, ExtractionResultView,
+} from './parsing';
+export { PARSING_STATUS_LABELS } from './parsing';
 export {
   PROVIDER_LABELS, EXTRACT_FIELD_CATEGORY_LABELS, EXTRACT_FIELD_LABELS,
 } from './extraction-config';
