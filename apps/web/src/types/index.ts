@@ -61,3 +61,16 @@ export type {
   CreateNoteDto,
   ListCandidatesParams,
 } from './candidates';
+export type {
+  ResumeSource, ResumeStatus, ResumeAccessAction,
+  ResumeVersionView, ResumeListItem, ResumeDetail, ResumeAccessLogView,
+  ListResumesParams, UploadResumeForm, UpdateResumeDto,
+} from './resumes';
+export { RESUME_STATUS_LABELS, RESUME_SOURCE_LABELS } from './resumes';
+export type {
+  ResumeParserProvider, CustomExtractionField, ExtractFieldsTree,
+  ExtractionConfig, UpdateExtractionConfigDto,
+} from './extraction-config';
+export {
+  PROVIDER_LABELS, EXTRACT_FIELD_CATEGORY_LABELS, EXTRACT_FIELD_LABELS,
+} from './extraction-config';

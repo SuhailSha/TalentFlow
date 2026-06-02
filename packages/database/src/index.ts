@@ -67,6 +67,12 @@ export type {
   RecruiterProfile,
   // Communication domain
   EmailDelivery,
+  // Resume Intelligence domain (Phase C — R1)
+  Resume,
+  ResumeVersion,
+  ResumeIntakeBatch,
+  ResumeAccessLog,
+  OrganizationExtractionConfig,
 } from '@prisma/client';
 
 // Enum values — exported as values so @IsEnum() decorators can use them at runtime.
@@ -112,4 +118,10 @@ export {
   UsageMetric,
   // Communication domain
   EmailDeliveryStatus,
+  // Resume Intelligence domain (Phase C — R1)
+  ResumeSource,
+  ResumeStatus,
+  ResumeIntakeBatchStatus,
+  ResumeAccessAction,
+  ResumeParserProvider,
 } from '@prisma/client';

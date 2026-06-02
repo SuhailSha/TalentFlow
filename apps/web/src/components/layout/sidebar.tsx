@@ -7,6 +7,7 @@ import {
   Building2,
   CalendarClock,
   FileText,
+  FileUp,
   LayoutDashboard,
   Settings,
   Users,
@@ -37,6 +38,7 @@ const navGroups: NavGroup[] = [
       { title: 'Submissions', href: '/submissions', icon: Briefcase },
       { title: 'Interviews', href: '/interviews', icon: CalendarClock },
       { title: 'Reminders',  href: '/reminders',  icon: Bell },
+      { title: 'Resumes',    href: '/resumes',    icon: FileUp },
     ],
   },
   {

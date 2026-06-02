@@ -81,6 +81,8 @@ const SYSTEM_ROLES: RoleSeed[] = [
       'vendors:read',
       'submissions:read', 'submissions:create', 'submissions:update',
       'interviews:read',
+      'resumes:read', 'resumes:create', 'resumes:update', 'resumes:download',
+      'extraction_config:read',
       'users:read', 'roles:read', 'org:read',
     ],
   },
@@ -115,6 +117,8 @@ const SYSTEM_ROLES: RoleSeed[] = [
     permissions: [
       'candidates:read', 'jobs:read', 'vendors:read',
       'submissions:read', 'org:read',
+      'resumes:read', 'resumes:download',
+      'extraction_config:read',
     ],
   },
 ];

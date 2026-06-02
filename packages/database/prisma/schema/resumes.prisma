@@ -1,0 +1,250 @@
+// ─── Resume Intelligence Domain (Phase C — R1) ────────────────────────────────
+//
+// Phase C builds the foundation for resume ingestion → human review → candidate
+// intelligence. R1 covers the storage half only:
+//
+//   ResumeIntakeBatch         optional grouping for bulk uploads
+//   Resume                    logical resume identity, candidate-linked
+//   ResumeVersion             immutable file artefact
+//   ResumeAccessLog           append-only audit per file access
+//   OrganizationExtractionConfig  per-org field allowlist + provider preferences
+//
+// Parsing, extraction, review, merge are R2-R5 and intentionally absent.
+//
+// Design notes:
+//   • Every table carries organizationId as the first composite-index column.
+//   • Resume.candidateId is REQUIRED — upload always creates a draft candidate
+//     when the recruiter doesn't pick one explicitly (per architecture review).
+//   • ResumeVersion is immutable: no updatedAt, no deletedAt.
+//   • ResumeAccessLog is append-only: no updatedAt, no deletedAt.
+//   • OrganizationExtractionConfig is UNIQUE per org — created lazily.
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum ResumeSource {
+  RECRUITER_UPLOAD     // recruiter uploads from candidate page
+  VENDOR_SUBMISSION    // resume sent by a vendor (manual recruiter forward)
+  API_IMPORT           // bulk import via API
+  EMAIL_INTAKE         // future: org-specific intake mailbox
+
+  @@map("resume_source")
+}
+
+enum ResumeStatus {
+  DRAFT                // resume created, file uploaded; pre-processing
+  PROCESSING           // parsing in flight (R2+)
+  NEEDS_REVIEW         // extraction complete, HIL queue (R3+)
+  ACTIVE               // approved; backing an active candidate
+  ARCHIVED             // archived by recruiter; not in active rotation
+  REJECTED             // rejected during review; file retained for audit
+
+  @@map("resume_status")
+}
+
+enum ResumeIntakeBatchStatus {
+  OPEN
+  CLOSED
+
+  @@map("resume_intake_batch_status")
+}
+
+enum ResumeAccessAction {
+  DOWNLOAD             // recruiter downloaded the file
+  PREVIEW              // inline preview rendered
+  API_FETCH            // programmatic API retrieval
+  PARSE_READ           // parser worker read for extraction
+  RETENTION_PURGE      // retention job purged the file
+
+  @@map("resume_access_action")
+}
+
+enum ResumeParserProvider {
+  RULE_BASED
+  GEMINI_FLASH
+  CLAUDE
+  OPENAI_GPT
+  AFFINDA
+  RCHILLI
+
+  @@map("resume_parser_provider")
+}
+
+// ─── ResumeIntakeBatch ────────────────────────────────────────────────────────
+// Optional grouping for bulk uploads. A solo resume upload from a candidate
+// page doesn't use this — only the bulk-intake flow does. Vendor-blast usage:
+// recruiter creates a batch labelled "Apex Talent — 2026-06-10", uploads many
+// resumes into it, then closes the batch.
+
+model ResumeIntakeBatch {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+
+  label          String                  @db.VarChar(255)
+  sourceVendorId String?                 @map("source_vendor_id") @db.Uuid
+  status         ResumeIntakeBatchStatus @default(OPEN)
+
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt      @map("updated_at") @db.Timestamptz
+  closedAt       DateTime?                 @map("closed_at")  @db.Timestamptz
+  createdBy      String?   @db.Uuid       @map("created_by")
+
+  // Relations
+  resumes        Resume[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, sourceVendorId])
+  @@map("resume_intake_batches")
+}
+
+// ─── Resume ───────────────────────────────────────────────────────────────────
+// Logical resume identity. A candidate may have many resumes (variants over
+// time, role-specific cuts). currentVersionId is a denormalised pointer to
+// the head version for fast list queries.
+
+model Resume {
+  id                 String        @id @default(uuid()) @db.Uuid
+  organizationId     String        @map("organization_id") @db.Uuid
+
+  // Owner — required. Bulk-intake flow creates a draft candidate at upload time.
+  candidateId        String        @map("candidate_id") @db.Uuid
+
+  // Optional batch grouping for bulk uploads
+  intakeBatchId      String?       @map("intake_batch_id") @db.Uuid
+
+  // Denormalised head version pointer (nullable until v1 is stored)
+  currentVersionId   String?       @unique @map("current_version_id") @db.Uuid
+
+  source             ResumeSource  @default(RECRUITER_UPLOAD)
+  label              String?       @db.VarChar(255)   // recruiter-supplied tag, e.g. "Senior FE"
+  status             ResumeStatus  @default(DRAFT)
+
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt      @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime?                 @map("deleted_at") @db.Timestamptz
+  createdBy          String?   @db.Uuid       @map("created_by")
+  updatedBy          String?   @db.Uuid       @map("updated_by")
+  deletedBy          String?   @db.Uuid       @map("deleted_by")
+
+  // Relations
+  intakeBatch        ResumeIntakeBatch? @relation(fields: [intakeBatchId], references: [id], onDelete: SetNull)
+  versions           ResumeVersion[]    @relation("ResumeVersions")
+  currentVersion     ResumeVersion?     @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([organizationId, candidateId])
+  @@index([organizationId, intakeBatchId])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, deletedAt])
+  @@map("resumes")
+}
+
+// ─── ResumeVersion ────────────────────────────────────────────────────────────
+// Immutable file artefact. Each upload of a NEW byte sequence creates a new
+// version. Re-uploading the same bytes (same sha256) for the same Resume is a
+// no-op. Old versions get supersededAt set when superseded.
+//
+// versionNumber is monotonically increasing per resumeId, generated under a
+// row lock by the service (SELECT ... FOR UPDATE on the parent Resume).
+//
+// storageProvider is recorded on the row so a future migration from one
+// backend to another is reversible and auditable.
+
+model ResumeVersion {
+  id              String   @id @default(uuid()) @db.Uuid
+  resumeId        String   @map("resume_id") @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+
+  versionNumber   Int      @map("version_number")
+  storageProvider String   @map("storage_provider") @db.VarChar(50)
+  storageKey      String   @map("storage_key")     @db.VarChar(2048)
+  fileName        String   @map("file_name")       @db.VarChar(512)
+  mimeType        String   @map("mime_type")       @db.VarChar(255)
+  sizeBytes       BigInt   @map("size_bytes")
+  sha256          String   @db.Char(64)            // hex sha256 of the file bytes
+  pageCount       Int?     @map("page_count")
+
+  uploadedBy      String   @db.Uuid                @map("uploaded_by")
+  uploadedAt      DateTime @default(now())         @map("uploaded_at") @db.Timestamptz
+  supersededAt    DateTime?                         @map("superseded_at") @db.Timestamptz
+
+  // Relations
+  resume          Resume   @relation("ResumeVersions", fields: [resumeId], references: [id], onDelete: Cascade)
+  currentOf       Resume?  @relation("CurrentVersion")
+  accessLogs      ResumeAccessLog[]
+
+  @@unique([resumeId, versionNumber])
+  @@index([organizationId, sha256])
+  @@index([organizationId, uploadedAt])
+  @@index([organizationId, resumeId])
+  @@map("resume_versions")
+}
+
+// ─── ResumeAccessLog ──────────────────────────────────────────────────────────
+// Append-only audit. Every file access — download, preview, parser fetch,
+// retention purge — writes a row. Required for security + compliance.
+// No updatedAt, no deletedAt — strictly immutable.
+
+model ResumeAccessLog {
+  id              String              @id @default(uuid()) @db.Uuid
+  organizationId  String              @map("organization_id") @db.Uuid
+  resumeVersionId String              @map("resume_version_id") @db.Uuid
+
+  actorId         String?             @db.Uuid                @map("actor_id")
+  action          ResumeAccessAction
+  ipAddress       String?             @db.VarChar(64)         @map("ip_address")
+  userAgent       String?             @db.VarChar(512)        @map("user_agent")
+  requestId       String?             @db.VarChar(64)         @map("request_id")
+  metadata        Json                @default("{}")
+
+  createdAt       DateTime            @default(now())         @map("created_at") @db.Timestamptz
+
+  // Relations
+  resumeVersion   ResumeVersion       @relation(fields: [resumeVersionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, resumeVersionId, createdAt])
+  @@index([organizationId, actorId, createdAt])
+  @@map("resume_access_logs")
+}
+
+// ─── OrganizationExtractionConfig ─────────────────────────────────────────────
+// Per-org settings governing the future extraction pipeline (R2+).
+// Created lazily on first read with platform defaults.
+//
+// extractFields is a JSON document organising the field allowlist by category.
+// customFields is an array of recruiter-defined extra fields the org wants to
+// pull from resumes (Phase C requirement: "support custom extraction fields").
+// extractionRules carries provider-agnostic knobs (currency hints, units,
+// auto-normalize flags). reviewSlaHours / claimTtlMinutes / maxFileBytes /
+// monthlyParseBudgetUsd / monthlyParseBudgetCount are operational guardrails.
+
+model OrganizationExtractionConfig {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @unique @map("organization_id") @db.Uuid
+
+  preferredProvider      ResumeParserProvider  @default(GEMINI_FLASH) @map("preferred_provider")
+  fallbackProvider       ResumeParserProvider? @map("fallback_provider")
+
+  // Category → field-name → bool. Disabled fields are stripped by the
+  // PayloadStripper stage in R2 before any extraction is persisted.
+  extractFields  Json     @default("{}") @map("extract_fields")
+
+  // Recruiter-defined extra fields { id, label, group, type: 'TEXT'|'NUMBER'|'DATE'|'BOOLEAN' }
+  customFields   Json     @default("[]") @map("custom_fields")
+
+  // Currency, unit, threshold knobs
+  extractionRules Json    @default("{}") @map("extraction_rules")
+
+  // Operational guardrails
+  reviewSlaHours          Int      @default(24) @map("review_sla_hours")
+  claimTtlMinutes         Int      @default(30) @map("claim_ttl_minutes")
+  maxFileBytes            BigInt   @default(10485760) @map("max_file_bytes")  // 10 MB
+  monthlyParseBudgetUsd   Decimal? @db.Decimal(10, 2) @map("monthly_parse_budget_usd")
+  monthlyParseBudgetCount Int?     @map("monthly_parse_budget_count")
+
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+  updatedBy      String?  @db.Uuid        @map("updated_by")
+
+  @@map("organization_extraction_configs")
+}

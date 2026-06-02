@@ -36,6 +36,8 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { SearchModule } from './modules/search/search.module';
 import { CommunicationsModule } from './modules/communications/communications.module';
+import { ResumesModule } from './modules/resumes/resumes.module';
+import { ExtractionConfigModule } from './modules/extraction-config/extraction-config.module';
 import { ScheduledModule } from './scheduled/scheduled.module';
 
 @Module({
@@ -106,6 +108,8 @@ import { ScheduledModule } from './scheduled/scheduled.module';
     DashboardModule,
     SearchModule,
     CommunicationsModule,
+    ResumesModule,
+    ExtractionConfigModule,
     ScheduledModule,
   ],
   providers: [

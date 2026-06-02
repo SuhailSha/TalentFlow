@@ -71,3 +71,11 @@ export {
   useBulkSnoozeReminders, useBulkCompleteReminders, useBulkDismissReminders,
 } from './use-reminders-bulk';
 export { useVendorWorkspace, vendorWorkspaceKeys } from './use-vendor-workspace';
+export {
+  useResumes, useResume, useResumeAccessLog,
+  useUploadResume, useUploadNewVersion, useUpdateResume, useDeleteResume,
+  resumeKeys,
+} from './use-resumes';
+export {
+  useExtractionConfig, useUpdateExtractionConfig, extractionConfigKeys,
+} from './use-extraction-config';

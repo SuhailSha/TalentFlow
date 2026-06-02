@@ -87,6 +87,17 @@ export const Permission = {
   // ── Billing ──────────────────────────────────────────────────────────────
   BILLING_READ: 'billing:read',
   BILLING_MANAGE: 'billing:manage',
+
+  // ── Resumes (Phase C — R1) ───────────────────────────────────────────────
+  RESUMES_READ:     'resumes:read',
+  RESUMES_CREATE:   'resumes:create',
+  RESUMES_UPDATE:   'resumes:update',
+  RESUMES_DELETE:   'resumes:delete',
+  RESUMES_DOWNLOAD: 'resumes:download',
+
+  // ── Extraction configuration (Phase C — R1) ──────────────────────────────
+  EXTRACTION_CONFIG_READ:   'extraction_config:read',
+  EXTRACTION_CONFIG_UPDATE: 'extraction_config:update',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];
