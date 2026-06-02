@@ -3,6 +3,7 @@ import type { Prisma } from '@repo/database';
 
 import { PrismaService } from '../../database';
 import { toSkip } from '../../common/helpers/response.helper';
+import { buildPrefixTsQuery } from '../../common/search/prefix-tsquery';
 import {
   CANDIDATE_DETAIL_INCLUDE,
   CANDIDATE_LIST_INCLUDE,
@@ -52,44 +53,77 @@ export class CandidatesRepository {
   }
 
   /**
-   * FTS path: plainto_tsquery → GIN index → relevance-ranked IDs → Prisma load.
+   * Hybrid search: prefix-token FTS UNION trigram fuzzy match.
    *
-   * Why two-step?
-   *   $queryRaw returns plain rows without Prisma's relation includes.
-   *   Fetching IDs via raw SQL then loading via Prisma keeps includes working
-   *   while still benefiting from the GIN index and ts_rank ordering.
+   * Two-step pattern (raw SQL → Prisma load) keeps Prisma's relation includes
+   * working while still getting the GIN index + ranked ordering.
    *
-   * plainto_tsquery vs. to_tsquery:
-   *   plainto_tsquery parses plain user input ("react developer") without
-   *   requiring PostgreSQL tsquery syntax. Never pass raw user input to
-   *   to_tsquery — it can throw on operators like ! or &.
+   *  - The cooked tsquery uses `:*` prefixes per token so "sara" matches
+   *    "sarah" and tokens AND together regardless of order ("eng sara" ≡
+   *    "sara eng"). User input is sanitised by buildPrefixTsQuery so passing
+   *    it to to_tsquery is safe.
+   *  - The trigram `%` operator (pg_trgm, default similarity ≥ 0.3) gives
+   *    typo tolerance and substring recall on the indexed name/email/title
+   *    columns. Each `%` predicate uses its own GIN trigram index.
+   *  - Combined score: ts_rank weighted higher than trigram similarity so
+   *    FTS hits dominate the order; trigram-only hits trail as fallback.
    *
-   * Non-search filters (status, country, skills) are applied in Prisma's
-   * second query so we don't duplicate filter logic in raw SQL.
-   * Trade-off: ts_rank ordering is preserved via an ID→rank map.
+   * Non-search filters (status, country, skills) are applied in the second
+   * Prisma query so filter logic isn't duplicated in raw SQL.
    */
   private async findManyWithFts(organizationId: string, dto: ListCandidatesDto) {
-    const term  = dto.search!.trim();
-    const skip  = toSkip(dto.page, dto.limit);
-    const limit = dto.limit;
+    const raw    = dto.search!.trim();
+    const cooked = buildPrefixTsQuery(raw);
+    const skip   = toSkip(dto.page, dto.limit);
+    const limit  = dto.limit;
 
-    // Step 1: ranked IDs via FTS (org-scoped, soft-delete aware)
+    // If the user input has no usable tokens (e.g. only punctuation), fall
+    // back to the non-search path rather than passing '' to to_tsquery.
+    if (!cooked) {
+      return this.findManyWithPrisma(organizationId, { ...dto, search: undefined });
+    }
+
     const ftsRows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id
-      FROM candidates
+      FROM candidates,
+           to_tsquery('simple', ${cooked}) q
       WHERE organization_id = ${organizationId}::uuid
         AND deleted_at IS NULL
-        AND search_vector @@ plainto_tsquery('simple', ${term})
-      ORDER BY ts_rank(search_vector, plainto_tsquery('simple', ${term})) DESC
+        AND (
+          search_vector @@ q
+          OR first_name      % ${raw}
+          OR last_name       % ${raw}
+          OR email           % ${raw}
+          OR current_title   % ${raw}
+          OR current_company % ${raw}
+        )
+      ORDER BY
+        ts_rank(search_vector, q) * 10
+          + GREATEST(
+              similarity(coalesce(first_name,      ''), ${raw}),
+              similarity(coalesce(last_name,       ''), ${raw}),
+              similarity(coalesce(email,           ''), ${raw}),
+              similarity(coalesce(current_title,   ''), ${raw}),
+              similarity(coalesce(current_company, ''), ${raw})
+            ) DESC,
+        created_at DESC
       LIMIT ${limit} OFFSET ${skip}
     `;
 
     const countRows = await this.prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) AS count
-      FROM candidates
+      FROM candidates,
+           to_tsquery('simple', ${cooked}) q
       WHERE organization_id = ${organizationId}::uuid
         AND deleted_at IS NULL
-        AND search_vector @@ plainto_tsquery('simple', ${term})
+        AND (
+          search_vector @@ q
+          OR first_name      % ${raw}
+          OR last_name       % ${raw}
+          OR email           % ${raw}
+          OR current_title   % ${raw}
+          OR current_company % ${raw}
+        )
     `;
 
     if (ftsRows.length === 0) {
@@ -99,15 +133,12 @@ export class CandidatesRepository {
     const ids     = ftsRows.map((r) => r.id);
     const rankMap = new Map(ids.map((id, i) => [id, i]));
 
-    // Step 2: Load full records via Prisma (preserves includes + type safety)
-    // Additional filters (status, skills, etc.) applied here.
     const nonSearchWhere = this.buildWhereClause(organizationId, { ...dto, search: undefined });
     const candidates = await this.prisma.candidate.findMany({
       where: { ...nonSearchWhere, id: { in: ids } },
       include: CANDIDATE_LIST_INCLUDE,
     });
 
-    // Restore FTS relevance order (Prisma doesn't guarantee IN-clause ordering)
     candidates.sort((a, b) => (rankMap.get(a.id) ?? 999) - (rankMap.get(b.id) ?? 999));
 
     return { candidates, total: Number(countRows[0]?.count ?? 0) };

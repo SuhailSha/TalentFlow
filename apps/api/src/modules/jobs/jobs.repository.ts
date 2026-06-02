@@ -3,6 +3,7 @@ import type { Prisma } from '@repo/database';
 
 import { PrismaService } from '../../database';
 import { toSkip } from '../../common/helpers/response.helper';
+import { buildPrefixTsQuery } from '../../common/search/prefix-tsquery';
 import { JOB_DETAIL_INCLUDE, JOB_LIST_INCLUDE } from './types/job.types';
 import type { ListJobsDto } from './dto/list-jobs.dto';
 import { JobSortField } from './dto/list-jobs.dto';
@@ -39,27 +40,57 @@ export class JobsRepository {
     return { jobs, total };
   }
 
+  /**
+   * Hybrid search — see CandidatesRepository.findManyWithFts for the design
+   * notes. Jobs uses the `english` tsvector config (which stems "engineers"
+   * to "engineer" etc.) and adds trigram OR for typo tolerance on title,
+   * department, and req_id.
+   */
   private async findManyWithFts(organizationId: string, dto: ListJobsDto) {
-    const term = dto.search!.trim();
-    const skip = toSkip(dto.page, dto.limit);
-    const limit = dto.limit;
+    const raw    = dto.search!.trim();
+    const cooked = buildPrefixTsQuery(raw);
+    const skip   = toSkip(dto.page, dto.limit);
+    const limit  = dto.limit;
+
+    if (!cooked) {
+      return this.findManyWithPrisma(organizationId, { ...dto, search: undefined });
+    }
 
     const ftsRows = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id
-      FROM job_descriptions
+      FROM job_descriptions,
+           to_tsquery('english', ${cooked}) q
       WHERE organization_id = ${organizationId}::uuid
         AND deleted_at IS NULL
-        AND search_vector @@ plainto_tsquery('english', ${term})
-      ORDER BY ts_rank(search_vector, plainto_tsquery('english', ${term})) DESC
+        AND (
+          search_vector @@ q
+          OR title      % ${raw}
+          OR department % ${raw}
+          OR req_id     % ${raw}
+        )
+      ORDER BY
+        ts_rank(search_vector, q) * 10
+          + GREATEST(
+              similarity(coalesce(title,      ''), ${raw}),
+              similarity(coalesce(department, ''), ${raw}),
+              similarity(coalesce(req_id,     ''), ${raw})
+            ) DESC,
+        created_at DESC
       LIMIT ${limit} OFFSET ${skip}
     `;
 
     const countRows = await this.prisma.$queryRaw<{ count: bigint }[]>`
       SELECT COUNT(*) AS count
-      FROM job_descriptions
+      FROM job_descriptions,
+           to_tsquery('english', ${cooked}) q
       WHERE organization_id = ${organizationId}::uuid
         AND deleted_at IS NULL
-        AND search_vector @@ plainto_tsquery('english', ${term})
+        AND (
+          search_vector @@ q
+          OR title      % ${raw}
+          OR department % ${raw}
+          OR req_id     % ${raw}
+        )
     `;
 
     if (ftsRows.length === 0) {

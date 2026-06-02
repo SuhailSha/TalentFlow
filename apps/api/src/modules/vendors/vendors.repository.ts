@@ -3,6 +3,7 @@ import type { Prisma } from '@repo/database';
 
 import { PrismaService } from '../../database';
 import { toSkip } from '../../common/helpers/response.helper';
+import { buildPrefixTsQuery } from '../../common/search/prefix-tsquery';
 import type { ListVendorsDto, VendorSortField } from './dto/list-vendors.dto';
 import { VENDOR_DETAIL_INCLUDE } from './types/vendor.types';
 
@@ -40,29 +41,61 @@ export class VendorsRepository {
     return this.findManyPrisma(organizationId, dto, offset, limit);
   }
 
+  /**
+   * Hybrid search — see CandidatesRepository.findManyWithFts for the design
+   * notes. Vendors uses the `english` tsvector config and OR-combines with
+   * trigram `%` on the indexed name/contact fields.
+   */
   private async findManyFts(
     organizationId: string,
     dto: ListVendorsDto,
     offset: number,
     limit: number,
   ): Promise<{ vendors: Prisma.VendorGetPayload<Record<string, never>>[]; total: number }> {
-    const search = dto.search!.trim();
+    const raw    = dto.search!.trim();
+    const cooked = buildPrefixTsQuery(raw);
+
+    if (!cooked) {
+      return this.findManyPrisma(organizationId, { ...dto, search: undefined }, offset, limit);
+    }
 
     const [countResult, rawResults] = await Promise.all([
       this.prisma.$queryRaw<{ count: bigint }[]>`
         SELECT COUNT(*)::bigint AS count
-        FROM vendors, plainto_tsquery('english', ${search}) query
+        FROM vendors,
+             to_tsquery('english', ${cooked}) q
         WHERE organization_id = ${organizationId}::uuid
           AND deleted_at IS NULL
-          AND search_vector @@ query
+          AND (
+            search_vector @@ q
+            OR company_name          % ${raw}
+            OR primary_contact_name  % ${raw}
+            OR primary_contact_email % ${raw}
+            OR vendor_code           % ${raw}
+          )
       `,
       this.prisma.$queryRaw<{ id: string }[]>`
         SELECT id
-        FROM vendors, plainto_tsquery('english', ${search}) query
+        FROM vendors,
+             to_tsquery('english', ${cooked}) q
         WHERE organization_id = ${organizationId}::uuid
           AND deleted_at IS NULL
-          AND search_vector @@ query
-        ORDER BY ts_rank(search_vector, query) DESC, created_at DESC
+          AND (
+            search_vector @@ q
+            OR company_name          % ${raw}
+            OR primary_contact_name  % ${raw}
+            OR primary_contact_email % ${raw}
+            OR vendor_code           % ${raw}
+          )
+        ORDER BY
+          ts_rank(search_vector, q) * 10
+            + GREATEST(
+                similarity(coalesce(company_name,          ''), ${raw}),
+                similarity(coalesce(primary_contact_name,  ''), ${raw}),
+                similarity(coalesce(primary_contact_email, ''), ${raw}),
+                similarity(coalesce(vendor_code,           ''), ${raw})
+              ) DESC,
+          created_at DESC
         LIMIT ${limit} OFFSET ${offset}
       `,
     ]);
