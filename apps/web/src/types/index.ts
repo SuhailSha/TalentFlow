@@ -75,6 +75,12 @@ export type {
   ParsingJobStatus, ParsingJobView, ExtractionResultView,
 } from './parsing';
 export { PARSING_STATUS_LABELS } from './parsing';
+export type {
+  ReviewTaskStatus, ReviewPriority, ReviewDecisionPayload,
+  ReviewTaskListItem, ReviewTaskDetail, ListReviewsParams,
+  SaveDraftBody, ApproveBody, RejectBody, ReparseBody,
+} from './reviews';
+export { REVIEW_STATUS_LABELS, REVIEW_PRIORITY_LABELS } from './reviews';
 export {
   PROVIDER_LABELS, EXTRACT_FIELD_CATEGORY_LABELS, EXTRACT_FIELD_LABELS,
 } from './extraction-config';

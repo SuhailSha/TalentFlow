@@ -80,6 +80,26 @@ enum ParsingJobStatus {
   @@map("parsing_job_status")
 }
 
+enum ReviewTaskStatus {
+  PENDING            // queued for a reviewer to claim
+  IN_REVIEW          // a reviewer has claimed it (soft-locked)
+  APPROVED           // recruiter accepted; resulting Candidate created/updated
+  REJECTED           // extraction discarded; resume archived
+  REPARSE_REQUESTED  // reviewer asked to reparse; new ReviewTask spawned
+  SUPERSEDED         // an upstream change (new version, reparse) invalidated this task
+
+  @@map("review_task_status")
+}
+
+enum ReviewPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+
+  @@map("review_priority")
+}
+
 // ─── ResumeIntakeBatch ────────────────────────────────────────────────────────
 // Optional grouping for bulk uploads. A solo resume upload from a candidate
 // page doesn't use this — only the bulk-intake flow does. Vendor-blast usage:
@@ -290,10 +310,75 @@ model ExtractionResult {
   // Relations
   parsingJob         ParsingJob?       @relation
   resumeVersion      ResumeVersion     @relation("ExtractionResultResumeVersion", fields: [resumeVersionId], references: [id], onDelete: Cascade)
+  reviewTask         ReviewTask?       @relation("ExtractionResultReviewTask")
 
   @@index([resumeVersionId])
   @@index([organizationId, createdAt])
   @@map("extraction_results")
+}
+
+// ─── ReviewTask ───────────────────────────────────────────────────────────────
+// The HIL queue item. One ReviewTask per ExtractionResult.
+//
+// Lifecycle (FSM enforced in ReviewTasksService):
+//   PENDING ─claim──► IN_REVIEW ─approve──► APPROVED          (terminal)
+//                              ─reject ──► REJECTED           (terminal — resume → ARCHIVED)
+//                              ─reparse──► REPARSE_REQUESTED  (terminal — new ParsingJob spawns a new ReviewTask)
+//                              ─release─► PENDING
+//   PENDING ─claim TTL elapse─► PENDING                       (auto-release)
+//   any → SUPERSEDED (new resume version uploaded mid-review)
+//
+// `draftDecision` autosaves on every reviewer edit so partial work survives
+// browser closures. `decision` is the final committed payload on terminal
+// transitions.
+
+model ReviewTask {
+  id                       String           @id @default(uuid()) @db.Uuid
+  extractionResultId       String           @unique @map("extraction_result_id") @db.Uuid
+  organizationId           String           @map("organization_id") @db.Uuid
+
+  status                   ReviewTaskStatus @default(PENDING)
+  priority                 ReviewPriority   @default(NORMAL)
+
+  // Soft lock — set when a reviewer opens the task; auto-expires.
+  assigneeId               String?          @map("assignee_id") @db.Uuid
+  claimedAt                DateTime?        @map("claimed_at")  @db.Timestamptz
+  claimExpiresAt           DateTime?        @map("claim_expires_at") @db.Timestamptz
+
+  // Autosaved partial edits — JSONB shape mirrors `decision` below.
+  // draftVersion is an optimistic-concurrency token bumped on every draft save.
+  draftDecision            Json?            @map("draft_decision")
+  draftVersion             Int              @default(0) @map("draft_version")
+
+  // Final decision (committed on APPROVE / REJECT / REPARSE_REQUESTED).
+  decision                 Json?
+  decisionNotes            String?          @map("decision_notes") @db.Text
+  decidedById              String?          @map("decided_by_id") @db.Uuid
+  decidedAt                DateTime?        @map("decided_at") @db.Timestamptz
+
+  // Outcome links — set on APPROVE.
+  resultingCandidateId     String?          @map("resulting_candidate_id") @db.Uuid
+
+  // SLA — when the review should be completed by. Drives reminders + queue ordering.
+  slaDueAt                 DateTime?        @map("sla_due_at") @db.Timestamptz
+
+  // Reparse chain — points back to the task this one supersedes.
+  predecessorReviewTaskId  String?          @map("predecessor_review_task_id") @db.Uuid
+
+  // Relations
+  extractionResult         ExtractionResult @relation("ExtractionResultReviewTask", fields: [extractionResultId], references: [id], onDelete: Cascade)
+  predecessor              ReviewTask?      @relation("ReviewTaskChain", fields: [predecessorReviewTaskId], references: [id], onDelete: SetNull)
+  successors               ReviewTask[]     @relation("ReviewTaskChain")
+
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+
+  @@index([organizationId, status, slaDueAt])
+  @@index([organizationId, assigneeId, status])
+  @@index([organizationId, priority, slaDueAt])
+  @@index([organizationId, createdAt])
+  @@index([resultingCandidateId])
+  @@map("review_tasks")
 }
 
 // ─── OrganizationExtractionConfig ─────────────────────────────────────────────

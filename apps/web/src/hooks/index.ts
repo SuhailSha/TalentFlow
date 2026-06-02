@@ -82,3 +82,9 @@ export {
 export {
   useParsingJobs, useReparseResume, useCancelParsingJob, parsingKeys,
 } from './use-parsing';
+export {
+  useReviews, useReview, useReviewStats,
+  useClaimReview, useReleaseReview, useSaveReviewDraft,
+  useApproveReview, useRejectReview, useReparseFromReview,
+  reviewKeys,
+} from './use-reviews';

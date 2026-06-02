@@ -83,6 +83,8 @@ const SYSTEM_ROLES: RoleSeed[] = [
       'interviews:read',
       'resumes:read', 'resumes:create', 'resumes:update', 'resumes:download',
       'extraction_config:read',
+      'resume_reviews:read', 'resume_reviews:claim',
+      'resume_reviews:approve', 'resume_reviews:reject',
       'users:read', 'roles:read', 'org:read',
     ],
   },
@@ -119,6 +121,7 @@ const SYSTEM_ROLES: RoleSeed[] = [
       'submissions:read', 'org:read',
       'resumes:read', 'resumes:download',
       'extraction_config:read',
+      'resume_reviews:read',
     ],
   },
 ];

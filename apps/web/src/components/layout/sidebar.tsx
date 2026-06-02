@@ -6,6 +6,7 @@ import {
   Briefcase,
   Building2,
   CalendarClock,
+  ClipboardList,
   FileText,
   FileUp,
   LayoutDashboard,
@@ -16,6 +17,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { useReviewStats } from '@/hooks';
 import { cn } from '@/lib/utils';
 import type { NavGroup } from '@/types';
 
@@ -39,6 +41,7 @@ const navGroups: NavGroup[] = [
       { title: 'Interviews', href: '/interviews', icon: CalendarClock },
       { title: 'Reminders',  href: '/reminders',  icon: Bell },
       { title: 'Resumes',    href: '/resumes',    icon: FileUp },
+      { title: 'Resume reviews', href: '/resume-reviews', icon: ClipboardList },
     ],
   },
   {
@@ -67,6 +70,9 @@ interface SidebarProps {
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
+  // Pending-review count for the Resume reviews badge.
+  const { data: reviewStats } = useReviewStats();
+  const pendingReviews = reviewStats?.pending ?? 0;
 
   return (
     <aside
@@ -98,6 +104,11 @@ export function Sidebar({ className }: SidebarProps) {
               {group.items.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const Icon = item.icon;
+                // Dynamic badge: pending review count on the Resume reviews link.
+                const liveBadge =
+                  item.href === '/resume-reviews' && pendingReviews > 0
+                    ? pendingReviews
+                    : item.badge;
                 return (
                   <li key={item.href}>
                     <Link
@@ -113,9 +124,9 @@ export function Sidebar({ className }: SidebarProps) {
                     >
                       {Icon && <Icon className="h-4 w-4 shrink-0" />}
                       {item.title}
-                      {item.badge != null && (
+                      {liveBadge != null && (
                         <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
-                          {item.badge}
+                          {liveBadge}
                         </span>
                       )}
                     </Link>

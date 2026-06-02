@@ -98,6 +98,13 @@ export const Permission = {
   // ── Extraction configuration (Phase C — R1) ──────────────────────────────
   EXTRACTION_CONFIG_READ:   'extraction_config:read',
   EXTRACTION_CONFIG_UPDATE: 'extraction_config:update',
+
+  // ── Resume reviews (Phase C — R3) ─────────────────────────────────────────
+  RESUME_REVIEWS_READ:     'resume_reviews:read',
+  RESUME_REVIEWS_CLAIM:    'resume_reviews:claim',
+  RESUME_REVIEWS_APPROVE:  'resume_reviews:approve',
+  RESUME_REVIEWS_REJECT:   'resume_reviews:reject',
+  RESUME_REVIEWS_REASSIGN: 'resume_reviews:reassign',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];

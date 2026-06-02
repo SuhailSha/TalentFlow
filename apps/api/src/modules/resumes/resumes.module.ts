@@ -16,13 +16,21 @@ import { DataNormalizationService } from './pipeline/data-normalization.service'
 import { PayloadStripperService } from './pipeline/payload-stripper.service';
 import { ResumeIngestionOrchestrator } from './pipeline/resume-ingestion.orchestrator';
 import { ResumeUploadListener } from './listeners/resume-upload.listener';
+import { ResumeReviewListener } from './listeners/resume-review.listener';
 import { ResumeParseWorker } from './workers/resume-parse.worker';
+import { ReviewTasksController } from './review-tasks.controller';
+import { ReviewTasksRepository } from './review-tasks.repository';
+import { ReviewTasksService } from './review-tasks.service';
 
 const redisEnabled = process.env['REDIS_ENABLED'] === 'true';
 
 @Module({
   imports:     [ExtractionConfigModule],
-  controllers: [ResumesController, ResumeIntakeBatchesController, ParsingJobsController],
+  controllers: [
+    ResumesController, ResumeIntakeBatchesController,
+    ParsingJobsController,
+    ReviewTasksController,
+  ],
   providers:   [
     // R1
     ResumesService, ResumesRepository,
@@ -36,14 +44,17 @@ const redisEnabled = process.env['REDIS_ENABLED'] === 'true';
     GeminiFlashParser,
     RuleBasedParser,
     ParserRegistry,
-    // R2 — job lifecycle
+    // R2 — job lifecycle + auto-enqueue listener
     ParsingJobsService,
     ParsingJobsRepository,
-    // R2 — upload-time auto-enqueue
     ResumeUploadListener,
     // R2 — BullMQ worker (only when Redis is on; sync path covered by ParsingJobsService)
     ...(redisEnabled ? [ResumeParseWorker] : []),
+    // R3 — review queue
+    ReviewTasksService,
+    ReviewTasksRepository,
+    ResumeReviewListener,
   ],
-  exports:     [ResumesService, ParsingJobsService],
+  exports:     [ResumesService, ParsingJobsService, ReviewTasksService],
 })
 export class ResumesModule {}

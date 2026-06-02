@@ -36,6 +36,7 @@ export const EventNames = {
   RESUME_PARSE_COMPLETED:  'resume.parse_completed',
   RESUME_PARSE_FAILED:     'resume.parse_failed',
   RESUME_REVIEW_REQUIRED:  'resume.review_required',
+  RESUME_REVIEW_CLAIMED:   'resume.review_claimed',
   RESUME_REVIEW_COMPLETED: 'resume.review_completed',
 
   // ── Job Description domain (Phase 1B Step 4C.1) ────────────────────────────
