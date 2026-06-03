@@ -88,9 +88,17 @@ split.
 
 > Effort: ~16 days · Depends on: Pre-Phase-1 complete.
 
-### TF-1-1 — Postgres role provisioning (Terraform) · `chore` · 1d · □
-- Define `app_tenant`, `app_admin`, `app_migrations`, `app_audit_archiver` roles in IaC.
+### TF-1-1 — Postgres role provisioning · `chore` · 1d · □
+- Define `app_tenant`, `app_admin`, `app_migrations`, `app_audit_archiver` roles via SQL migration (Terraform binding lands in TF-1-1 Phase-7 follow-up when prod cluster is provisioned).
 - Implements: ADR-002 §7, ADR-006 §13
+
+### TF-1-1.5 — PgBouncer + RLS validation · `spike` · 1d · □
+- Extend the RLS PoC with PgBouncer-shaped tests that simulate transaction pooling: connection re-use across multiple business transactions, `SET LOCAL` resetting at transaction boundary, GUC persistence as empty string after first set.
+- Validate Prisma middleware GUC propagation pattern on both direct PG and a PgBouncer-style harness (where available).
+- Validate `current_setting + NULLIF` behavior across transaction boundaries.
+- Validate Redis Streams consumers obtain tenant context from job metadata (not from a stale GUC).
+- Produces: `packages/rls-poc/PGBOUNCER_REPORT.md` + extended test harness.
+- Implements: ADR-002 §3 (PgBouncer compatibility)
 
 ### TF-1-2 — Apply RLS policies to all tenant-scoped tables · `security` · 2d · □
 - For every model with `organizationId`: enable + force RLS; add policy using `NULLIF(...)` pattern per PoC REPORT.md.
@@ -160,7 +168,16 @@ split.
 ### TF-1-15 — Skip-to-content + a11y audit baseline · `feature` · 0.5d · □
 - Verify skip link works; `jsx-a11y` eslint strict; axe-core in dev mode.
 
-**Phase 1 total: ~20 days (parallelism reduces wall-clock)**
+### TF-1-16 — Resume AV scan integration · `security` · 2d · □
+- S3 upload flow gated by virus scanning: uploads land in a `talentflow-resumes-quarantine` bucket and are not visible to recruiters until cleared.
+- ClamAV (via Lambda or sidecar) processes new keys; signature DB refreshed daily.
+- Clean files copy to the canonical `talentflow-resumes` bucket; quarantine copy deleted; resume row's `scanStatus` flips `PENDING → CLEAN`.
+- Infected files: file retained in quarantine for forensics; resume row flagged `INFECTED`; uploader notified; audit log entry recorded.
+- Failure modes: scanner timeout (after 5 min) → retry up to 3× → `SCAN_TIMEOUT` state requires admin override.
+- Security tests: known EICAR test file uploads → INFECTED state; clean PDF uploads → CLEAN state.
+- Implements: architecture review §12, ADR-006 §7
+
+**Phase 1 total: ~22 days (parallelism reduces wall-clock; +2 for TF-1-16)**
 
 ---
 
