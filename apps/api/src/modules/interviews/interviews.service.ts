@@ -125,7 +125,7 @@ export class InterviewsService {
       (k) => (dto as Record<string, unknown>)[k] !== undefined,
     );
 
-    const updated = await this.repo.update(id, {
+    const updated = await this.repo.update(id, user.organizationId, {
       ...(dto.type             !== undefined && { type:             dto.type }),
       ...(dto.roundLabel       !== undefined && { roundLabel:       dto.roundLabel }),
       ...(dto.ownerId          !== undefined && { ownerId:          dto.ownerId }),
@@ -138,6 +138,7 @@ export class InterviewsService {
       ...(dto.location         !== undefined && { location:         dto.location }),
       ...(dto.briefingNotes    !== undefined && { briefingNotes:    dto.briefingNotes }),
     });
+    if (!updated) throw new NotFoundException('Interview not found');
 
     this.events.emit(
       EventNames.INTERVIEW_UPDATED,
@@ -159,13 +160,14 @@ export class InterviewsService {
     this.fsm.validate(INTERVIEW_FSM, existing.status, dto.status);
 
     const stageField = this.stageTimestampField(dto.status);
-    const updated = await this.repo.update(id, {
+    const updated = await this.repo.update(id, user.organizationId, {
       status: dto.status,
       ...(stageField && { [stageField]: new Date() }),
       ...(dto.status === InterviewStatus.CANCELLED && dto.reason && {
         cancellationReason: dto.reason,
       }),
     });
+    if (!updated) throw new NotFoundException('Interview not found');
 
     await this.repo.addStatusHistory({
       interviewId: id,
@@ -283,7 +285,7 @@ export class InterviewsService {
       throw new ConflictException('Cannot edit submitted feedback');
     }
 
-    return this.repo.updateFeedback(feedbackId, {
+    const updatedFeedback = await this.repo.updateFeedback(feedbackId, id, {
       recommendation:    dto.recommendation ?? undefined,
       technicalScore:    dto.technicalScore ?? undefined,
       communicationScore: dto.communicationScore ?? undefined,
@@ -293,6 +295,8 @@ export class InterviewsService {
       concerns:          dto.concerns ?? undefined,
       notes:             dto.notes ?? undefined,
     });
+    if (!updatedFeedback) throw new NotFoundException('Feedback not found');
+    return updatedFeedback;
   }
 
   async submitFeedback(user: RequestUser, id: string, feedbackId: string) {
@@ -306,10 +310,11 @@ export class InterviewsService {
       throw new ConflictException('Feedback already submitted');
     }
 
-    const submitted = await this.repo.updateFeedback(feedbackId, {
+    const submitted = await this.repo.updateFeedback(feedbackId, id, {
       isSubmitted: true,
       submittedAt: new Date(),
     });
+    if (!submitted) throw new NotFoundException('Feedback not found');
 
     this.events.emit(
       EventNames.INTERVIEW_FEEDBACK_SUBMITTED,
@@ -353,7 +358,8 @@ export class InterviewsService {
     const existing = await this.repo.findById(id, user.organizationId);
     if (!existing) throw new NotFoundException('Interview not found');
 
-    await this.repo.softDelete(id);
+    const deleted = await this.repo.softDelete(id, user.organizationId);
+    if (!deleted) throw new NotFoundException('Interview not found');
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────

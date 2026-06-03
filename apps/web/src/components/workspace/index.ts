@@ -13,7 +13,10 @@ export {
 } from './status-indicators';
 export { QueueHealthCard } from './queue-health-card';
 export { FailedJobsCard } from './failed-jobs-card';
-export { SignalBadge, type SignalTone } from './signal-badge';
+// SignalBadge moved to the canonical status namespace in Phase 0B.
+// Re-exported here for backwards compatibility with existing call sites.
+export { SignalBadge, type SignalTone } from '@/components/status';
+export { StatusPill, StatusDot } from '@/components/status';
 export { StatusTransitionMenu } from './status-transition-menu';
 export { ProfileCompletenessCard } from './profile-completeness-card';
 export { WorkspaceTabs, type WorkspaceTab } from './workspace-tabs';

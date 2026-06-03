@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>TalentFlow · Visual Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="_styles.css"/>
+<style>
+  body { padding: 48px 24px; background: hsl(var(--surface-2) / 0.5); }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .hero { text-align: center; margin-bottom: 48px; }
+  .hero .monogram--xl { margin: 0 auto 16px; }
+  .hero h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .hero p { font-size: 16px; color: hsl(var(--fg-muted)); margin: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .mockup-card {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--r-xl);
+    overflow: hidden;
+    transition: all 160ms;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .mockup-card:hover { transform: translateY(-2px); border-color: hsl(var(--brand-300)); box-shadow: var(--shadow-md); }
+  .mockup-card__thumb {
+    height: 160px;
+    background: linear-gradient(135deg, hsl(var(--brand-50)), hsl(var(--surface-2)));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 64px; opacity: 0.50;
+  }
+  .mockup-card__body { padding: 14px 16px 16px; }
+  .mockup-card__title { font-size: 14px; font-weight: 600; margin: 0; }
+  .mockup-card__desc { font-size: 12.5px; color: hsl(var(--fg-muted)); margin: 4px 0 0; line-height: 1.4; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div class="monogram monogram--xl">TF</div>
+    <h1>TalentFlow — Visual Direction</h1>
+    <p>Phase 1 mockups · AI-powered talent intelligence platform · Pre-implementation review</p>
+  </div>
+
+  <div class="grid">
+    <a class="mockup-card" href="login.html">
+      <div class="mockup-card__thumb" style="background:linear-gradient(135deg,hsl(var(--brand-100)),hsl(var(--info-50)))">🔐</div>
+      <div class="mockup-card__body">
+        <h3 class="mockup-card__title">Login</h3>
+        <p class="mockup-card__desc">Split layout · product preview · SSO-first · "Hire with momentum"</p>
+      </div>
+    </a>
+    <a class="mockup-card" href="dashboard.html">
+      <div class="mockup-card__thumb">⌘</div>
+      <div class="mockup-card__body">
+        <h3 class="mockup-card__title">Dashboard · AI Command Center</h3>
+        <p class="mockup-card__desc">KPI strip + action items + pipeline + this-week calendar</p>
+      </div>
+    </a>
+    <a class="mockup-card" href="candidate-list.html">
+      <div class="mockup-card__thumb">≣</div>
+      <div class="mockup-card__body">
+        <h3 class="mockup-card__title">Candidate List</h3>
+        <p class="mockup-card__desc">DataTable · saved views · filter chips · AI Match column · hover toolbar</p>
+      </div>
+    </a>
+    <a class="mockup-card" href="candidate-workspace.html">
+      <div class="mockup-card__thumb">★</div>
+      <div class="mockup-card__body">
+        <h3 class="mockup-card__title">Candidate Workspace (flagship)</h3>
+        <p class="mockup-card__desc">AI Summary · Match scores · Risk Signals · Resume Intelligence · Suggested actions</p>
+      </div>
+    </a>
+    <a class="mockup-card" href="inbox.html">
+      <div class="mockup-card__thumb">📥</div>
+      <div class="mockup-card__body">
+        <h3 class="mockup-card__title">Inbox</h3>
+        <p class="mockup-card__desc">Two-pane · mentions/assigned/watching · AI-generated insights · inline reply</p>
+      </div>
+    </a>
+    <a class="mockup-card" href="sidebar-expanded.html">
+      <div class="mockup-card__thumb">▤</div>
+      <div class="mockup-card__body">
+        <h3 class="mockup-card__title">Sidebar · Expanded</h3>
+        <p class="mockup-card__desc">240px · workspace switcher · pinned · Resume Intelligence as first-class</p>
+      </div>
+    </a>
+    <a class="mockup-card" href="sidebar-collapsed.html">
+      <div class="mockup-card__thumb">│</div>
+      <div class="mockup-card__body">
+        <h3 class="mockup-card__title">Sidebar · Collapsed</h3>
+        <p class="mockup-card__desc">56px · icon-only · tooltip + ⌘-shortcut · 184px more canvas</p>
+      </div>
+    </a>
+    <a class="mockup-card" href="dark-mode.html">
+      <div class="mockup-card__thumb" style="background:linear-gradient(135deg,#131A33,#0B1020);color:white">☾</div>
+      <div class="mockup-card__body">
+        <h3 class="mockup-card__title">Dark Mode</h3>
+        <p class="mockup-card__desc">Deep navy · accent shifted +1 stop · borders over shadows</p>
+      </div>
+    </a>
+  </div>
+
+  <p style="text-align:center;color:hsl(var(--fg-muted));font-size:12px;margin-top:48px">
+    Pure HTML/CSS. No application logic. Mirrors the Phase 0B production token system.
+  </p>
+</div>
+</body>
+</html>

@@ -19,7 +19,7 @@ const envSchema = z.object({
     .url('NEXT_PUBLIC_APP_URL must be a valid URL')
     .default('http://localhost:3000'),
 
-  NEXT_PUBLIC_APP_NAME: z.string().min(1).default('Recruitment Platform'),
+  NEXT_PUBLIC_APP_NAME: z.string().min(1).default('TalentFlow'),
 
   NEXT_PUBLIC_ENABLE_DEVTOOLS: z
     .string()

@@ -2,90 +2,162 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+ * TalentFlow Design Tokens — Phase 0B
+ *
+ * Every visual decision in this app sources from a token in this file.
+ * Do not hardcode colors, radii, shadows, or spacing in components.
+ * Multi-tenant branding overrides `--brand-h/s/l` at the WorkspaceBranding
+ * provider; semantic + neutral palettes stay constant.
+ * ========================================================================== */
+
 @layer base {
   :root {
-    /* ── Backgrounds ──────────────────────────────────────── */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* ── BRAND (algorithmic — overridable per tenant) ─────────────────────
+       Stored as raw HSL channels so we can derive the 11-step scale
+       without baking it into CSS. Default = indigo-violet 250 84 60. */
+    --brand-h: 244;
+    --brand-s: 76%;
+    --brand-l: 62%;
 
-    /* ── Card ─────────────────────────────────────────────── */
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* ── ACCENT SCALE — derived from brand HSL ───────────────────────────
+       Lightness ladder is constant; hue + saturation track the tenant
+       override. The shadcn `--primary` consumes accent-500. */
+    --accent-50:  var(--brand-h) calc(var(--brand-s) - 8%) 97%;
+    --accent-100: var(--brand-h) calc(var(--brand-s) - 6%) 94%;
+    --accent-200: var(--brand-h) calc(var(--brand-s) - 4%) 87%;
+    --accent-300: var(--brand-h) calc(var(--brand-s) - 2%) 76%;
+    --accent-400: var(--brand-h) var(--brand-s)            70%;
+    --accent-500: var(--brand-h) var(--brand-s)            var(--brand-l);
+    --accent-600: var(--brand-h) var(--brand-s)            53%;
+    --accent-700: var(--brand-h) calc(var(--brand-s) - 4%) 44%;
+    --accent-800: var(--brand-h) calc(var(--brand-s) - 6%) 36%;
+    --accent-900: var(--brand-h) calc(var(--brand-s) - 8%) 29%;
+    --accent-950: var(--brand-h) calc(var(--brand-s) - 12%) 18%;
 
-    /* ── Popover ──────────────────────────────────────────── */
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    /* ── NEUTRAL SCALE (slate) ──────────────────────────────────────────── */
+    --neutral-50:  210 40% 98%;
+    --neutral-100: 210 40% 96%;
+    --neutral-200: 214 32% 91%;
+    --neutral-300: 213 27% 84%;
+    --neutral-400: 215 20% 65%;
+    --neutral-500: 215 16% 47%;
+    --neutral-600: 215 19% 35%;
+    --neutral-700: 215 25% 27%;
+    --neutral-800: 217 33% 17%;
+    --neutral-900: 222 47% 11%;
+    --neutral-950: 229 84% 5%;
 
-    /* ── Brand primary (slate-900) ────────────────────────── */
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* ── SEMANTIC PALETTE — constant across tenants ─────────────────────── */
+    --success-50:  152 81% 96%;
+    --success-200: 152 76% 80%;
+    --success-500: 160 84% 39%;
+    --success-700: 158 64% 28%;
 
-    /* ── Secondary ────────────────────────────────────────── */
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --info-50:  214 100% 97%;
+    --info-200: 213 97% 87%;
+    --info-500: 217 91% 60%;
+    --info-700: 224 76% 48%;
 
-    /* ── Muted ────────────────────────────────────────────── */
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --warning-50:  48 100% 96%;
+    --warning-200: 48 96% 76%;
+    --warning-500: 38 92% 50%;
+    --warning-700: 26 81% 40%;
 
-    /* ── Accent ───────────────────────────────────────────── */
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --danger-50:  0 86% 97%;
+    --danger-200: 0 96% 89%;
+    --danger-500: 350 89% 60%;
+    --danger-700: 347 77% 41%;
 
-    /* ── Destructive ──────────────────────────────────────── */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* ── SURFACES (semantic; consumed by Tailwind tokens below) ────────── */
+    --background:        var(--neutral-50);
+    --foreground:        var(--neutral-900);
+    --card:              0 0% 100%;
+    --card-foreground:   var(--neutral-900);
+    --popover:           0 0% 100%;
+    --popover-foreground: var(--neutral-900);
 
-    /* ── Form chrome ──────────────────────────────────────── */
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* shadcn primary now binds to the brand accent */
+    --primary:             var(--accent-500);
+    --primary-foreground:  var(--neutral-50);
 
-    /* ── Shape ────────────────────────────────────────────── */
-    --radius: 0.5rem;
+    --secondary:           var(--neutral-100);
+    --secondary-foreground: var(--neutral-800);
 
-    /* ── Sidebar ──────────────────────────────────────────── */
-    --sidebar-background: 222.2 47.4% 11.2%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-border: 222.2 40% 15%;
-    --sidebar-accent: 222.2 40% 18%;
-    --sidebar-accent-foreground: 210 40% 98%;
+    --muted:               var(--neutral-100);
+    --muted-foreground:    var(--neutral-500);
+
+    /* shadcn "accent" = hover surface, not the brand. Brand uses accent-* tokens. */
+    --accent:              var(--neutral-100);
+    --accent-foreground:   var(--neutral-900);
+
+    --destructive:           var(--danger-500);
+    --destructive-foreground: 0 0% 100%;
+
+    --border:  var(--neutral-200);
+    --input:   var(--neutral-200);
+    --ring:    var(--accent-500);
+
+    --radius:  0.5rem;
+
+    /* ── SIDEBAR (now same surface mode as canvas, per Phase 0A blueprint) ── */
+    --sidebar-background:        0 0% 100%;
+    --sidebar-foreground:        var(--neutral-700);
+    --sidebar-border:            var(--neutral-200);
+    --sidebar-accent:            var(--accent-50);
+    --sidebar-accent-foreground: var(--accent-700);
+
+    /* ── ELEVATION ─────────────────────────────────────────────────────── */
+    --shadow-xs:   0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-sm:   0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+    --shadow-md:   0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
+    --shadow-lg:   0 8px 24px rgba(15, 23, 42, 0.10), 0 4px 8px -2px rgba(15, 23, 42, 0.06);
+    --shadow-focus: 0 0 0 2px hsl(var(--ring) / 0.40);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Brand accent lightens in dark mode for AA contrast */
+    --brand-l: 70%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    /* Surfaces shift to deep navy */
+    --background:        229 40% 8%;
+    --foreground:        var(--neutral-100);
+    --card:              228 35% 11%;
+    --card-foreground:   var(--neutral-100);
+    --popover:           228 35% 11%;
+    --popover-foreground: var(--neutral-100);
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --primary:             var(--accent-400);
+    --primary-foreground:  var(--neutral-950);
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary:           224 31% 16%;
+    --secondary-foreground: var(--neutral-100);
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --muted:               224 31% 16%;
+    --muted-foreground:    var(--neutral-400);
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --accent:              224 31% 16%;
+    --accent-foreground:   var(--neutral-100);
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --destructive:           var(--danger-500);
+    --destructive-foreground: var(--neutral-50);
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --border:  224 28% 20%;
+    --input:   224 28% 20%;
+    --ring:    var(--accent-400);
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background:        229 42% 6%;
+    --sidebar-foreground:        var(--neutral-300);
+    --sidebar-border:            224 28% 16%;
+    --sidebar-accent:            224 35% 14%;
+    --sidebar-accent-foreground: var(--neutral-50);
 
-    --sidebar-background: 222.2 47.4% 8%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-border: 222.2 40% 12%;
-    --sidebar-accent: 222.2 40% 14%;
-    --sidebar-accent-foreground: 210 40% 98%;
+    /* Shadows are subtler in dark mode — replaced primarily by border contrast */
+    --shadow-xs:   0 1px 2px rgba(0, 0, 0, 0.30);
+    --shadow-sm:   0 1px 3px rgba(0, 0, 0, 0.40);
+    --shadow-md:   0 4px 8px rgba(0, 0, 0, 0.45);
+    --shadow-lg:   0 8px 24px rgba(0, 0, 0, 0.55);
+    --shadow-focus: 0 0 0 2px hsl(var(--ring) / 0.55);
   }
 }
 
@@ -96,6 +168,36 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-feature-settings: 'rlig' 1, 'calt' 1, 'cv11' 1, 'ss01' 1, 'ss03' 1;
+  }
+
+  /* ── ACCESSIBILITY: visible focus rings on keyboard-only navigation ── */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: calc(var(--radius) - 2px);
+  }
+
+  /* Numerals are tabular wherever they appear in counts / metrics */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+}
+
+@layer utilities {
+  /* ── ACCESSIBILITY: Skip-to-content link ──────────────────────────── */
+  .skip-to-content {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: hsl(var(--accent-700));
+    color: hsl(var(--neutral-50));
+    border-radius: 0 0 var(--radius) 0;
+    transform: translateY(-200%);
+    transition: transform 150ms ease-out;
+  }
+  .skip-to-content:focus-visible {
+    transform: translateY(0);
+    outline-offset: 0;
   }
 }

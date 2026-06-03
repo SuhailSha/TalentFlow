@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sign in · TalentFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="_styles.css"/>
+<style>
+  /* ── Login-specific layout ─────────────────────────────────────────────── */
+  body { background: hsl(var(--bg)); }
+  .login {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(420px, 0.95fr);
+    min-height: 100vh;
+  }
+  @media (max-width: 1024px) { .login { grid-template-columns: 1fr; } .login__preview { display: none; } }
+
+  /* Preview panel — blurred TalentFlow workspace mock + brand overlay */
+  .login__preview {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(60% 50% at 80% 20%, hsl(var(--brand-300) / 0.32) 0%, transparent 60%),
+      radial-gradient(50% 40% at 15% 85%, hsl(var(--info-200) / 0.30) 0%, transparent 60%),
+      linear-gradient(135deg, hsl(var(--brand-100)) 0%, hsl(var(--canvas)) 50%, hsl(var(--brand-50)) 100%);
+    padding: 56px 48px;
+    display: flex; flex-direction: column;
+    color: hsl(var(--fg));
+  }
+  .login__brand { display: inline-flex; align-items: center; gap: 12px; }
+  .login__brand-name { font-size: 18px; font-weight: 700; letter-spacing: -0.015em; }
+  .login__brand-sub { font-size: 12px; color: hsl(var(--fg-secondary)); display: block; }
+
+  /* Product preview window — a blurred-glass mock of the workspace */
+  .preview-window {
+    margin-top: 64px;
+    width: 720px; max-width: 90%;
+    border-radius: 14px;
+    background: hsl(var(--surface));
+    box-shadow:
+      0 32px 80px -16px rgba(15, 23, 42, 0.18),
+      0 8px 24px -8px rgba(15, 23, 42, 0.08),
+      0 0 0 1px hsl(var(--border));
+    overflow: hidden;
+    transform: rotate(-0.4deg);
+    position: relative;
+  }
+  /* faint blur on the entire window so the form remains the focal point */
+  .preview-window::after {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, hsl(var(--brand-50) / 0.06), hsl(var(--brand-100) / 0.10));
+  }
+  .preview-window__chrome {
+    height: 30px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 12px;
+    background: hsl(var(--surface-2));
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  .preview-window__chrome span { width: 9px; height: 9px; border-radius: 999px; background: hsl(var(--n-300)); }
+  .preview-window__chrome span:nth-child(1) { background: #f97373; }
+  .preview-window__chrome__url {
+    margin-left: 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: hsl(var(--fg-muted));
+  }
+
+  .preview-content { display: grid; grid-template-columns: 56px 1fr; min-height: 380px; }
+  .preview-side {
+    background: hsl(var(--sidebar-bg)); padding: 10px 0;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    border-right: 1px solid hsl(var(--border));
+  }
+  .preview-side__mono { background: linear-gradient(135deg, hsl(var(--brand-500)), hsl(var(--brand-700))); color: white;
+    width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; margin-bottom: 6px;
+  }
+  .preview-side__btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: hsl(var(--fg-muted)); }
+  .preview-side__btn.active { background: hsl(var(--brand-500)); color: white; border-radius: 8px; }
+  .preview-main { padding: 18px 22px; }
+  .preview-main__title { font-size: 17px; font-weight: 600; margin-bottom: 14px; letter-spacing: -0.01em; }
+  .preview-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+  .preview-kpi {
+    background: hsl(var(--surface)); border: 1px solid hsl(var(--border));
+    border-radius: 8px; padding: 8px 10px;
+  }
+  .preview-kpi__l { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: hsl(var(--fg-muted)); font-weight: 600; }
+  .preview-kpi__v { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .preview-cmd {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .preview-cmd__row {
+    display: grid; grid-template-columns: 24px 1fr auto; gap: 10px;
+    padding: 10px 12px; border-bottom: 1px solid hsl(var(--border) / 0.6);
+    align-items: center;
+  }
+  .preview-cmd__row:last-child { border-bottom: 0; }
+  .preview-cmd__icon { width: 22px; height: 22px; border-radius: 5px; background: hsl(var(--brand-50)); color: hsl(var(--brand-700)); display: flex; align-items: center; justify-content: center; }
+  .preview-cmd__icon svg { width: 12px; height: 12px; }
+  .preview-cmd__title { font-size: 12px; font-weight: 500; }
+  .preview-cmd__hint { font-size: 10.5px; color: hsl(var(--fg-muted)); }
+  .preview-cmd__btn {
+    font-size: 10.5px; font-weight: 600; color: hsl(var(--brand-700));
+    background: hsl(var(--brand-50)); padding: 3px 8px; border-radius: 4px;
+  }
+
+  /* Pitch + social proof at bottom of preview panel */
+  .login__pitch { margin-top: auto; padding-top: 48px; }
+  .login__pitch-headline { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.18; max-width: 520px; }
+  .login__pitch-headline em { font-style: normal; color: hsl(var(--brand-600)); }
+  .login__pitch-bullets { list-style: none; padding: 0; margin: 16px 0 28px; display: grid; gap: 8px; }
+  .login__pitch-bullets li { display: flex; gap: 10px; align-items: center; font-size: 13.5px; color: hsl(var(--fg-secondary)); }
+  .login__pitch-bullets li::before {
+    content: ""; width: 5px; height: 5px; border-radius: 999px; background: hsl(var(--brand-500)); flex-shrink: 0;
+  }
+  .login__customers {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 28px;
+    padding-top: 16px;
+    border-top: 1px solid hsl(var(--border));
+  }
+  .login__customers-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.10em; color: hsl(var(--fg-muted)); font-weight: 600; }
+  .customer-wm {
+    font-size: 13px; font-weight: 700; letter-spacing: -0.01em; color: hsl(var(--fg-muted));
+    opacity: 0.7; transition: opacity 120ms;
+  }
+  .customer-wm:hover { opacity: 1; color: hsl(var(--fg)); }
+
+  /* ── Form panel ─────────────────────────────────────────────────────── */
+  .login__form-wrap {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 48px 56px;
+    background: hsl(var(--bg));
+  }
+  .login__form-inner { width: 100%; max-width: 384px; }
+  .login__form-title { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
+  .login__form-desc { font-size: 13.5px; color: hsl(var(--fg-secondary)); margin: 0 0 24px; }
+
+  .sso-btn {
+    width: 100%; height: 42px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    font-size: 13.5px; font-weight: 500;
+    color: hsl(var(--fg));
+    transition: all 120ms;
+    margin-bottom: 8px;
+  }
+  .sso-btn:hover { background: hsl(var(--surface-2) / 0.6); border-color: hsl(var(--border-strong)); }
+  .sso-btn svg { width: 16px; height: 16px; }
+
+  .divider-or {
+    display: flex; align-items: center; gap: 12px;
+    margin: 20px 0;
+    font-size: 11px; color: hsl(var(--fg-muted)); text-transform: uppercase; letter-spacing: 0.10em;
+  }
+  .divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: hsl(var(--border)); }
+
+  .form-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .form-row label { font-size: 12.5px; font-weight: 500; color: hsl(var(--fg-secondary)); }
+  .form-row a { font-size: 12px; color: hsl(var(--brand-700)); font-weight: 500; }
+  .form-row a:hover { text-decoration: underline; }
+
+  .login__submit {
+    width: 100%; height: 42px;
+    background: hsl(var(--brand-500)); color: white;
+    border-radius: 8px;
+    font-size: 13.5px; font-weight: 600;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    margin-top: 8px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 120ms;
+  }
+  .login__submit:hover { background: hsl(var(--brand-600)); }
+  .login__submit svg { width: 14px; height: 14px; }
+
+  .login__footer { font-size: 12px; color: hsl(var(--fg-muted)); text-align: center; margin-top: 24px; }
+  .login__footer a { color: hsl(var(--brand-700)); font-weight: 500; }
+  .login__security {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: hsl(var(--fg-muted));
+    margin-top: 12px;
+  }
+  .login__security svg { width: 12px; height: 12px; color: hsl(var(--success-700)); }
+
+  /* Mobile brand */
+  .mobile-brand { display: none; margin-bottom: 32px; }
+  @media (max-width: 1024px) { .mobile-brand { display: flex; } }
+</style>
+</head>
+<body>
+
+<!-- Icon sprite, inline so currentColor works -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-google" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09Z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z" fill="#34A853"/><path d="M5.84 14.09a6.61 6.61 0 0 1 0-4.22V7.07H2.18a11 11 0 0 0 0 9.86l3.66-2.84Z" fill="#FBBC05"/><path d="M12 4.74c1.61 0 3.06.55 4.21 1.64l3.15-3.15C17.45 1.46 14.96 .5 12 .5A11 11 0 0 0 2.18 6.94l3.66 2.93C6.71 7.27 9.14 4.74 12 4.74Z" fill="#EA4335"/></symbol>
+  <symbol id="i-microsoft" viewBox="0 0 24 24"><rect x="2" y="2" width="9" height="9" fill="#F25022"/><rect x="13" y="2" width="9" height="9" fill="#7FBA00"/><rect x="2" y="13" width="9" height="9" fill="#00A4EF"/><rect x="13" y="13" width="9" height="9" fill="#FFB900"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z" fill="currentColor"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="14" r="2"/><path d="M6 8v8M8 6h6a4 4 0 0 1 4 4v2"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 9.5V21h14V9.5"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M3 21v-1a6 6 0 0 1 12 0v1"/><path d="M16 4a4 4 0 0 1 0 8"/></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 4h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6Z"/></symbol>
+</svg>
+
+<div class="login">
+  <!-- ── Preview panel ────────────────────────────────────────────── -->
+  <aside class="login__preview" aria-hidden="true">
+    <div class="login__brand">
+      <div class="monogram monogram--lg">TF</div>
+      <div>
+        <div class="login__brand-name">TalentFlow</div>
+        <small class="login__brand-sub">AI-powered talent intelligence</small>
+      </div>
+    </div>
+
+    <!-- Blurred-ish workspace preview window -->
+    <div class="preview-window">
+      <div class="preview-window__chrome">
+        <span></span><span style="background:#f5c84c"></span><span style="background:#5fb558"></span>
+        <span class="preview-window__chrome__url">acme.talentflow.app / dashboard</span>
+      </div>
+      <div class="preview-content">
+        <div class="preview-side">
+          <div class="preview-side__mono">TF</div>
+          <div class="preview-side__btn active"><svg width="14" height="14"><use href="#i-home"/></svg></div>
+          <div class="preview-side__btn"><svg width="14" height="14"><use href="#i-users"/></svg></div>
+          <div class="preview-side__btn"><svg width="14" height="14"><use href="#i-briefcase"/></svg></div>
+          <div class="preview-side__btn"><svg width="14" height="14"><use href="#i-inbox"/></svg></div>
+        </div>
+        <div class="preview-main">
+          <div class="preview-main__title">Good afternoon, Alice. 4 things need you today.</div>
+          <div class="preview-kpis">
+            <div class="preview-kpi"><div class="preview-kpi__l">Open jobs</div><div class="preview-kpi__v">23</div></div>
+            <div class="preview-kpi"><div class="preview-kpi__l">Active cands</div><div class="preview-kpi__v">412</div></div>
+            <div class="preview-kpi"><div class="preview-kpi__l">Interviews</div><div class="preview-kpi__v">17</div></div>
+            <div class="preview-kpi"><div class="preview-kpi__l">Offers</div><div class="preview-kpi__v">5</div></div>
+          </div>
+          <div class="preview-cmd">
+            <div class="preview-cmd__row">
+              <div class="preview-cmd__icon" style="background:hsl(var(--danger-50));color:hsl(var(--danger-700))"><svg><use href="#i-zap"/></svg></div>
+              <div>
+                <div class="preview-cmd__title">12 candidates waiting &gt;24h for a reply</div>
+                <div class="preview-cmd__hint">Mostly Senior Engineer applicants</div>
+              </div>
+              <div class="preview-cmd__btn">Triage →</div>
+            </div>
+            <div class="preview-cmd__row">
+              <div class="preview-cmd__icon"><svg><use href="#i-sparkles"/></svg></div>
+              <div>
+                <div class="preview-cmd__title">5 high-fit candidates for newly opened REQ-0017</div>
+                <div class="preview-cmd__hint">AI match score &gt; 85% · existing pool</div>
+              </div>
+              <div class="preview-cmd__btn">Review →</div>
+            </div>
+            <div class="preview-cmd__row">
+              <div class="preview-cmd__icon" style="background:hsl(var(--warn-50));color:hsl(var(--warn-700))"><svg><use href="#i-merge"/></svg></div>
+              <div>
+                <div class="preview-cmd__title">3 potential duplicate candidates detected</div>
+                <div class="preview-cmd__hint">Resume parsing flagged matches</div>
+              </div>
+              <div class="preview-cmd__btn">Resolve →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login__pitch">
+      <h2 class="login__pitch-headline">
+        Hire with <em>momentum.</em><br/>
+        TalentFlow is the AI command center for staffing teams.
+      </h2>
+      <ul class="login__pitch-bullets">
+        <li>AI-ranked candidates against every open job, instantly.</li>
+        <li>Resume intelligence with per-field confidence and dedupe.</li>
+        <li>Inbox you can clear — overdue items surface, never hide.</li>
+      </ul>
+      <div class="login__customers">
+        <span class="login__customers-label">Trusted by staffing teams</span>
+        <span class="customer-wm">NORTHBEAM</span>
+        <span class="customer-wm">apex talent</span>
+        <span class="customer-wm">VERTEX</span>
+        <span class="customer-wm">Bridgewater</span>
+        <span class="customer-wm">Helix</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Form panel ───────────────────────────────────────────────── -->
+  <main class="login__form-wrap">
+    <div class="login__form-inner">
+      <div class="mobile-brand">
+        <div class="monogram">TF</div>
+        <span style="font-weight:700;font-size:16px;margin-left:8px">TalentFlow</span>
+      </div>
+
+      <h1 class="login__form-title">Welcome back.</h1>
+      <p class="login__form-desc">Sign in to your TalentFlow workspace.</p>
+
+      <button class="sso-btn"><svg><use href="#i-google"/></svg> Continue with Google</button>
+      <button class="sso-btn"><svg><use href="#i-microsoft"/></svg> Continue with Microsoft</button>
+      <button class="sso-btn"><svg><use href="#i-shield"/></svg> Continue with SSO</button>
+
+      <div class="divider-or">or with email</div>
+
+      <div class="field">
+        <label class="label" for="ws">Workspace</label>
+        <input id="ws" class="input" type="text" placeholder="acme" autocomplete="organization"/>
+      </div>
+      <div class="field">
+        <label class="label" for="em">Email</label>
+        <input id="em" class="input" type="email" placeholder="you@company.com" autocomplete="email"/>
+      </div>
+      <div class="field">
+        <div class="form-row"><label for="pw">Password</label><a href="#">Forgot?</a></div>
+        <input id="pw" class="input" type="password" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+
+      <button class="login__submit">Sign in <svg><use href="#i-arrow-right"/></svg></button>
+
+      <div class="login__footer">
+        No workspace? <a href="#">Talk to us →</a>
+      </div>
+      <div style="display:flex;justify-content:center">
+        <span class="login__security"><svg><use href="#i-shield"/></svg> SOC 2 Type II · End-to-end encrypted</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

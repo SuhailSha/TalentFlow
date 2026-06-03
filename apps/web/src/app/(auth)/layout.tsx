@@ -1,17 +1,15 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: { default: 'Sign in', template: '%s | Recruitment Platform' },
+  title: { default: 'Sign in', template: '%s · TalentFlow' },
 };
 
-/**
- * Auth layout — no sidebar, no top nav.
- * Centers content vertically for login / forgot-password / accept-invite flows.
- */
+// Auth layout — no sidebar, no top nav. Renders a clean canvas; the
+// login page itself owns the split brand+form composition.
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
-      <div className="w-full max-w-sm">{children}</div>
+    <div className="min-h-screen bg-background">
+      {children}
     </div>
   );
 }

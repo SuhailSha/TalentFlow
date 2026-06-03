@@ -124,7 +124,7 @@ export class SubmissionsService {
       (k) => (dto as Record<string, unknown>)[k] !== undefined,
     );
 
-    const updated = await this.repo.update(id, {
+    const updated = await this.repo.update(id, user.organizationId, {
       ...(dto.ownerId     !== undefined && { ownerId:     dto.ownerId }),
       ...(dto.vendorId    !== undefined && { vendorId:    dto.vendorId }),
       ...(dto.billRate    !== undefined && { billRate:    dto.billRate }),
@@ -134,6 +134,7 @@ export class SubmissionsService {
       ...(dto.startDate   !== undefined && { startDate:   dto.startDate ? new Date(dto.startDate) : null }),
       ...(dto.coverNote   !== undefined && { coverNote:   dto.coverNote }),
     });
+    if (!updated) throw new NotFoundException('Submission not found');
 
     this.events.emit(
       EventNames.SUBMISSION_UPDATED,
@@ -155,13 +156,14 @@ export class SubmissionsService {
     this.fsm.validate(SUBMISSION_FSM, existing.status, dto.status);
 
     const stageTimestamp = this.stageTimestampField(dto.status);
-    const updated = await this.repo.update(id, {
+    const updated = await this.repo.update(id, user.organizationId, {
       status: dto.status,
       ...(dto.reason && this.isRejectionOrWithdrawal(dto.status) && {
         rejectionReason: dto.reason,
       }),
       ...(stageTimestamp && { [stageTimestamp]: new Date() }),
     });
+    if (!updated) throw new NotFoundException('Submission not found');
 
     await this.repo.addStatusHistory({
       submissionId: id,
@@ -238,7 +240,8 @@ export class SubmissionsService {
     const existing = await this.repo.findById(id, user.organizationId);
     if (!existing) throw new NotFoundException('Submission not found');
 
-    await this.repo.softDelete(id);
+    const deleted = await this.repo.softDelete(id, user.organizationId);
+    if (!deleted) throw new NotFoundException('Submission not found');
 
     this.events.emit(
       EventNames.SUBMISSION_DELETED,

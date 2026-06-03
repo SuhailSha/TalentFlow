@@ -278,8 +278,29 @@ export class ResumesService {
     actor: RequestUser,
     request: { ip?: string; userAgent?: string },
   ): Promise<{ data: Buffer; contentType: string; fileName: string }> {
+    // ─── Security-sensitive operation (TF-PRE-10) ──────────────────────────
+    // This method returns raw resume bytes. Three guards apply:
+    //   1. Repository query is tenant-scoped via findVersionById(versionId, orgId).
+    //      A version belonging to another tenant returns null and we 404.
+    //   2. Parent resume id must match, preventing version-id smuggling
+    //      across different resumes within the same tenant.
+    //   3. Storage key prefix is asserted to start with the tenant id, a
+    //      defense-in-depth check against storage-layer misconfiguration
+    //      (e.g. a backfill that produced cross-tenant keys).
+    // The access is always recorded via repo.logAccess regardless of caller
+    // success; downstream OpenTelemetry spans will tag the tenant + actor
+    // for compliance correlation. See ADR-002 §application-layer guard.
+
     const version = await this.repo.findVersionById(versionId, actor.organizationId);
     if (!version || version.resumeId !== resumeId) {
+      throw new NotFoundException(`Resume version ${versionId} not found on resume ${resumeId}`);
+    }
+
+    // Defense in depth: storage keys are produced by StorageKeys.resume()
+    // and must begin with the tenant identifier. A mismatch indicates either
+    // a corrupted DB row or a misconfigured storage migration — either way,
+    // refuse to serve the bytes rather than risk cross-tenant leakage.
+    if (!version.storageKey.startsWith(`${actor.organizationId}/`)) {
       throw new NotFoundException(`Resume version ${versionId} not found on resume ${resumeId}`);
     }
 

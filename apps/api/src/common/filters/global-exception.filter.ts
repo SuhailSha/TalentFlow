@@ -29,8 +29,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
     };
 
+    // ─── PII / stack redaction in production (audit finding S-7) ────────
+    // In production we never log the raw exception object. Stack traces and
+    // any properties the exception carries (which can include candidate
+    // emails, salary, resume text, etc.) are dropped. Engineers reproducing
+    // an incident correlate via requestId in OpenTelemetry, where traces
+    // are scrubbed by the OTel pipeline.
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
-      this.logger.error({ err: exception, requestId: body.requestId }, message);
+      if (process.env['NODE_ENV'] === 'production') {
+        this.logger.error(
+          { requestId: body.requestId, code, status },
+          'Internal server error',
+        );
+      } else {
+        this.logger.error({ err: exception, requestId: body.requestId }, message);
+      }
     } else {
       this.logger.warn({ requestId: body.requestId, code }, message);
     }

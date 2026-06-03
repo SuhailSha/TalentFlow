@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sarah Smith · Candidates · TalentFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="_styles.css"/>
+<style>
+  /* Workspace-specific composition */
+  .ws-header {
+    background: hsl(var(--bg));
+    border-bottom: 1px solid hsl(var(--border));
+    padding: 20px 32px 16px;
+    position: sticky; top: 48px;
+    z-index: 5;
+  }
+  .ws-title-row { display: flex; align-items: center; gap: 16px; }
+  .ws-title { font-size: 26px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.1; }
+  .ws-sub { font-size: 13.5px; color: hsl(var(--fg-secondary)); margin-top: 4px; }
+  .ws-facts { display: flex; align-items: center; gap: 24px; margin-top: 14px; font-size: 12.5px; color: hsl(var(--fg-secondary)); flex-wrap: wrap; }
+  .ws-facts span strong { color: hsl(var(--fg)); font-weight: 500; }
+  .ws-facts > div { display: inline-flex; align-items: center; gap: 6px; }
+  .ws-facts svg { width: 13px; height: 13px; color: hsl(var(--fg-muted)); }
+
+  .tabbar {
+    display: flex; gap: 2px; padding: 0 32px;
+    border-bottom: 1px solid hsl(var(--border));
+    background: hsl(var(--bg));
+    position: sticky; top: 48px; z-index: 4;
+  }
+
+  .ws-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 24px;
+    padding: 24px 32px;
+  }
+
+  .summary-paragraph { font-size: 14px; color: hsl(var(--fg)); line-height: 1.62; }
+  .summary-paragraph .hl { background: hsl(var(--brand-50)); padding: 0 3px; border-radius: 2px; color: hsl(var(--brand-700)); font-weight: 500; }
+  html.dark .summary-paragraph .hl { background: hsl(var(--brand-500) / 0.20); color: hsl(var(--brand-200)); }
+
+  .signal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .signal-row {
+    display: grid; grid-template-columns: 28px 1fr;
+    gap: 10px; align-items: start;
+    padding: 10px 12px;
+    background: hsl(var(--surface)); border: 1px solid hsl(var(--border)); border-radius: var(--r-md);
+  }
+  .signal-row__icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .signal-row__icon svg { width: 14px; height: 14px; }
+  .signal-row__icon--danger { background: hsl(var(--danger-50)); color: hsl(var(--danger-700)); }
+  .signal-row__icon--warn   { background: hsl(var(--warn-50));   color: hsl(var(--warn-700)); }
+  .signal-row__icon--info   { background: hsl(var(--info-50));   color: hsl(var(--info-700)); }
+  html.dark .signal-row__icon--danger { background: hsl(var(--danger-500) / 0.2); color: hsl(var(--danger-200)); }
+  html.dark .signal-row__icon--warn   { background: hsl(var(--warn-500) / 0.2);   color: hsl(var(--warn-200)); }
+  html.dark .signal-row__icon--info   { background: hsl(var(--info-500) / 0.2);   color: hsl(var(--info-200)); }
+  .signal-row__title { font-size: 12.5px; font-weight: 500; line-height: 1.35; }
+  .signal-row__hint  { font-size: 11.5px; color: hsl(var(--fg-muted)); margin-top: 2px; }
+
+  /* Suggested action */
+  .action-row {
+    display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
+  }
+  .action-row:last-child { border-bottom: 0; }
+  .action-row__icon { width: 28px; height: 28px; border-radius: 7px; background: hsl(var(--brand-50)); color: hsl(var(--brand-700)); display: flex; align-items: center; justify-content: center; }
+  html.dark .action-row__icon { background: hsl(var(--brand-500) / 0.2); color: hsl(var(--brand-200)); }
+  .action-row__title { font-size: 13px; font-weight: 500; }
+  .action-row__hint { font-size: 11.5px; color: hsl(var(--fg-muted)); }
+  .action-row__cta { font-size: 12px; color: hsl(var(--brand-700)); font-weight: 500; }
+
+  .extraction-row {
+    display: grid; grid-template-columns: 96px 1fr 50px;
+    gap: 10px; align-items: center;
+    padding: 5px 0;
+    font-size: 12px;
+  }
+  .extraction-row__label { color: hsl(var(--fg-muted)); }
+  .extraction-row__bar { height: 5px; background: hsl(var(--surface-2)); border-radius: 999px; overflow: hidden; }
+  .extraction-row__fill { height: 100%; }
+  .extraction-row__pct { text-align: right; font-variant-numeric: tabular-nums; }
+  .extraction-row__pct.high { color: hsl(var(--success-700)); }
+  .extraction-row__pct.med  { color: hsl(var(--warn-700)); }
+  .extraction-row__pct.low  { color: hsl(var(--danger-700)); }
+
+  /* Inline edit on hover */
+  .inline-edit {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 2px 4px; margin: -2px -4px; border-radius: 4px;
+    cursor: pointer; transition: background 80ms;
+  }
+  .inline-edit:hover { background: hsl(var(--surface-2) / 0.7); }
+  .inline-edit__icon { opacity: 0; color: hsl(var(--fg-muted)); }
+  .inline-edit:hover .inline-edit__icon { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- Sidebar (Candidates active) -->
+  <aside class="sidebar">
+    <div class="sidebar__workspace">
+      <div class="monogram">AC</div>
+      <div class="flex-1" style="min-width:0">
+        <div style="font-weight:600;font-size:13.5px;line-height:1.2">Acme Recruiting</div>
+        <div style="font-size:11px;color:hsl(var(--fg-muted));line-height:1.2">Recruiter</div>
+      </div>
+      <svg width="14" height="14" style="color:hsl(var(--fg-muted))"><use href="_icons.svg#i-chevron-down"/></svg>
+    </div>
+    <nav class="sidebar__nav">
+      <div class="sidebar__group">
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-home"/></svg><span class="sidebar__label">Home</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-inbox"/></svg><span class="sidebar__label">Inbox</span><span class="sidebar__badge">3</span></a>
+      </div>
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Pinned</span></div>
+        <a class="sidebar__item" style="background:hsl(var(--brand-50)/.4);color:hsl(var(--brand-700))"><svg><use href="_icons.svg#i-star"/></svg><span class="sidebar__label">Sarah Smith</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-star"/></svg><span class="sidebar__label">REQ-0014</span></a>
+      </div>
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Recruit</span></div>
+        <a class="sidebar__item sidebar__item--active"><svg><use href="_icons.svg#i-users"/></svg><span class="sidebar__label">Candidates</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-briefcase"/></svg><span class="sidebar__label">Jobs</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-send"/></svg><span class="sidebar__label">Submissions</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-calendar"/></svg><span class="sidebar__label">Interviews</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-bell"/></svg><span class="sidebar__label">Reminders</span></a>
+      </div>
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Resume Intelligence</span></div>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-file-text"/></svg><span class="sidebar__label">Resumes</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-clipboard"/></svg><span class="sidebar__label">Review queue</span><span class="sidebar__badge">12</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-merge"/></svg><span class="sidebar__label">Duplicates</span><span class="sidebar__badge sidebar__badge--alt">3</span></a>
+      </div>
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Vendors</span></div>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-building"/></svg><span class="sidebar__label">Vendors</span></a>
+      </div>
+      <div class="sidebar__group">
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-settings"/></svg><span class="sidebar__label">Settings</span></a>
+      </div>
+    </nav>
+    <div class="sidebar__footer">
+      <button class="sidebar__footer-btn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m9 4-5 6 5 6" stroke-linecap="round"/></svg></button>
+      <button class="sidebar__footer-btn"><svg width="14" height="14"><use href="_icons.svg#i-help"/></svg></button>
+      <button class="sidebar__footer-btn"><svg width="14" height="14"><use href="_icons.svg#i-sun"/></svg></button>
+      <span style="margin-left:auto">v0.3</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div style="overflow:auto">
+    <header class="topbar">
+      <div class="topbar__crumbs">
+        Candidates <svg width="11" height="11" style="opacity:.5"><use href="_icons.svg#i-chevron-right"/></svg>
+        <strong>Sarah Smith</strong>
+      </div>
+      <button class="topbar__search">
+        <svg width="14" height="14"><use href="_icons.svg#i-search"/></svg>
+        <span>Search or jump to…</span><kbd>⌘ K</kbd>
+      </button>
+      <div class="topbar__cluster">
+        <button class="topbar__icon-btn"><svg width="16" height="16"><use href="_icons.svg#i-inbox"/></svg><span class="dot-badge"></span></button>
+        <button class="topbar__icon-btn"><svg width="16" height="16"><use href="_icons.svg#i-sun"/></svg></button>
+        <div style="width:1px;height:18px;background:hsl(var(--border));margin:0 6px"></div>
+        <div class="avatar avatar--sm" style="width:28px;height:28px">AA</div>
+      </div>
+    </header>
+
+    <!-- Workspace header -->
+    <div class="ws-header">
+      <div class="ws-title-row">
+        <div class="avatar avatar--xl">SS<span class="avatar__status" style="background:hsl(var(--success-500))"></span></div>
+        <div class="flex-1">
+          <div class="flex items-center gap-3">
+            <h1 class="ws-title">Sarah Smith</h1>
+            <span class="pill pill--info"><span class="dot dot--info"></span> Active</span>
+            <span class="pill pill--success"><span class="dot dot--success"></span> Available</span>
+            <span class="pill pill--brand" style="font-weight:600"><svg width="11" height="11"><use href="_icons.svg#i-sparkles"/></svg> AI Fit 92%</span>
+          </div>
+          <div class="ws-sub">
+            <span class="inline-edit">Senior Software Engineer at Acme Co.<svg class="inline-edit__icon" width="11" height="11"><use href="_icons.svg#i-edit"/></svg></span>
+            · San Francisco, US
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn--outline btn--sm"><svg><use href="_icons.svg#i-send"/></svg> Submit to job</button>
+          <button class="btn btn--outline btn--sm"><svg><use href="_icons.svg#i-edit"/></svg> Edit</button>
+          <button class="btn btn--ghost btn--sm" title="More"><svg><use href="_icons.svg#i-more"/></svg></button>
+        </div>
+      </div>
+      <div class="ws-facts">
+        <div><svg><use href="_icons.svg#i-briefcase"/></svg> <span>7 years experience</span></div>
+        <div><svg><use href="_icons.svg#i-map-pin"/></svg> <span class="inline-edit">SF, US<svg class="inline-edit__icon" width="11" height="11"><use href="_icons.svg#i-edit"/></svg></span></div>
+        <div><svg><use href="_icons.svg#i-target"/></svg> <span class="inline-edit">$180k–$220k<svg class="inline-edit__icon" width="11" height="11"><use href="_icons.svg#i-edit"/></svg></span></div>
+        <div><svg><use href="_icons.svg#i-clock"/></svg> Last touch <strong>2 days ago</strong></div>
+        <div style="margin-left:auto"><svg><use href="_icons.svg#i-trending"/></svg> Profile health <strong style="color:hsl(var(--warn-700))">68/100</strong></div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <nav class="tabbar">
+      <button class="tab tab--active">Overview</button>
+      <button class="tab">Resumes <span class="tab__count">2</span></button>
+      <button class="tab">Submissions <span class="tab__count">3</span></button>
+      <button class="tab">Interviews <span class="tab__count">2</span></button>
+      <button class="tab">Notes <span class="tab__count">8</span></button>
+      <button class="tab">Duplicates</button>
+      <button class="tab">Activity</button>
+      <button class="tab">Comms</button>
+    </nav>
+
+    <!-- Body -->
+    <div class="ws-body">
+
+      <!-- Main column -->
+      <div>
+
+        <!-- AI Summary panel (hero) -->
+        <section class="ai-card mb-4">
+          <div class="ai-card__header">
+            <span class="ai-card__badge"><svg><use href="_icons.svg#i-sparkles"/></svg> AI Summary</span>
+            <span style="font-size:11px;color:hsl(var(--fg-muted));margin-left:auto">Generated 12m ago from resume + interview notes</span>
+            <button class="btn btn--ghost btn--xs"><svg><use href="_icons.svg#i-refresh"/></svg> Regenerate</button>
+          </div>
+          <p class="summary-paragraph">
+            <strong>Sarah is a senior platform-reliability engineer</strong> with <span class="hl">7 years</span> at high-scale fintechs (ex-Stripe, ex-Square). Strong fit for backend roles with <span class="hl">distributed systems</span> and <span class="hl">observability</span> requirements. Recently shipped Acme's incident-response platform; mentioned looking for staff-level work with broader scope. <span class="hl">High likelihood of accepting</span> at $200k+ base if onsite is on the table.
+          </p>
+          <div class="divider"></div>
+          <div class="flex items-center gap-3" style="font-size:12px;color:hsl(var(--fg-muted))">
+            <span><strong style="color:hsl(var(--fg))">Sentiment:</strong> Positive (interview notes)</span>
+            <span class="divider-vert"></span>
+            <span><strong style="color:hsl(var(--fg))">Risk:</strong> Mentioned 2 competing offers</span>
+            <span class="divider-vert"></span>
+            <span><strong style="color:hsl(var(--fg))">Best-fit role:</strong> Staff SRE</span>
+          </div>
+        </section>
+
+        <!-- AI Match against open jobs -->
+        <section class="card mb-4">
+          <div class="card__header">
+            <div class="flex items-center gap-2">
+              <span class="card__title">AI Match against open jobs</span>
+              <span class="ai-card__badge"><svg><use href="_icons.svg#i-sparkles"/></svg> AI</span>
+            </div>
+            <a class="section-hdr__link">View all 23 →</a>
+          </div>
+          <div class="card__body">
+            <div class="match">
+              <div class="match__title">REQ-0017 · Staff SRE <small>Engineering · Remote · $200k–$260k</small></div>
+              <div class="match__bar"><div class="match__fill" style="width:94%"></div></div>
+              <div class="match__pct" style="color:hsl(var(--success-700))">94%</div>
+            </div>
+            <div class="match">
+              <div class="match__title">REQ-0014 · Senior Software Engineer <small>Platform · SF · $180k–$240k</small></div>
+              <div class="match__bar"><div class="match__fill" style="width:92%"></div></div>
+              <div class="match__pct">92%</div>
+            </div>
+            <div class="match">
+              <div class="match__title">REQ-0009 · Backend Engineer <small>Payments · Hybrid · $170k–$210k</small></div>
+              <div class="match__bar"><div class="match__fill" style="width:81%"></div></div>
+              <div class="match__pct">81%</div>
+            </div>
+            <div class="match">
+              <div class="match__title">REQ-0021 · Tech Lead <small>Marketplace · Remote · $190k–$230k</small></div>
+              <div class="match__bar"><div class="match__fill" style="width:72%"></div></div>
+              <div class="match__pct" style="color:hsl(var(--warn-700))">72%</div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px">
+              <button class="btn btn--primary btn--sm"><svg><use href="_icons.svg#i-send"/></svg> Submit to REQ-0017</button>
+              <button class="btn btn--outline btn--sm"><svg><use href="_icons.svg#i-eye"/></svg> See AI rationale</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- AI Suggested next actions -->
+        <section class="card mb-4">
+          <div class="card__header">
+            <div class="flex items-center gap-2">
+              <span class="card__title">Suggested next actions</span>
+              <span class="ai-card__badge"><svg><use href="_icons.svg#i-sparkles"/></svg> AI</span>
+            </div>
+          </div>
+          <div class="card__body">
+            <div class="action-row">
+              <div class="action-row__icon"><svg width="14" height="14"><use href="_icons.svg#i-send"/></svg></div>
+              <div>
+                <div class="action-row__title">Submit Sarah to REQ-0017 Staff SRE</div>
+                <div class="action-row__hint">94% AI match · candidate available immediately · job opened 1d ago</div>
+              </div>
+              <button class="btn btn--primary btn--sm">Submit</button>
+            </div>
+            <div class="action-row">
+              <div class="action-row__icon"><svg width="14" height="14"><use href="_icons.svg#i-clock"/></svg></div>
+              <div>
+                <div class="action-row__title">Send "still interested?" check-in</div>
+                <div class="action-row__hint">No contact in 2 days · 2 competing offers mentioned · time-sensitive</div>
+              </div>
+              <button class="btn btn--outline btn--sm">Draft email</button>
+            </div>
+            <div class="action-row">
+              <div class="action-row__icon"><svg width="14" height="14"><use href="_icons.svg#i-edit"/></svg></div>
+              <div>
+                <div class="action-row__title">Fill in salary expectation range</div>
+                <div class="action-row__hint">Missing data limits AI matching against compensation bands</div>
+              </div>
+              <button class="btn btn--ghost btn--sm">Add</button>
+            </div>
+            <div class="action-row">
+              <div class="action-row__icon"><svg width="14" height="14"><use href="_icons.svg#i-calendar"/></svg></div>
+              <div>
+                <div class="action-row__title">Reconfirm Round 3 onsite for tomorrow</div>
+                <div class="action-row__hint">Panel: Diego (HM), Priya (IC), Sam (IC)</div>
+              </div>
+              <button class="btn btn--ghost btn--sm">Open</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Skills with confidence -->
+        <section class="card mb-4">
+          <div class="card__header">
+            <div class="flex items-center gap-2">
+              <span class="card__title">Skills (extracted with confidence)</span>
+              <span class="ai-card__badge"><svg><use href="_icons.svg#i-sparkles"/></svg> AI</span>
+            </div>
+            <button class="btn btn--ghost btn--xs"><svg><use href="_icons.svg#i-plus"/></svg> Add skill</button>
+          </div>
+          <div class="card__body">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px 24px">
+              <div class="extraction-row"><div class="extraction-row__label">Go</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:96%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">96%</div></div>
+              <div class="extraction-row"><div class="extraction-row__label">Kubernetes</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:92%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">92%</div></div>
+              <div class="extraction-row"><div class="extraction-row__label">Distributed sys.</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:89%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">89%</div></div>
+              <div class="extraction-row"><div class="extraction-row__label">Observability</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:86%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">86%</div></div>
+              <div class="extraction-row"><div class="extraction-row__label">React</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:74%;background:hsl(var(--warn-500))"></div></div><div class="extraction-row__pct med">74%</div></div>
+              <div class="extraction-row"><div class="extraction-row__label">TypeScript</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:71%;background:hsl(var(--warn-500))"></div></div><div class="extraction-row__pct med">71%</div></div>
+              <div class="extraction-row"><div class="extraction-row__label">SQL</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:68%;background:hsl(var(--warn-500))"></div></div><div class="extraction-row__pct med">68%</div></div>
+              <div class="extraction-row"><div class="extraction-row__label">Mentorship</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:42%;background:hsl(var(--danger-500))"></div></div><div class="extraction-row__pct low">42%</div></div>
+            </div>
+            <p style="font-size:11.5px;color:hsl(var(--fg-muted));margin-top:14px;margin-bottom:0">
+              Confidence reflects how strongly the skill appears in resume + interview notes. Below the org's 70% threshold gets flagged for review.
+            </p>
+          </div>
+        </section>
+
+        <!-- Open interviews -->
+        <section class="card mb-4">
+          <div class="card__header">
+            <span class="card__title">Open interviews</span>
+            <button class="btn btn--ghost btn--xs"><svg><use href="_icons.svg#i-plus"/></svg> Schedule</button>
+          </div>
+          <div class="card__body">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid hsl(var(--border));border-radius:var(--r-md);background:hsl(var(--brand-50)/.3)">
+              <svg width="20" height="20" style="color:hsl(var(--brand-700))"><use href="_icons.svg#i-calendar"/></svg>
+              <div class="flex-1">
+                <div style="font-weight:500;font-size:13px">Round 3 · Onsite · Today 14:00</div>
+                <div style="font-size:11.5px;color:hsl(var(--fg-muted))">Diego (HM) + Priya (IC) + Sam (IC) · 90 min · REQ-0014</div>
+              </div>
+              <button class="btn btn--outline btn--sm">Open record</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Right rail -->
+      <aside style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- AI Risk Signals (hero on rail) -->
+        <section class="ai-card">
+          <div class="ai-card__header">
+            <span class="ai-card__badge"><svg><use href="_icons.svg#i-alert-triangle"/></svg> AI Risk Signals</span>
+          </div>
+          <div class="signal-grid">
+            <div class="signal-row">
+              <div class="signal-row__icon signal-row__icon--danger"><svg><use href="_icons.svg#i-alert-triangle"/></svg></div>
+              <div>
+                <div class="signal-row__title">Competing offers</div>
+                <div class="signal-row__hint">Mentioned in interview notes · time-critical</div>
+              </div>
+            </div>
+            <div class="signal-row">
+              <div class="signal-row__icon signal-row__icon--warn"><svg><use href="_icons.svg#i-clock"/></svg></div>
+              <div>
+                <div class="signal-row__title">2 days since contact</div>
+                <div class="signal-row__hint">Outside typical 24h cadence</div>
+              </div>
+            </div>
+            <div class="signal-row">
+              <div class="signal-row__icon signal-row__icon--warn"><svg><use href="_icons.svg#i-alert-circle"/></svg></div>
+              <div>
+                <div class="signal-row__title">Salary band missing</div>
+                <div class="signal-row__hint">Limits comp-range matching</div>
+              </div>
+            </div>
+            <div class="signal-row">
+              <div class="signal-row__icon signal-row__icon--info"><svg><use href="_icons.svg#i-target"/></svg></div>
+              <div>
+                <div class="signal-row__title">High likelihood: accept</div>
+                <div class="signal-row__hint">Confidence 82%</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Owner -->
+        <section class="card">
+          <div class="card__header">
+            <span class="card__title">Relationship owner</span>
+            <button class="btn btn--ghost btn--xs">Reassign</button>
+          </div>
+          <div class="card__body">
+            <div class="flex items-center gap-3">
+              <div class="avatar avatar--lg">AA</div>
+              <div>
+                <div style="font-weight:500;font-size:13.5px">Alice Admin</div>
+                <div style="font-size:11.5px;color:hsl(var(--fg-muted))">alice@acme.com · Recruiter</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Resume Intelligence -->
+        <section class="ai-card">
+          <div class="ai-card__header">
+            <span class="ai-card__badge"><svg><use href="_icons.svg#i-file-text"/></svg> Resume Intelligence</span>
+            <span style="margin-left:auto;font-size:11px;color:hsl(var(--fg-muted))">v3 · Gemini Flash</span>
+          </div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="pill pill--success" style="font-size:11px"><span class="dot dot--success"></span> Parsed</span>
+            <span style="font-size:11.5px;color:hsl(var(--fg-muted))">Overall confidence <strong style="color:hsl(var(--success-700))">88%</strong></span>
+          </div>
+          <div class="extraction-row"><div class="extraction-row__label">Email</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:99%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">99</div></div>
+          <div class="extraction-row"><div class="extraction-row__label">Phone</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:97%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">97</div></div>
+          <div class="extraction-row"><div class="extraction-row__label">Name</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:99%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">99</div></div>
+          <div class="extraction-row"><div class="extraction-row__label">Location</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:88%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">88</div></div>
+          <div class="extraction-row"><div class="extraction-row__label">Title</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:92%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">92</div></div>
+          <div class="extraction-row"><div class="extraction-row__label">Company</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:90%;background:hsl(var(--success-500))"></div></div><div class="extraction-row__pct high">90</div></div>
+          <div class="extraction-row"><div class="extraction-row__label">Career start</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:76%;background:hsl(var(--warn-500))"></div></div><div class="extraction-row__pct med">76</div></div>
+          <div class="extraction-row"><div class="extraction-row__label">Salary</div><div class="extraction-row__bar"><div class="extraction-row__fill" style="width:0%"></div></div><div class="extraction-row__pct low">—</div></div>
+          <button class="btn btn--ghost btn--xs" style="margin-top:10px;padding-left:0">View full extraction →</button>
+        </section>
+
+        <!-- Profile completeness -->
+        <section class="card">
+          <div class="card__header">
+            <span class="card__title">Profile completeness</span>
+            <span style="font-weight:600;color:hsl(var(--warn-700))">53%</span>
+          </div>
+          <div class="card__body">
+            <div style="height:8px;background:hsl(var(--surface-2));border-radius:999px;overflow:hidden">
+              <div style="width:53%;height:100%;background:hsl(var(--warn-500))"></div>
+            </div>
+            <p style="font-size:11.5px;color:hsl(var(--fg-muted));margin:10px 0 4px">Missing 7 fields</p>
+            <ul style="font-size:12px;margin:0;padding-left:14px;color:hsl(var(--fg-secondary));line-height:1.6">
+              <li>Salary expectation</li>
+              <li>Availability date</li>
+              <li>Work authorization</li>
+              <li>+ 4 more</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- Contact -->
+        <section class="card">
+          <div class="card__header"><span class="card__title">Contact</span></div>
+          <div class="card__body" style="font-size:13px;display:flex;flex-direction:column;gap:6px">
+            <a style="display:flex;align-items:center;gap:8px;color:inherit"><svg width="13" height="13" style="color:hsl(var(--fg-muted))"><use href="_icons.svg#i-mail"/></svg> sarah@example.com</a>
+            <a style="display:flex;align-items:center;gap:8px;color:inherit"><svg width="13" height="13" style="color:hsl(var(--fg-muted))"><use href="_icons.svg#i-phone"/></svg> +1 555-0142</a>
+            <a style="display:flex;align-items:center;gap:8px;color:inherit"><svg width="13" height="13" style="color:hsl(var(--fg-muted))"><use href="_icons.svg#i-link"/></svg> linkedin.com/in/sarah-smith <svg width="11" height="11" style="opacity:.5"><use href="_icons.svg#i-arrow-up-right"/></svg></a>
+          </div>
+        </section>
+
+      </aside>
+    </div>
+  </div>
+</div>
+</body>
+</html>

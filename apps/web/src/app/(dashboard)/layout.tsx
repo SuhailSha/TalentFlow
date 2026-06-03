@@ -11,14 +11,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      {/* Skip-to-content link — visible only on keyboard focus. WCAG 2.4.1. */}
+      <a href="#main-content" className="skip-to-content text-body-sm font-medium">
+        Skip to main content
+      </a>
+
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           onMenuToggle={() => setSidebarOpen((prev) => !prev)}
           onOpenPalette={() => setPaletteOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto focus:outline-none"
+        >
           <div className="container mx-auto max-w-7xl p-6">{children}</div>
         </main>
       </div>

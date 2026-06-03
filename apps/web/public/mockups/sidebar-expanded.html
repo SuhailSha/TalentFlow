@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sidebar (Expanded) · TalentFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="_styles.css"/>
+<style>
+  body { padding: 24px; background: hsl(var(--surface-2) / 0.4); }
+  .frame {
+    background: hsl(var(--bg));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    height: 760px;
+  }
+  .frame .sidebar { height: 100%; position: static; }
+  .placeholder {
+    background:
+      repeating-linear-gradient(45deg, hsl(var(--surface-2) / 0.3) 0 12px, transparent 12px 24px),
+      hsl(var(--bg));
+    padding: 24px;
+    display: flex; align-items: center; justify-content: center;
+    color: hsl(var(--fg-muted));
+    font-size: 13px;
+    text-align: center;
+    border-left: 1px solid hsl(var(--border));
+  }
+  .annotations {
+    position: relative;
+    pointer-events: none;
+  }
+  .annotation {
+    position: absolute;
+    background: hsl(var(--n-900));
+    color: hsl(var(--n-50));
+    padding: 6px 10px;
+    border-radius: var(--r-md);
+    font-size: 11.5px;
+    box-shadow: var(--shadow-md);
+    max-width: 220px;
+    line-height: 1.4;
+  }
+  .annotation::before {
+    content: ""; position: absolute; left: -8px; top: 12px;
+    border: 4px solid transparent; border-right-color: hsl(var(--n-900));
+  }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <aside class="sidebar">
+    <div class="sidebar__workspace">
+      <div class="monogram">AC</div>
+      <div class="flex-1" style="min-width:0">
+        <div style="font-weight:600;font-size:13.5px;line-height:1.2">Acme Recruiting</div>
+        <div style="font-size:11px;color:hsl(var(--fg-muted));line-height:1.2">Recruiter · 3 members</div>
+      </div>
+      <svg width="14" height="14" style="color:hsl(var(--fg-muted))"><use href="_icons.svg#i-chevron-down"/></svg>
+    </div>
+
+    <nav class="sidebar__nav">
+      <div class="sidebar__group">
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-home"/></svg><span class="sidebar__label">Home</span></a>
+        <a class="sidebar__item sidebar__item--active"><svg><use href="_icons.svg#i-inbox"/></svg><span class="sidebar__label">Inbox</span><span class="sidebar__badge">12</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Pinned</span><svg width="12" height="12" style="color:hsl(var(--fg-muted));transform:rotate(0deg)"><use href="_icons.svg#i-chevron-down"/></svg></div>
+        <a class="sidebar__item"><svg style="color:hsl(var(--warn-500))"><use href="_icons.svg#i-star"/></svg><span class="sidebar__label">Sarah Smith</span></a>
+        <a class="sidebar__item"><svg style="color:hsl(var(--warn-500))"><use href="_icons.svg#i-star"/></svg><span class="sidebar__label">REQ-0014 Sr Engineer</span></a>
+        <a class="sidebar__item"><svg style="color:hsl(var(--warn-500))"><use href="_icons.svg#i-star"/></svg><span class="sidebar__label">Apex Talent (vendor)</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Recruit</span><svg width="12" height="12" style="color:hsl(var(--fg-muted))"><use href="_icons.svg#i-chevron-down"/></svg></div>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-users"/></svg><span class="sidebar__label">Candidates</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-briefcase"/></svg><span class="sidebar__label">Jobs</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-send"/></svg><span class="sidebar__label">Submissions</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-calendar"/></svg><span class="sidebar__label">Interviews</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-bell"/></svg><span class="sidebar__label">Reminders</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow" style="color:hsl(var(--brand-700))">Resume Intelligence</span><svg width="12" height="12" style="color:hsl(var(--fg-muted))"><use href="_icons.svg#i-chevron-down"/></svg></div>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-file-text"/></svg><span class="sidebar__label">Resumes</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-clipboard"/></svg><span class="sidebar__label">Review queue</span><span class="sidebar__badge">12</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-merge"/></svg><span class="sidebar__label">Duplicates</span><span class="sidebar__badge sidebar__badge--alt">3</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Vendors</span></div>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-building"/></svg><span class="sidebar__label">Vendors</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow" style="opacity:0.6">Reports · coming soon</span></div>
+        <a class="sidebar__item" style="opacity:0.5;pointer-events:none"><svg><use href="_icons.svg#i-trending"/></svg><span class="sidebar__label">Pipeline reports</span></a>
+        <a class="sidebar__item" style="opacity:0.5;pointer-events:none"><svg><use href="_icons.svg#i-trending"/></svg><span class="sidebar__label">Time to fill</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Work</span></div>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-settings"/></svg><span class="sidebar__label">Settings</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar__footer">
+      <button class="sidebar__footer-btn" title="Collapse"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m9 4-5 6 5 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="sidebar__footer-btn" title="Shortcuts"><svg width="14" height="14"><use href="_icons.svg#i-help"/></svg></button>
+      <button class="sidebar__footer-btn" title="Theme"><svg width="14" height="14"><use href="_icons.svg#i-sun"/></svg></button>
+      <span style="margin-left:auto">v0.3</span>
+    </div>
+  </aside>
+
+  <div class="placeholder">
+    Content area<br/>(spotlight on sidebar)
+  </div>
+</div>
+
+<!-- Annotation legend below the frame -->
+<div style="max-width:1200px;margin:24px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:12px;color:hsl(var(--fg-muted));">
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Workspace switcher</strong><br/>Tenant monogram + name + role. Click opens popover for tenant switch + (gated) Platform mode.</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Pinned items</strong><br/>User-curated records (candidates, jobs, vendors). Drag to reorder. Max 5 visible.</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Resume Intelligence section</strong><br/>First-class product area. Live counts on Review queue + Duplicates.</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Active state</strong><br/>3px brand-500 left bar + brand-50 background. Icon shifts to brand-600.</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Reports placeholder</strong><br/>Reserved nav slot. Disabled until module launches; tells users the surface exists.</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Footer cluster</strong><br/>Collapse · Keyboard shortcuts · Theme · Version. Persisted in localStorage.</div>
+</div>
+
+</body>
+</html>

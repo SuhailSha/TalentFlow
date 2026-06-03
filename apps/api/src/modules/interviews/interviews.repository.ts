@@ -96,19 +96,33 @@ export class InterviewsRepository {
     });
   }
 
-  async update(id: string, data: Prisma.InterviewUncheckedUpdateInput) {
-    return this.db.interview.update({
-      where: { id },
+  // ─── Tenant-scoped writes ──────────────────────────────────────────────────
+  // Application-layer defense in depth: every mutating method requires
+  // organizationId in the where-clause. updateMany returns count; 0 means the
+  // row doesn't exist or belongs to a different tenant. See ADR-002.
+
+  async update(
+    id: string,
+    organizationId: string,
+    data: Prisma.InterviewUncheckedUpdateInput,
+  ) {
+    const result = await this.db.interview.updateMany({
+      where: { id, organizationId, deletedAt: null },
       data,
+    });
+    if (result.count === 0) return null;
+    return this.db.interview.findUnique({
+      where: { id },
       include: INTERVIEW_DETAIL_INCLUDE,
     });
   }
 
-  async softDelete(id: string) {
-    return this.db.interview.update({
-      where: { id },
+  async softDelete(id: string, organizationId: string) {
+    const result = await this.db.interview.updateMany({
+      where: { id, organizationId, deletedAt: null },
       data: { deletedAt: new Date() },
     });
+    return result.count > 0;
   }
 
   async addNote(data: Prisma.InterviewNoteUncheckedCreateInput) {
@@ -123,8 +137,21 @@ export class InterviewsRepository {
     return this.db.interviewFeedback.create({ data });
   }
 
-  async updateFeedback(id: string, data: Prisma.InterviewFeedbackUncheckedUpdateInput) {
-    return this.db.interviewFeedback.update({ where: { id }, data });
+  // Feedback is interview-scoped; tenant isolation flows through the interview
+  // ownership check enforced by the service before this is called. We still
+  // require interviewId here so we cannot update a feedback row belonging to a
+  // different interview by id alone.
+  async updateFeedback(
+    id: string,
+    interviewId: string,
+    data: Prisma.InterviewFeedbackUncheckedUpdateInput,
+  ) {
+    const result = await this.db.interviewFeedback.updateMany({
+      where: { id, interviewId },
+      data,
+    });
+    if (result.count === 0) return null;
+    return this.db.interviewFeedback.findUnique({ where: { id } });
   }
 
   async findFeedbackById(id: string, interviewId: string) {

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sidebar (Collapsed) · TalentFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="_styles.css"/>
+<style>
+  body { padding: 24px; background: hsl(var(--surface-2) / 0.4); }
+  .frame {
+    background: hsl(var(--bg));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    height: 760px;
+  }
+  .frame .sidebar { height: 100%; position: static; }
+  .placeholder {
+    background: hsl(var(--bg));
+    padding: 24px;
+    display: flex; align-items: center; justify-content: center;
+    color: hsl(var(--fg-muted));
+    font-size: 13px;
+    border-left: 1px solid hsl(var(--border));
+  }
+  /* Show one tooltip example for the demo */
+  .tip-demo {
+    position: absolute; left: 64px; top: 230px;
+    background: hsl(var(--n-900)); color: hsl(var(--n-50));
+    padding: 6px 10px; border-radius: var(--r-md);
+    font-size: 11.5px; box-shadow: var(--shadow-md);
+    display: inline-flex; align-items: center; gap: 8px;
+    pointer-events: none;
+  }
+  .tip-demo::before {
+    content: ""; position: absolute; left: -5px; top: 9px;
+    border: 4px solid transparent; border-right-color: hsl(var(--n-900));
+  }
+  .tip-demo kbd { background: rgba(255,255,255,0.10); padding: 1px 5px; border-radius: 3px; font-family: 'JetBrains Mono',monospace; font-size: 10px; }
+  .frame-wrap { position: relative; max-width: 1200px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+<div class="frame-wrap">
+<div class="frame">
+  <aside class="sidebar sidebar--collapsed">
+    <div class="sidebar__workspace">
+      <div class="monogram">AC</div>
+    </div>
+    <nav class="sidebar__nav">
+      <div class="sidebar__group">
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-home"/></svg></a>
+        <a class="sidebar__item" style="position:relative"><svg><use href="_icons.svg#i-inbox"/></svg><span style="position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:999px;background:hsl(var(--brand-500));border:2px solid hsl(var(--sidebar-bg))"></span></a>
+      </div>
+      <div class="sidebar__divider"></div>
+      <div class="sidebar__group">
+        <a class="sidebar__item"><svg style="color:hsl(var(--warn-500))"><use href="_icons.svg#i-star"/></svg></a>
+        <a class="sidebar__item"><svg style="color:hsl(var(--warn-500))"><use href="_icons.svg#i-star"/></svg></a>
+      </div>
+      <div class="sidebar__divider"></div>
+      <div class="sidebar__group">
+        <a class="sidebar__item sidebar__item--active"><svg><use href="_icons.svg#i-users"/></svg></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-briefcase"/></svg></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-send"/></svg></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-calendar"/></svg></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-bell"/></svg></a>
+      </div>
+      <div class="sidebar__divider"></div>
+      <div class="sidebar__group">
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-file-text"/></svg></a>
+        <a class="sidebar__item" style="position:relative"><svg><use href="_icons.svg#i-clipboard"/></svg><span style="position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:999px;background:hsl(var(--brand-500));border:2px solid hsl(var(--sidebar-bg))"></span></a>
+        <a class="sidebar__item" style="position:relative"><svg><use href="_icons.svg#i-merge"/></svg><span style="position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:999px;background:hsl(var(--warn-500));border:2px solid hsl(var(--sidebar-bg))"></span></a>
+      </div>
+      <div class="sidebar__divider"></div>
+      <div class="sidebar__group">
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-building"/></svg></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-settings"/></svg></a>
+      </div>
+    </nav>
+    <div class="sidebar__footer" style="justify-content:center">
+      <button class="sidebar__footer-btn" title="Expand"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m5 4 5 6-5 6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </aside>
+
+  <div class="placeholder">
+    Content area (≈ 180 px more horizontal space than expanded mode)
+  </div>
+</div>
+
+<div class="tip-demo">Candidates <kbd>⌘ C</kbd></div>
+</div>
+
+<div style="max-width:1200px;margin:24px auto;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;font-size:12px;color:hsl(var(--fg-muted))">
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">56 px width</strong><br/>Reclaims 184 px of canvas. Lets tables show 3+ extra columns at compact density.</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Tooltips with shortcuts</strong><br/>Hover any icon (300 ms delay) shows label + ⌘-key. Power users learn keyboard nav passively.</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Mini-badges</strong><br/>Counts collapse to a 9 px brand dot top-right of the icon. Numeric label appears in expanded mode.</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Active state</strong><br/>Brand-500 background, white icon (replaces the 3 px left bar — too narrow at 56 px).</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Dividers</strong><br/>Replace group eyebrow labels. Visual rhythm preserved without the text.</div>
+  <div style="padding:12px 14px;background:hsl(var(--surface));border:1px solid hsl(var(--border));border-radius:var(--r-md)"><strong style="color:hsl(var(--fg))">Workspace monogram</strong><br/>Click opens the same workspace popover as expanded mode (anchored right of icon).</div>
+</div>
+
+</body>
+</html>

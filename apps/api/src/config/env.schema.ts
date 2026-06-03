@@ -89,6 +89,39 @@ export const envSchema = z.object({
   // Within this window, a same-key send in non-terminal state short-circuits
   // to the existing delivery row (no second email goes out).
   EMAIL_DEDUP_WINDOW_SECONDS: z.coerce.number().int().min(10).max(86_400).default(300),
+}).superRefine((env, ctx) => {
+  // ─── Production hardening (Pre-Phase-1, per architecture review) ────────
+  // In development, REDIS_ENABLED=false is acceptable: queue modules become
+  // no-ops and ingest paths fall back to synchronous execution so a fresh
+  // checkout works without Redis. That convenience is unacceptable in
+  // production: a "sync fallback" silently degrades latency (parsing
+  // blocks the request thread for 10+ seconds) and breaks every assumption
+  // about retries, DLQ, and observability.
+  //
+  // Fail-fast at boot when NODE_ENV=production unless Redis is wired.
+  if (env.NODE_ENV === 'production' && env.REDIS_ENABLED !== true) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['REDIS_ENABLED'],
+      message:
+        'REDIS_ENABLED must be true in production. ' +
+        'The dev-only sync fallback is unsafe for customer traffic — ' +
+        'parsing jobs would block request threads and have no retry path. ' +
+        'Provision Redis and set REDIS_ENABLED=true before deploying.',
+    });
+  }
+
+  // JWT secrets in production must be substantially longer than the
+  // 32-char dev floor.
+  if (env.NODE_ENV === 'production' && env.JWT_SECRET.length < 64) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['JWT_SECRET'],
+      message:
+        'JWT_SECRET must be ≥ 64 characters in production. ' +
+        'Generate via: openssl rand -base64 64',
+    });
+  }
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

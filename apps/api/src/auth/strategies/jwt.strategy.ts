@@ -35,7 +35,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   validate(payload: JwtPayload): RequestUser {
-    if (!payload.sub || !payload.orgId) {
+    // Explicit type+length checks. The previous truthiness check accepted
+    // empty strings, which would propagate as `organizationId: ""` into
+    // the RLS context — a bug-mask, not a security hole, but easy to fix
+    // and worth doing for clarity. (Audit finding S-6.)
+    if (typeof payload.sub !== 'string' || payload.sub.trim().length === 0) {
+      throw new UnauthorizedException('Malformed token payload');
+    }
+    if (typeof payload.orgId !== 'string' || payload.orgId.trim().length === 0) {
+      throw new UnauthorizedException('Malformed token payload');
+    }
+    if (typeof payload.email !== 'string' || payload.email.trim().length === 0) {
       throw new UnauthorizedException('Malformed token payload');
     }
 

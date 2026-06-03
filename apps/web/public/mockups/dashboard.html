@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Home · TalentFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="_styles.css"/>
+<style>
+  /* Dashboard-specific composition */
+  .hello { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  .hello em { color: hsl(var(--brand-700)); font-style: normal; font-weight: 700; }
+  .hello-sub { font-size: 13px; color: hsl(var(--fg-muted)); margin-top: 2px; }
+
+  .cmd-center { background: hsl(var(--surface)); border: 1px solid hsl(var(--border)); border-radius: var(--r-lg); overflow: hidden; }
+  .cmd-center__title { display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid hsl(var(--border)); }
+  .cmd-center__title h2 { font-size: 14px; font-weight: 600; margin: 0; }
+  .cmd-center__title .ai-card__badge { margin-left: auto; }
+
+  .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  .week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .week-day {
+    background: hsl(var(--surface)); border: 1px solid hsl(var(--border)); border-radius: var(--r-md);
+    padding: 10px; min-height: 78px; position: relative;
+  }
+  .week-day.today { border-color: hsl(var(--brand-500)); background: hsl(var(--brand-50) / 0.6); }
+  .week-day__name { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: hsl(var(--fg-muted)); font-weight: 600; }
+  .week-day__num { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .week-day__dots { display: flex; gap: 3px; position: absolute; bottom: 10px; left: 10px; }
+  .week-day__dots span { width: 5px; height: 5px; border-radius: 999px; }
+  .week-day__count { position: absolute; bottom: 9px; right: 10px; font-size: 10px; color: hsl(var(--fg-muted)); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<svg style="display:none">
+  <use href="_icons.svg#i-search"/>
+</svg>
+<!-- Inline sprite (used by all icons via #i-*) -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8"/><path d="M5 9.5V21h14V9.5"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 4h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6Z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M3 21v-1a6 6 0 0 1 12 0v1"/><path d="M16 4a4 4 0 0 1 0 8"/><path d="M22 21v-1a6 6 0 0 0-3-5.2"/></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7l-5-5Z"/><path d="M14 2v5h5M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="14" r="2"/><path d="M6 8v8M8 6h6a4 4 0 0 1 4 4v2"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 22v-4h6v4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.18V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z" fill="currentColor"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></symbol>
+  <symbol id="i-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/></symbol>
+  <symbol id="i-trending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></symbol>
+  <symbol id="i-arrow-up-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M7 7h10v10"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9.1a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+  <symbol id="i-snooze" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M9 9h6l-6 7h6"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2Z"/></symbol>
+</svg>
+
+<div class="app-shell">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar__workspace">
+      <div class="monogram">AC</div>
+      <div class="flex-1" style="min-width:0">
+        <div style="font-weight:600;font-size:13.5px;line-height:1.2">Acme Recruiting</div>
+        <div style="font-size:11px;color:hsl(var(--fg-muted));line-height:1.2">Recruiter · 3 members</div>
+      </div>
+      <svg width="14" height="14" style="color:hsl(var(--fg-muted))"><use href="#i-chevron-down"/></svg>
+    </div>
+
+    <nav class="sidebar__nav">
+      <div class="sidebar__group">
+        <a class="sidebar__item sidebar__item--active"><svg><use href="#i-home"/></svg><span class="sidebar__label">Home</span></a>
+        <a class="sidebar__item"><svg><use href="#i-inbox"/></svg><span class="sidebar__label">Inbox</span><span class="sidebar__badge">3</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Pinned</span><svg width="12" height="12" style="color:hsl(var(--fg-muted))"><use href="#i-chevron-down"/></svg></div>
+        <a class="sidebar__item"><svg><use href="#i-star"/></svg><span class="sidebar__label">Sarah Smith</span></a>
+        <a class="sidebar__item"><svg><use href="#i-star"/></svg><span class="sidebar__label">REQ-0014 Sr Engineer</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Recruit</span><svg width="12" height="12" style="color:hsl(var(--fg-muted))"><use href="#i-chevron-down"/></svg></div>
+        <a class="sidebar__item"><svg><use href="#i-users"/></svg><span class="sidebar__label">Candidates</span></a>
+        <a class="sidebar__item"><svg><use href="#i-briefcase"/></svg><span class="sidebar__label">Jobs</span></a>
+        <a class="sidebar__item"><svg><use href="#i-send"/></svg><span class="sidebar__label">Submissions</span></a>
+        <a class="sidebar__item"><svg><use href="#i-calendar"/></svg><span class="sidebar__label">Interviews</span></a>
+        <a class="sidebar__item"><svg><use href="#i-bell"/></svg><span class="sidebar__label">Reminders</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Resume Intelligence</span><svg width="12" height="12" style="color:hsl(var(--fg-muted))"><use href="#i-chevron-down"/></svg></div>
+        <a class="sidebar__item"><svg><use href="#i-file-text"/></svg><span class="sidebar__label">Resumes</span></a>
+        <a class="sidebar__item"><svg><use href="#i-clipboard"/></svg><span class="sidebar__label">Review queue</span><span class="sidebar__badge">12</span></a>
+        <a class="sidebar__item"><svg><use href="#i-merge"/></svg><span class="sidebar__label">Duplicates</span><span class="sidebar__badge sidebar__badge--alt">3</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Vendors</span></div>
+        <a class="sidebar__item"><svg><use href="#i-building"/></svg><span class="sidebar__label">Vendors</span></a>
+      </div>
+
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Work</span></div>
+        <a class="sidebar__item"><svg><use href="#i-settings"/></svg><span class="sidebar__label">Settings</span></a>
+      </div>
+    </nav>
+
+    <div class="sidebar__footer">
+      <button class="sidebar__footer-btn" title="Collapse"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m9 4-5 6 5 6" stroke-linecap="round"/></svg></button>
+      <button class="sidebar__footer-btn" title="Shortcuts"><svg width="14" height="14"><use href="#i-help"/></svg></button>
+      <button class="sidebar__footer-btn" title="Theme"><svg width="14" height="14"><use href="#i-sun"/></svg></button>
+      <span style="margin-left:auto">v0.3</span>
+    </div>
+  </aside>
+
+  <!-- ── Main content ─────────────────────────────────────────────── -->
+  <div>
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar__crumbs">
+        <strong>Home</strong>
+      </div>
+      <button class="topbar__search">
+        <svg width="14" height="14"><use href="#i-search"/></svg>
+        <span>Search or jump to…</span>
+        <kbd>⌘ K</kbd>
+      </button>
+      <div class="topbar__cluster">
+        <button class="topbar__icon-btn" title="Inbox"><svg width="16" height="16"><use href="#i-inbox"/></svg><span class="dot-badge"></span></button>
+        <button class="topbar__icon-btn" title="Theme"><svg width="16" height="16"><use href="#i-sun"/></svg></button>
+        <button class="topbar__icon-btn" title="Help"><svg width="16" height="16"><use href="#i-help"/></svg></button>
+        <div style="width:1px;height:18px;background:hsl(var(--border));margin:0 6px"></div>
+        <div class="avatar avatar--sm" style="width:28px;height:28px">AA</div>
+      </div>
+    </header>
+
+    <main class="container">
+
+      <!-- Greeting + AI summary -->
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="hello">Good afternoon, Alice. <em>4 things</em> need you today.</div>
+          <div class="hello-sub">Thursday, June 3 · Acme Recruiting · Pipeline trending +12% this week</div>
+        </div>
+        <button class="btn btn--outline btn--sm"><svg><use href="#i-sparkles"/></svg> AI weekly insight</button>
+      </div>
+
+      <!-- KPI strip (compact summary chips, not big cards) -->
+      <div class="kpi-strip mb-6">
+        <div class="kpi">
+          <div class="kpi__icon"><svg><use href="#i-briefcase"/></svg></div>
+          <div>
+            <div class="kpi__label">Open jobs</div>
+            <div class="flex items-center gap-2"><div class="kpi__value">23</div><div class="kpi__delta">+3</div></div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__icon"><svg><use href="#i-users"/></svg></div>
+          <div>
+            <div class="kpi__label">Active candidates</div>
+            <div class="flex items-center gap-2"><div class="kpi__value">412</div><div class="kpi__delta">+38</div></div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__icon"><svg><use href="#i-calendar"/></svg></div>
+          <div>
+            <div class="kpi__label">Interviews this week</div>
+            <div class="flex items-center gap-2"><div class="kpi__value">17</div><div class="kpi__delta kpi__delta--down">−2</div></div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__icon"><svg><use href="#i-target"/></svg></div>
+          <div>
+            <div class="kpi__label">Offers pending</div>
+            <div class="flex items-center gap-2"><div class="kpi__value">5</div></div>
+          </div>
+        </div>
+        <div class="kpi" style="flex:1;background:transparent;border:1px dashed hsl(var(--border));color:hsl(var(--fg-muted))">
+          <svg width="14" height="14"><use href="#i-plus"/></svg>
+          <div style="font-size:12px">Pin a custom KPI…</div>
+        </div>
+      </div>
+
+      <!-- AI Command Center -->
+      <section class="cmd-center mb-6">
+        <div class="cmd-center__title">
+          <svg width="16" height="16" class="ai-glow"><use href="#i-sparkles"/></svg>
+          <h2>AI Command Center</h2>
+          <span style="font-size:12px;color:hsl(var(--fg-muted));margin-left:8px">Refreshed 2 min ago</span>
+          <span class="ai-card__badge"><svg><use href="#i-sparkles"/></svg> AI</span>
+        </div>
+
+        <div class="cmd-item cmd-item--urgent">
+          <div class="cmd-item__icon cmd-item__icon--urgent"><svg><use href="#i-zap"/></svg></div>
+          <div>
+            <div class="cmd-item__title">12 candidates have been waiting &gt;24h for a reply</div>
+            <div class="cmd-item__hint">10 are Senior Engineer applicants · likely time-sensitive at this comp band</div>
+          </div>
+          <div class="cmd-item__actions">
+            <button class="btn btn--ghost btn--sm">Snooze</button>
+            <button class="btn btn--primary btn--sm">Triage inbox</button>
+          </div>
+        </div>
+
+        <div class="cmd-item cmd-item--ai">
+          <div class="cmd-item__icon cmd-item__icon--ai"><svg><use href="#i-sparkles"/></svg></div>
+          <div>
+            <div class="cmd-item__title">5 high-fit candidates for newly opened REQ-0017 Staff Engineer</div>
+            <div class="cmd-item__hint">AI match &gt; 85% · pulled from existing pool · no outreach in last 90 days</div>
+          </div>
+          <div class="cmd-item__actions">
+            <button class="btn btn--outline btn--sm">Dismiss</button>
+            <button class="btn btn--primary btn--sm">Review matches</button>
+          </div>
+        </div>
+
+        <div class="cmd-item cmd-item--warning">
+          <div class="cmd-item__icon cmd-item__icon--warning"><svg><use href="#i-merge"/></svg></div>
+          <div>
+            <div class="cmd-item__title">3 potential duplicate candidates detected</div>
+            <div class="cmd-item__hint">Resume parsing surfaced email + phone matches · cross-tenant safe</div>
+          </div>
+          <div class="cmd-item__actions">
+            <button class="btn btn--outline btn--sm">Resolve →</button>
+          </div>
+        </div>
+
+        <div class="cmd-item cmd-item--warning">
+          <div class="cmd-item__icon cmd-item__icon--warning"><svg><use href="#i-clock"/></svg></div>
+          <div>
+            <div class="cmd-item__title">Interview feedback bottleneck on REQ-0014</div>
+            <div class="cmd-item__hint">3 onsite feedbacks overdue · panel: Diego, Priya, Sam</div>
+          </div>
+          <div class="cmd-item__actions">
+            <button class="btn btn--outline btn--sm">Nudge panel</button>
+            <button class="btn btn--primary btn--sm">View</button>
+          </div>
+        </div>
+
+        <div class="cmd-item cmd-item--info">
+          <div class="cmd-item__icon cmd-item__icon--info"><svg><use href="#i-trending"/></svg></div>
+          <div>
+            <div class="cmd-item__title">8 candidates look ready for next stage</div>
+            <div class="cmd-item__hint">AI inferred from interview signal + recruiter sentiment in notes</div>
+          </div>
+          <div class="cmd-item__actions">
+            <button class="btn btn--outline btn--sm">Review →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- My Pipeline + This Week -->
+      <div class="grid-2 mb-6">
+        <section>
+          <div class="section-hdr">
+            <div class="section-hdr__title">My pipeline</div>
+            <a class="section-hdr__link">View full pipeline →</a>
+          </div>
+          <div class="pipeline-strip">
+            <div class="pipe-col">
+              <div class="pipe-col__hdr"><span class="pipe-col__hdr-label">Submitted</span><span class="pipe-col__hdr-count">12</span></div>
+              <div class="pipe-card">
+                <div class="pipe-card__name">Sarah Smith</div>
+                <div class="pipe-card__meta"><span class="dot dot--info" style="width:6px;height:6px;border-radius:999px"></span> REQ-0014 · 2d</div>
+                <div class="pipe-card__match"><svg width="10" height="10"><use href="#i-sparkles"/></svg> 92% match</div>
+              </div>
+              <div class="pipe-card">
+                <div class="pipe-card__name">Priya Patel</div>
+                <div class="pipe-card__meta"><span class="dot dot--warning" style="width:6px;height:6px;border-radius:999px"></span> REQ-0021 · 4d</div>
+                <div class="pipe-card__match"><svg width="10" height="10"><use href="#i-sparkles"/></svg> 78% match</div>
+              </div>
+            </div>
+            <div class="pipe-col">
+              <div class="pipe-col__hdr"><span class="pipe-col__hdr-label">Phone screen</span><span class="pipe-col__hdr-count">7</span></div>
+              <div class="pipe-card">
+                <div class="pipe-card__name">Jamal Khan</div>
+                <div class="pipe-card__meta"><span class="dot dot--info" style="width:6px;height:6px;border-radius:999px"></span> REQ-0009 · 8h</div>
+                <div class="pipe-card__match"><svg width="10" height="10"><use href="#i-sparkles"/></svg> 88% match</div>
+              </div>
+              <div class="pipe-card">
+                <div class="pipe-card__name">Omar Hassan</div>
+                <div class="pipe-card__meta"><span class="dot dot--info" style="width:6px;height:6px;border-radius:999px"></span> REQ-0009 · 1d</div>
+              </div>
+            </div>
+            <div class="pipe-col">
+              <div class="pipe-col__hdr"><span class="pipe-col__hdr-label">Onsite</span><span class="pipe-col__hdr-count">4</span></div>
+              <div class="pipe-card">
+                <div class="pipe-card__name">Maria López</div>
+                <div class="pipe-card__meta"><span class="dot dot--brand" style="width:6px;height:6px;border-radius:999px"></span> Today 14:00</div>
+                <div class="pipe-card__match"><svg width="10" height="10"><use href="#i-sparkles"/></svg> 84% match</div>
+              </div>
+              <div class="pipe-card">
+                <div class="pipe-card__name">Lin Wei</div>
+                <div class="pipe-card__meta"><span class="dot dot--info" style="width:6px;height:6px;border-radius:999px"></span> REQ-0014 · 2d</div>
+              </div>
+            </div>
+            <div class="pipe-col">
+              <div class="pipe-col__hdr"><span class="pipe-col__hdr-label">Offer</span><span class="pipe-col__hdr-count">2</span></div>
+              <div class="pipe-card">
+                <div class="pipe-card__name">Yusuf Ahmed</div>
+                <div class="pipe-card__meta"><span class="dot dot--warning" style="width:6px;height:6px;border-radius:999px"></span> 25% likely to close</div>
+                <div class="pipe-card__match" style="color:hsl(var(--warn-700))"><svg width="10" height="10"><use href="#i-alert-triangle"/></svg> AI: likely to decline</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div class="section-hdr">
+            <div class="section-hdr__title">This week</div>
+            <a class="section-hdr__link">Open calendar →</a>
+          </div>
+          <div class="week-strip">
+            <div class="week-day"><div class="week-day__name">Mon</div><div class="week-day__num">2</div><div class="week-day__dots"><span class="dot--info"></span><span class="dot--info"></span></div><div class="week-day__count">2</div></div>
+            <div class="week-day"><div class="week-day__name">Tue</div><div class="week-day__num">3</div><div class="week-day__dots"><span class="dot--info"></span><span class="dot--info"></span><span class="dot--info"></span><span class="dot--info"></span></div><div class="week-day__count">4</div></div>
+            <div class="week-day"><div class="week-day__name">Wed</div><div class="week-day__num">4</div><div class="week-day__dots"><span class="dot--info"></span><span class="dot--success"></span><span class="dot--info"></span></div><div class="week-day__count">3</div></div>
+            <div class="week-day today"><div class="week-day__name">Thu</div><div class="week-day__num">5</div><div class="week-day__dots"><span class="dot--brand"></span><span class="dot--brand"></span><span class="dot--brand"></span><span class="dot--brand"></span><span class="dot--brand"></span></div><div class="week-day__count">5</div></div>
+            <div class="week-day"><div class="week-day__name">Fri</div><div class="week-day__num">6</div><div class="week-day__dots"><span class="dot--info"></span></div><div class="week-day__count">1</div></div>
+            <div class="week-day"><div class="week-day__name">Sat</div><div class="week-day__num">7</div><div class="week-day__count">0</div></div>
+            <div class="week-day"><div class="week-day__name">Sun</div><div class="week-day__num">8</div><div class="week-day__count">0</div></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Metrics drawer (collapsed) -->
+      <section class="card">
+        <div class="card__header">
+          <div class="flex items-center gap-2">
+            <svg width="14" height="14" style="color:hsl(var(--fg-muted))"><use href="#i-chevron-down"/></svg>
+            <span class="t-eyebrow" style="color:hsl(var(--fg-muted))">Team metrics · Last 30 days</span>
+          </div>
+          <span style="font-size:11.5px;color:hsl(var(--fg-muted))">Visible to managers — click to expand</span>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>

@@ -69,6 +69,36 @@ model Organization {
   status OrgStatus @default(ACTIVE)
   plan   OrgPlan   @default(STARTER)
 
+  // ── Branding (Phase 0B addendum — tenant accent overrides) ──────────────
+  // One HSL hue + saturation + lightness; the 11-step scale is algorithmically
+  // generated client-side. Null = use the default TalentFlow accent. Values
+  // are clamped client-side and server-side to AA-safe ranges (see
+  // apps/web/src/providers/workspace-branding-provider.tsx).
+  brandAccentH Int? @map("brand_accent_h")  // 0-360 hue
+  brandAccentS Int? @map("brand_accent_s")  // 40-95 saturation %
+  brandAccentL Int? @map("brand_accent_l")  // 45-72 lightness %
+
+  // ── Multi-region (ADR-006 / ADR-007 §7) ─────────────────────────────────
+  // Determines deployment region. Application identical between regions; only
+  // routing changes. Default `us-east-1`. EU customers set `eu-west-1`.
+  dataRegion String @default("us-east-1") @map("data_region") @db.VarChar(32)
+
+  // ── AI cost control (ADR-004 §7) ────────────────────────────────────────
+  // Monthly token budget (prompt + completion combined). 0 = AI disabled.
+  // Reset at the start of each billing cycle by the cost-meter worker.
+  // aiEnabled gates all AI surfaces in the UI; per-feature opt-out
+  // (e.g. summary off, match on) lives in `settings`.
+  aiEnabled       Boolean   @default(true)  @map("ai_enabled")
+  aiBudgetTokens  BigInt    @default(0)     @map("ai_budget_tokens")
+  aiUsedTokens    BigInt    @default(0)     @map("ai_used_tokens")
+  aiBudgetResetAt DateTime? @map("ai_budget_reset_at")
+
+  // ── Retention policy (ADR-007 §1) ───────────────────────────────────────
+  // JSON-typed for forward compatibility. Defaults satisfy GDPR + SOC 2.
+  // Keys: candidatesYears, resumesYears, auditLogsMonths, notificationsMonths,
+  //       aiUsageLogsMonths, exportArtifactsDays, deletionGracePeriodDays.
+  retentionPolicy Json @default("{\"candidatesYears\":7,\"resumesYears\":7,\"auditLogsMonths\":18,\"notificationsMonths\":12,\"aiUsageLogsMonths\":24,\"exportArtifactsDays\":30,\"deletionGracePeriodDays\":30}") @map("retention_policy")
+
   // Tenant-specific feature flags and UI preferences.
   // Typed via application-layer Zod schema, not Prisma types.
   settings Json @default("{}")

@@ -84,19 +84,36 @@ export class SubmissionsRepository {
     });
   }
 
-  async update(id: string, data: Prisma.SubmissionUncheckedUpdateInput) {
-    return this.db.submission.update({
-      where: { id },
+  // ─── Tenant-scoped writes ──────────────────────────────────────────────────
+  // Defense in depth: every mutating repo method requires organizationId in the
+  // where-clause. Prisma's `update` requires a unique where, so we use
+  // `updateMany` + a follow-up reload to retain the include shape. A row count
+  // of 0 means either the row doesn't exist or belongs to a different tenant —
+  // both surface as NotFoundException at the service layer.
+  // See: docs/architecture/adr/adr-002-rls-strategy.md (application-layer guard).
+
+  async update(
+    id: string,
+    organizationId: string,
+    data: Prisma.SubmissionUncheckedUpdateInput,
+  ) {
+    const result = await this.db.submission.updateMany({
+      where: { id, organizationId, deletedAt: null },
       data,
+    });
+    if (result.count === 0) return null;
+    return this.db.submission.findUnique({
+      where: { id },
       include: SUBMISSION_DETAIL_INCLUDE,
     });
   }
 
-  async softDelete(id: string) {
-    return this.db.submission.update({
-      where: { id },
+  async softDelete(id: string, organizationId: string) {
+    const result = await this.db.submission.updateMany({
+      where: { id, organizationId, deletedAt: null },
       data: { deletedAt: new Date() },
     });
+    return result.count > 0;
   }
 
   async addNote(data: Prisma.SubmissionNoteUncheckedCreateInput) {

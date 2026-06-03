@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Candidates · TalentFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="_styles.css"/>
+<style>
+  .list-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 0; }
+  .view-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid hsl(var(--border));
+    font-size: 12px; font-weight: 500; color: hsl(var(--fg-secondary));
+    background: hsl(var(--surface));
+    cursor: pointer;
+  }
+  .view-pill:hover { background: hsl(var(--surface-2) / 0.6); }
+  .view-pill--active { background: hsl(var(--brand-50)); border-color: hsl(var(--brand-200)); color: hsl(var(--brand-700)); }
+  .view-pill .count { font-size: 10.5px; color: hsl(var(--fg-muted)); background: hsl(var(--surface-2)); padding: 1px 5px; border-radius: 999px; }
+  .view-pill--active .count { background: hsl(var(--brand-100)); color: hsl(var(--brand-700)); }
+
+  .filter-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 4px 4px 10px;
+    background: hsl(var(--surface-2));
+    border-radius: var(--r-md);
+    font-size: 12px; color: hsl(var(--fg));
+  }
+  .filter-chip strong { color: hsl(var(--fg-muted)); font-weight: 500; margin-right: 4px; }
+  .filter-chip__close {
+    width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px; color: hsl(var(--fg-muted));
+  }
+  .filter-chip__close:hover { background: hsl(var(--border)); }
+
+  .list-table-wrap {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+  .tbl-name {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-weight: 500;
+  }
+  .tbl-name__sub { font-size: 11.5px; color: hsl(var(--fg-muted)); font-weight: 400; display: block; line-height: 1.2; }
+  .tbl-name strong { font-size: 13px; line-height: 1.2; display: block; }
+
+  .ai-match-cell {
+    display: flex; align-items: center; gap: 8px;
+    font-variant-numeric: tabular-nums; font-weight: 600;
+  }
+  .ai-match-cell .bar { width: 44px; height: 5px; background: hsl(var(--surface-2)); border-radius: 999px; overflow: hidden; }
+  .ai-match-cell .fill { height: 100%; background: linear-gradient(90deg, hsl(var(--brand-400)), hsl(var(--brand-600))); }
+
+  .tbl-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    background: hsl(var(--bg));
+    border-top: 1px solid hsl(var(--border));
+    font-size: 12px; color: hsl(var(--fg-muted));
+  }
+  .pager { display: inline-flex; align-items: center; gap: 6px; }
+  .pager button { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; }
+  .pager button:hover { background: hsl(var(--surface-2)); }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- ── Sidebar (Candidates active) ────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar__workspace">
+      <div class="monogram">AC</div>
+      <div class="flex-1" style="min-width:0">
+        <div style="font-weight:600;font-size:13.5px;line-height:1.2">Acme Recruiting</div>
+        <div style="font-size:11px;color:hsl(var(--fg-muted));line-height:1.2">Recruiter</div>
+      </div>
+      <svg width="14" height="14" style="color:hsl(var(--fg-muted))"><use href="_icons.svg#i-chevron-down"/></svg>
+    </div>
+    <nav class="sidebar__nav">
+      <div class="sidebar__group">
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-home"/></svg><span class="sidebar__label">Home</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-inbox"/></svg><span class="sidebar__label">Inbox</span><span class="sidebar__badge">3</span></a>
+      </div>
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Recruit</span></div>
+        <a class="sidebar__item sidebar__item--active"><svg><use href="_icons.svg#i-users"/></svg><span class="sidebar__label">Candidates</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-briefcase"/></svg><span class="sidebar__label">Jobs</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-send"/></svg><span class="sidebar__label">Submissions</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-calendar"/></svg><span class="sidebar__label">Interviews</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-bell"/></svg><span class="sidebar__label">Reminders</span></a>
+      </div>
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Resume Intelligence</span></div>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-file-text"/></svg><span class="sidebar__label">Resumes</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-clipboard"/></svg><span class="sidebar__label">Review queue</span><span class="sidebar__badge">12</span></a>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-merge"/></svg><span class="sidebar__label">Duplicates</span><span class="sidebar__badge sidebar__badge--alt">3</span></a>
+      </div>
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Vendors</span></div>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-building"/></svg><span class="sidebar__label">Vendors</span></a>
+      </div>
+      <div class="sidebar__group">
+        <div class="sidebar__group-header"><span class="t-eyebrow">Work</span></div>
+        <a class="sidebar__item"><svg><use href="_icons.svg#i-settings"/></svg><span class="sidebar__label">Settings</span></a>
+      </div>
+    </nav>
+    <div class="sidebar__footer">
+      <button class="sidebar__footer-btn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m9 4-5 6 5 6" stroke-linecap="round"/></svg></button>
+      <button class="sidebar__footer-btn"><svg width="14" height="14"><use href="_icons.svg#i-help"/></svg></button>
+      <button class="sidebar__footer-btn"><svg width="14" height="14"><use href="_icons.svg#i-sun"/></svg></button>
+      <span style="margin-left:auto">v0.3</span>
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────────────────────────── -->
+  <div>
+    <header class="topbar">
+      <div class="topbar__crumbs"><strong>Candidates</strong></div>
+      <button class="topbar__search">
+        <svg width="14" height="14"><use href="_icons.svg#i-search"/></svg>
+        <span>Search or jump to…</span><kbd>⌘ K</kbd>
+      </button>
+      <div class="topbar__cluster">
+        <button class="topbar__icon-btn"><svg width="16" height="16"><use href="_icons.svg#i-inbox"/></svg><span class="dot-badge"></span></button>
+        <button class="topbar__icon-btn"><svg width="16" height="16"><use href="_icons.svg#i-sun"/></svg></button>
+        <div style="width:1px;height:18px;background:hsl(var(--border));margin:0 6px"></div>
+        <div class="avatar avatar--sm" style="width:28px;height:28px">AA</div>
+      </div>
+    </header>
+
+    <main class="container container--wide">
+
+      <!-- Page header -->
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h1 class="t-h1">Candidates</h1>
+          <div class="muted t-body-sm">12,489 total · 412 active · last sync 2m ago</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn--outline btn--sm"><svg><use href="_icons.svg#i-arrow-up-right"/></svg> Export</button>
+          <button class="btn btn--outline btn--sm"><svg><use href="_icons.svg#i-sparkles"/></svg> AI search</button>
+          <button class="btn btn--primary btn--sm"><svg><use href="_icons.svg#i-plus"/></svg> Add candidate</button>
+        </div>
+      </div>
+
+      <!-- Saved views -->
+      <div class="flex items-center gap-2 mb-3" style="flex-wrap:wrap">
+        <span class="t-eyebrow" style="color:hsl(var(--fg-muted))">Views</span>
+        <button class="view-pill view-pill--active">My active <span class="count">247</span></button>
+        <button class="view-pill">Available now <span class="count">38</span></button>
+        <button class="view-pill">Hot leads (AI) <span class="count">12</span></button>
+        <button class="view-pill">No response &gt;7d <span class="count">21</span></button>
+        <button class="view-pill" style="border-style:dashed;color:hsl(var(--fg-muted))"><svg width="12" height="12"><use href="_icons.svg#i-plus"/></svg> Save view</button>
+      </div>
+
+      <!-- Filter + density bar -->
+      <div class="list-toolbar">
+        <button class="btn btn--outline btn--sm" style="background:transparent">
+          <svg><use href="_icons.svg#i-search"/></svg> Search candidates…
+        </button>
+        <span class="filter-chip"><strong>Status</strong> Active <button class="filter-chip__close"><svg width="11" height="11"><use href="_icons.svg#i-x"/></svg></button></span>
+        <span class="filter-chip"><strong>Skill</strong> React <button class="filter-chip__close"><svg width="11" height="11"><use href="_icons.svg#i-x"/></svg></button></span>
+        <span class="filter-chip"><strong>AI match</strong> ≥ 70% <button class="filter-chip__close"><svg width="11" height="11"><use href="_icons.svg#i-x"/></svg></button></span>
+        <button class="btn btn--ghost btn--sm"><svg><use href="_icons.svg#i-plus"/></svg> Filter</button>
+
+        <div style="margin-left:auto" class="flex items-center gap-1">
+          <button class="btn btn--ghost btn--xs">Density: Compact ▾</button>
+          <button class="btn btn--ghost btn--xs">Columns ▾</button>
+          <button class="btn btn--ghost btn--xs"><svg><use href="_icons.svg#i-refresh"/></svg></button>
+        </div>
+      </div>
+
+      <!-- DataTable -->
+      <div class="list-table-wrap">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th style="width:32px"><input type="checkbox"/></th>
+              <th>Name</th>
+              <th style="width:110px">AI Match</th>
+              <th style="width:120px">Status</th>
+              <th style="width:130px">Stage</th>
+              <th style="width:130px">Owner</th>
+              <th>Skills</th>
+              <th style="width:110px">Last touch ↓</th>
+              <th style="width:96px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">SS</span><span><strong>Sarah Smith</strong><small class="tbl-name__sub">Senior Engineer · SF</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--brand-700))">92%<div class="bar"><div class="fill" style="width:92%"></div></div></div></td>
+              <td><span class="pill pill--info"><span class="dot dot--info"></span> Active</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Phone screen</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">AA</span> Alice Admin</span></td>
+              <td><span class="chip">React</span> <span class="chip">TypeScript</span> <span class="chip" style="color:hsl(var(--fg-muted))">+4</span></td>
+              <td><span class="muted" style="font-size:12px">2d ago</span></td>
+              <td><div class="row-actions"><button title="Open"><svg width="14" height="14"><use href="_icons.svg#i-arrow-up-right"/></svg></button><button title="Edit"><svg width="14" height="14"><use href="_icons.svg#i-edit"/></svg></button><button title="More"><svg width="14" height="14"><use href="_icons.svg#i-more"/></svg></button></div></td>
+            </tr>
+            <tr class="selected">
+              <td><input type="checkbox" checked/></td>
+              <td><span class="tbl-name"><span class="avatar">JK</span><span><strong>Jamal Khan</strong><small class="tbl-name__sub">Platform Engineer · Toronto</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--brand-700))">88%<div class="bar"><div class="fill" style="width:88%"></div></div></div></td>
+              <td><span class="pill pill--info"><span class="dot dot--info"></span> Active</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Onsite · R2</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">BR</span> Bob Rao</span></td>
+              <td><span class="chip">Go</span> <span class="chip">K8s</span> <span class="chip" style="color:hsl(var(--fg-muted))">+2</span></td>
+              <td><span class="muted" style="font-size:12px">8h ago</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">ML</span><span><strong>Maria López</strong><small class="tbl-name__sub">Backend Engineer · Madrid · Remote</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--brand-700))">84%<div class="bar"><div class="fill" style="width:84%"></div></div></div></td>
+              <td><span class="pill pill--success"><span class="dot dot--success"></span> Available</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Submitted</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">AA</span> Alice Admin</span></td>
+              <td><span class="chip">Python</span> <span class="chip">Django</span> <span class="chip" style="color:hsl(var(--fg-muted))">+3</span></td>
+              <td><span class="muted" style="font-size:12px">1h ago</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">YA</span><span><strong>Yusuf Ahmed</strong><small class="tbl-name__sub">Senior FE · London</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--warn-700))">71%<div class="bar"><div class="fill confidence__fill--med" style="width:71%;background:hsl(var(--warn-500))"></div></div></div></td>
+              <td><span class="pill pill--info"><span class="dot dot--info"></span> Active</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Offer</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">BR</span> Bob Rao</span></td>
+              <td><span class="chip">React</span> <span class="chip">Next.js</span></td>
+              <td><span class="muted" style="font-size:12px">1d ago</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">PP</span><span><strong>Priya Patel</strong><small class="tbl-name__sub">Tech Lead · Bengaluru</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--brand-700))">78%<div class="bar"><div class="fill" style="width:78%"></div></div></div></td>
+              <td><span class="pill pill--success"><span class="dot dot--success"></span> Placed</span></td>
+              <td><span class="muted" style="font-size:12.5px">—</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">CD</span> Carla Davis</span></td>
+              <td><span class="chip">Java</span> <span class="chip">Spring</span> <span class="chip" style="color:hsl(var(--fg-muted))">+6</span></td>
+              <td><span class="muted" style="font-size:12px">5d ago</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">OH</span><span><strong>Omar Hassan</strong><small class="tbl-name__sub">Backend Engineer · Cairo</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--brand-700))">81%<div class="bar"><div class="fill" style="width:81%"></div></div></div></td>
+              <td><span class="pill pill--info"><span class="dot dot--info"></span> Active</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Onsite · R1</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">BR</span> Bob Rao</span></td>
+              <td><span class="chip">Go</span> <span class="chip">gRPC</span></td>
+              <td><span class="muted" style="font-size:12px">1d ago</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">LW</span><span><strong>Lin Wei</strong><small class="tbl-name__sub">Full-stack · Shenzhen</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--brand-700))">86%<div class="bar"><div class="fill" style="width:86%"></div></div></div></td>
+              <td><span class="pill pill--info"><span class="dot dot--info"></span> Active</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Phone screen</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">AA</span> Alice Admin</span></td>
+              <td><span class="chip">TS</span> <span class="chip">React</span> <span class="chip" style="color:hsl(var(--fg-muted))">+3</span></td>
+              <td><span class="muted" style="font-size:12px">2d ago</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">FA</span><span><strong>Fatima Al-Rashid</strong><small class="tbl-name__sub">Staff Engineer · Dubai</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--success-700))">94%<div class="bar"><div class="fill" style="width:94%;background:hsl(var(--success-500))"></div></div></div></td>
+              <td><span class="pill pill--success"><span class="dot dot--success"></span> Available</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Submitted</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">AA</span> Alice Admin</span></td>
+              <td><span class="chip">Rust</span> <span class="chip">distributed</span></td>
+              <td><span class="muted" style="font-size:12px">4h ago</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">JO</span><span><strong>James O'Connor</strong><small class="tbl-name__sub">Senior Engineer · Dublin</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--warn-700))">64%<div class="bar"><div class="fill" style="width:64%;background:hsl(var(--warn-500))"></div></div></div></td>
+              <td><span class="pill pill--warning"><span class="dot dot--warning"></span> On hold</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Phone screen</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">CD</span> Carla Davis</span></td>
+              <td><span class="chip">.NET</span> <span class="chip">C#</span></td>
+              <td><span class="muted" style="font-size:12px">11d ago</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">AD</span><span><strong>Aisha Diallo</strong><small class="tbl-name__sub">ML Engineer · Dakar</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--brand-700))">87%<div class="bar"><div class="fill" style="width:87%"></div></div></div></td>
+              <td><span class="pill pill--info"><span class="dot dot--info"></span> Active</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Under review</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">AA</span> Alice Admin</span></td>
+              <td><span class="chip">Python</span> <span class="chip">PyTorch</span> <span class="chip" style="color:hsl(var(--fg-muted))">+2</span></td>
+              <td><span class="muted" style="font-size:12px">1d ago</span></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><input type="checkbox"/></td>
+              <td><span class="tbl-name"><span class="avatar">HK</span><span><strong>Hana Kim</strong><small class="tbl-name__sub">Frontend Architect · Seoul</small></span></span></td>
+              <td><div class="ai-match-cell" style="color:hsl(var(--brand-700))">90%<div class="bar"><div class="fill" style="width:90%"></div></div></div></td>
+              <td><span class="pill pill--info"><span class="dot dot--info"></span> Active</span></td>
+              <td><span style="color:hsl(var(--fg-secondary));font-size:12.5px">Shortlisted</span></td>
+              <td><span class="tbl-name"><span class="avatar avatar--sm">BR</span> Bob Rao</span></td>
+              <td><span class="chip">React</span> <span class="chip">Webpack</span></td>
+              <td><span class="muted" style="font-size:12px">3d ago</span></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="tbl-footer">
+          <div><span class="tabular">247</span> of <span class="tabular">12,489</span> candidates · 1 selected</div>
+          <div class="flex items-center gap-3">
+            <span class="muted">50 per page ▾</span>
+            <div class="pager"><button><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 3-5 5 5 5"/></svg></button><span style="font-size:11.5px">Page 5 of 250</span><button><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m4 3 5 5-5 5"/></svg></button></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>

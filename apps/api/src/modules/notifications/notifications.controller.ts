@@ -15,6 +15,7 @@ import { RequirePermissions } from '../../auth/decorators/require-permissions.de
 import { Permission } from '../../auth/permissions/permissions';
 import type { RequestUser } from '../../auth/types/request-user.interface';
 import { ok, paginated } from '../../common/helpers/response.helper';
+import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { NotificationsService } from './notifications.service';
 
 @Controller('notifications')
@@ -31,15 +32,16 @@ export class NotificationsController {
   @RequirePermissions(Permission.NOTIFICATIONS_READ)
   async list(
     @CurrentUser() user: RequestUser,
-    @Query('page') page = '1',
-    @Query('limit') limit = '30',
-    @Query('unreadOnly') unreadOnly = 'false',
+    @Query() dto: ListNotificationsDto,
     @Req() req: Request,
   ) {
-    const pageNum  = parseInt(page, 10);
-    const limitNum = Math.min(parseInt(limit, 10), 100);
-    const { data, total } = await this.service.list(user, pageNum, limitNum, unreadOnly === 'true');
-    return paginated(data, { total, page: pageNum, limit: limitNum }, req.requestId);
+    const { data, total } = await this.service.list(
+      user,
+      dto.page,
+      dto.limit,
+      dto.unreadOnly ?? false,
+    );
+    return paginated(data, { total, page: dto.page, limit: dto.limit }, req.requestId);
   }
 
   @Post(':id/read')

@@ -18,8 +18,10 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { LogoLockup } from '@/components/brand';
 import { useDuplicateStats, useReviewStats } from '@/hooks';
 import { cn } from '@/lib/utils';
+import { useWorkspaceBranding } from '@/providers/workspace-branding-provider';
 import type { NavGroup } from '@/types';
 
 /**
@@ -77,21 +79,27 @@ export function Sidebar({ className }: SidebarProps) {
   const { data: duplicateStats } = useDuplicateStats();
   const pendingReviews    = reviewStats?.pending    ?? 0;
   const pendingDuplicates = duplicateStats?.pending ?? 0;
+  const branding          = useWorkspaceBranding();
 
   return (
     <aside
       className={cn(
-        'hidden lg:flex w-64 flex-col border-r bg-sidebar',
+        'hidden lg:flex w-64 flex-col border-r border-sidebar-border bg-sidebar',
         className,
       )}
     >
-      {/* Logo / Brand */}
-      <div className="flex h-14 items-center border-b border-sidebar-border px-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
-            <span className="text-xs font-bold text-primary-foreground">RP</span>
-          </div>
-          <span className="font-semibold text-sidebar-foreground">RecruitPro</span>
+      {/* Workspace switcher header (Phase 0B foundation; full popover in Phase 1) */}
+      <div className="flex h-14 items-center border-b border-sidebar-border px-4">
+        <Link
+          href="/dashboard"
+          className="flex w-full items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-sidebar-accent/60 focus-visible:bg-sidebar-accent/60"
+          aria-label={`${branding.displayName} workspace`}
+        >
+          <LogoLockup
+            size="sm"
+            label={branding.displayName}
+            initials={branding.initials}
+          />
         </Link>
       </div>
 
@@ -118,18 +126,29 @@ export function Sidebar({ className }: SidebarProps) {
                     <Link
                       href={item.href}
                       className={cn(
-                        'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                        'group relative flex items-center gap-3 rounded-md px-3 py-2 text-body-md font-medium transition-colors',
                         isActive
                           ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground',
+                          : 'text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
                         item.disabled && 'pointer-events-none opacity-50',
                       )}
                       aria-current={isActive ? 'page' : undefined}
                     >
-                      {Icon && <Icon className="h-4 w-4 shrink-0" />}
+                      {isActive && (
+                        <span
+                          aria-hidden
+                          className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-brand-500"
+                        />
+                      )}
+                      {Icon && (
+                        <Icon className={cn(
+                          'h-4 w-4 shrink-0',
+                          isActive ? 'text-brand-600 dark:text-brand-300' : 'text-muted-foreground group-hover:text-foreground',
+                        )} />
+                      )}
                       {item.title}
                       {liveBadge != null && (
-                        <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+                        <span className="ml-auto rounded-full bg-brand-500 px-1.5 py-0.5 text-[10px] font-semibold text-white tabular-nums">
                           {liveBadge}
                         </span>
                       )}
@@ -142,9 +161,9 @@ export function Sidebar({ className }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Footer — tenant/org switcher added in Step 5 */}
+      {/* Footer — sidebar collapse + theme toggle land in Phase 1 */}
       <div className="border-t border-sidebar-border p-3">
-        <p className="px-3 text-xs text-sidebar-foreground/40">v1.0.0</p>
+        <p className="px-3 text-body-xs text-muted-foreground">TalentFlow · v0.2</p>
       </div>
     </aside>
   );
