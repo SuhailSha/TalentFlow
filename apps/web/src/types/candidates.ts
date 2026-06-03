@@ -86,6 +86,7 @@ export interface CandidateDetail extends CandidateListItem {
   allSkills: CandidateSkillView[];
   notes: CandidateNoteView[];
   sourceDetail: string | null;
+  relationshipOwnerId: string | null;
   createdBy: string | null;
   updatedBy: string | null;
 }

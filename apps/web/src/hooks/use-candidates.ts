@@ -14,10 +14,12 @@ import {
   listCandidates,
   removeSkill,
   searchSkills,
+  transitionCandidateStatus,
   updateCandidate,
 } from '@/lib/api/candidates';
 import type {
   AssignSkillDto,
+  CandidateStatus,
   CreateCandidateDto,
   CreateNoteDto,
   ListCandidatesParams,
@@ -92,6 +94,21 @@ export function useUpdateCandidate(id: string) {
     onSuccess: (updated) => {
       queryClient.setQueryData(candidateKeys.detail(id), updated);
       queryClient.invalidateQueries({ queryKey: candidateKeys.lists() });
+    },
+  });
+}
+
+// ── Status transition ─────────────────────────────────────────────────────────
+
+export function useTransitionCandidateStatus(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (status: CandidateStatus) => transitionCandidateStatus(id, status),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(candidateKeys.detail(id), updated);
+      queryClient.invalidateQueries({ queryKey: candidateKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['candidate-workspace', id] });
     },
   });
 }

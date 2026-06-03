@@ -22,7 +22,9 @@ import type { RequestUser } from '../../auth/types/request-user.interface';
 import { ok, paginated } from '../../common/helpers/response.helper';
 import type { ApiResponse, PaginatedResponse } from '../../common/types';
 import { CandidatesService } from './candidates.service';
+import { CandidateWorkspaceService } from './candidate-workspace.service';
 import { SkillsService } from './skills.service';
+import type { CandidateWorkspace } from './types/workspace.types';
 import { AssignSkillDto } from './dto/assign-skill.dto';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { CreateNoteDto } from './dto/create-note.dto';
@@ -33,7 +35,10 @@ import type { CandidateDetail, CandidateListItem } from './types/candidate.types
 
 @Controller('candidates')
 export class CandidatesController {
-  constructor(private readonly candidatesService: CandidatesService) {}
+  constructor(
+    private readonly candidatesService: CandidatesService,
+    private readonly workspaceService: CandidateWorkspaceService,
+  ) {}
 
   // ── GET /candidates ────────────────────────────────────────────────────────
 
@@ -75,6 +80,36 @@ export class CandidatesController {
     @Req() req: Request,
   ): Promise<ApiResponse<CandidateDetail>> {
     const candidate = await this.candidatesService.findById(id, user.organizationId);
+    return ok(candidate, req.requestId);
+  }
+
+  // ── GET /candidates/:id/workspace ──────────────────────────────────────────
+  // Single aggregation endpoint backing the operational candidate workspace.
+  // See CandidateWorkspaceService for the response shape + health-signal logic.
+
+  @Get(':id/workspace')
+  @RequirePermissions(Permission.CANDIDATES_READ)
+  async getWorkspace(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: RequestUser,
+    @Req() req: Request,
+  ): Promise<ApiResponse<CandidateWorkspace>> {
+    const ws = await this.workspaceService.getWorkspace(id, user.organizationId);
+    return ok(ws, req.requestId);
+  }
+
+  // ── PATCH /candidates/:id/owner ────────────────────────────────────────────
+  // Reassign the relationship owner. Restricted to candidates:update.
+
+  @Patch(':id/owner')
+  @RequirePermissions(Permission.CANDIDATES_UPDATE)
+  async assignOwner(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { ownerId: string | null },
+    @CurrentUser() user: RequestUser,
+    @Req() req: Request,
+  ): Promise<ApiResponse<CandidateDetail>> {
+    const candidate = await this.candidatesService.assignOwner(id, body.ownerId, user);
     return ok(candidate, req.requestId);
   }
 

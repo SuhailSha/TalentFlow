@@ -67,6 +67,17 @@ export async function deleteCandidate(id: string): Promise<void> {
   await apiClient.delete(`/candidates/${id}`);
 }
 
+export async function transitionCandidateStatus(
+  id: string,
+  status: CandidateDetail['status'],
+): Promise<CandidateDetail> {
+  const { data } = await apiClient.put<ApiResponse<CandidateDetail>>(
+    `/candidates/${id}/status`,
+    { status },
+  );
+  return data.data;
+}
+
 export async function assignSkill(
   candidateId: string,
   dto: AssignSkillDto,

@@ -6,6 +6,7 @@ import { CandidatesBulkService } from './candidates-bulk.service';
 import { CandidatesController, SkillsController } from './candidates.controller';
 import { CandidatesRepository } from './candidates.repository';
 import { CandidatesService } from './candidates.service';
+import { CandidateWorkspaceService } from './candidate-workspace.service';
 import { SkillsService } from './skills.service';
 
 // EventEmitterModule is @Global() via AppModule — no need to import here.
@@ -14,7 +15,10 @@ import { SkillsService } from './skills.service';
 @Module({
   imports:     [RemindersModule],
   controllers: [CandidatesController, SkillsController, CandidatesBulkController],
-  providers:   [CandidatesService, SkillsService, CandidatesRepository, CandidatesBulkService],
-  exports:     [CandidatesService, SkillsService],
+  providers:   [
+    CandidatesService, SkillsService, CandidatesRepository, CandidatesBulkService,
+    CandidateWorkspaceService,
+  ],
+  exports:     [CandidatesService, SkillsService, CandidateWorkspaceService],
 })
 export class CandidatesModule {}

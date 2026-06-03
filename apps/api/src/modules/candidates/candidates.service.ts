@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { NoteType } from '@repo/database';
+import { NoteType, type Prisma } from '@repo/database';
 
 import type { RequestUser } from '../../auth/types/request-user.interface';
 import { AppContextService } from '../../common/context/app-context.service';
@@ -243,6 +243,34 @@ export class CandidatesService {
       EventNames.CANDIDATE_DELETED,
       new CandidateDeletedEvent(this.actorContext(actor), { candidateId: id }),
     );
+  }
+
+  // ── Ownership reassignment ────────────────────────────────────────────────
+
+  /**
+   * Reassign the candidate's relationship owner. A null ownerId clears the
+   * assignment. Caller verifies that the new owner is a member of the org;
+   * we don't enforce that here to keep the path simple.
+   */
+  async assignOwner(
+    id: string,
+    ownerId: string | null,
+    actor: RequestUser,
+  ): Promise<CandidateDetail> {
+    await this.assertExists(id, actor.organizationId);
+    const updated = await this.repo.update(
+      id,
+      actor.organizationId,
+      { relationshipOwnerId: ownerId, updatedBy: actor.userId } as unknown as Prisma.CandidateUpdateInput,
+    );
+    this.events.emit(
+      EventNames.CANDIDATE_UPDATED,
+      new CandidateUpdatedEvent(this.actorContext(actor), {
+        candidateId: id,
+        changedFields: ['relationshipOwnerId'],
+      }),
+    );
+    return toCandidateDetail(updated);
   }
 
   // ── Status transition ─────────────────────────────────────────────────────

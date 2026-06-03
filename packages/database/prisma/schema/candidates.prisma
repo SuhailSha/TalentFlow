@@ -79,6 +79,14 @@ model Candidate {
   // e.g. vendor name for VENDOR source, job board name for JOB_BOARD
   sourceDetail String?         @db.VarChar(255) @map("source_detail")
 
+  // ── Ownership ─────────────────────────────────────────────────────────────
+  // The recruiter primarily responsible for this candidate's relationship.
+  // Stored as a plain UUID (no Prisma @relation) for the same reason as
+  // hiringManagerId on JobDescription and relationshipOwnerId on Vendor —
+  // we want the candidate to survive user deletion. Backfilled to createdBy
+  // on existing rows.
+  relationshipOwnerId String? @map("relationship_owner_id") @db.Uuid
+
   // ── Resume / Documents ────────────────────────────────────────────────────
   // File storage is implemented in Step 7 (S3/blob). These fields reserve the
   // schema slot now. The key is the object storage path / S3 key.
@@ -120,6 +128,8 @@ model Candidate {
   @@index([organizationId, careerStartDate])
   @@index([organizationId, country])
   @@index([organizationId, isRemote])
+  // "candidates I own" recruiter dashboard view
+  @@index([organizationId, relationshipOwnerId])
   @@map("candidates")
 }
 

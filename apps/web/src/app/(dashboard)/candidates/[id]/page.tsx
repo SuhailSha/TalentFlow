@@ -3,84 +3,57 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { differenceInCalendarDays, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import {
-  Bell, Briefcase, Building2, Calendar, ExternalLink, FileText, Loader2, Mail,
-  MapPin, MessageSquare, Phone, Plus, RefreshCw, Send, Sparkles, Trash2,
-  TrendingUp, X,
+  Activity, AlertTriangle, Bell, Briefcase, Calendar, ClipboardList, Edit,
+  ExternalLink, FileText, History, Loader2, Mail, MapPin, MessageSquare, Phone,
+  RefreshCw, Send, ShieldAlert, Sparkles, Trash2, TrendingUp, X,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
 import {
-  ActivityTimeline,
+  MetricTile,
   NextActionsPanel,
-  OverdueIndicator,
-  RelatedEntityCard,
+  OwnerCard,
+  ProfileCompletenessCard,
+  QuickActionMenu,
+  SignalBadge,
   StaleIndicator,
+  StatusTransitionMenu,
   WorkspaceFact,
   WorkspaceHeader,
   WorkspaceShell,
+  WorkspaceTabs,
   type NextAction,
+  type QuickAction,
+  type WorkspaceTab,
 } from '@/components/workspace';
 import {
-  useCandidate, useCandidateNotes, useDeleteCandidate, useAddNote, useRemoveSkill,
+  useCandidate, useDeleteCandidate, useTransitionCandidateStatus,
 } from '@/hooks/use-candidates';
-import { useSubmissions } from '@/hooks/use-submissions';
-import { useInterviews } from '@/hooks/use-interviews';
-import { useReminders } from '@/hooks/use-reminders';
-import { useEntityActivity } from '@/hooks/use-activity';
+import {
+  useAssignCandidateOwner, useCandidateWorkspace,
+} from '@/hooks/use-candidate-workspace';
+import { useUsers } from '@/hooks/use-users-mgmt';
 import { useAuthContext } from '@/providers/auth-provider';
-import type { CandidateStatus, AvailabilityStatus, NoteType } from '@/types/candidates';
-import type { SubmissionStatus } from '@/types/submissions';
-import type { InterviewStatus } from '@/types/interviews';
-import type { ReminderStatus } from '@/types/reminders';
+import type { CandidateStatus } from '@/types/candidates';
 import { cn } from '@/lib/utils';
 
-// ── Lookups ───────────────────────────────────────────────────────────────────
-
-const STATUS_TONE: Record<CandidateStatus, string> = {
-  ACTIVE:      'bg-green-100 text-green-800',
-  AVAILABLE:   'bg-teal-100 text-teal-800',
-  INACTIVE:    'bg-gray-100 text-gray-700',
-  PLACED:      'bg-blue-100 text-blue-800',
-  BLACKLISTED: 'bg-red-100 text-red-800',
-};
-
-const AVAILABILITY_LABELS: Record<AvailabilityStatus, string> = {
-  IMMEDIATELY:  'Available now',
-  TWO_WEEKS:    '2 weeks notice',
-  ONE_MONTH:    '1 month notice',
-  THREE_MONTHS: '3 months notice',
-  NOT_LOOKING:  'Not looking',
-};
-
-const NOTE_TYPE_LABELS: Record<NoteType, string> = {
-  NOTE: 'Note', CALL: 'Call', EMAIL: 'Email', MEETING: 'Meeting',
-  STATUS_CHANGE: 'Status change', SYSTEM: 'System',
-};
-
-const SUBMISSION_TONE: Record<SubmissionStatus, 'gray' | 'blue' | 'amber' | 'purple' | 'indigo' | 'green' | 'red' | 'teal'> = {
-  DRAFT: 'gray', SUBMITTED: 'blue', UNDER_REVIEW: 'amber', SHORTLISTED: 'purple',
-  INTERVIEW: 'indigo', OFFERED: 'amber', PLACED: 'green', REJECTED: 'red',
-  WITHDRAWN: 'gray', ON_HOLD: 'amber', CLOSED: 'gray',
-};
-
-const INTERVIEW_TONE: Record<InterviewStatus, 'gray' | 'amber' | 'indigo' | 'green' | 'red' | 'blue'> = {
-  SCHEDULED: 'blue', CONFIRMED: 'indigo', RESCHEDULED: 'amber', IN_PROGRESS: 'indigo',
-  COMPLETED: 'gray', FEEDBACK_PENDING: 'amber', PASSED: 'green', FAILED: 'red',
-  NO_SHOW: 'red', CANCELLED: 'gray',
-};
-
-const REMINDER_TONE: Record<ReminderStatus, 'gray' | 'amber' | 'blue' | 'green' | 'red'> = {
-  PENDING: 'blue', ACKNOWLEDGED: 'amber', SNOOZED: 'gray',
-  COMPLETED: 'green', DISMISSED: 'gray', EXPIRED: 'red',
-};
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
+import { ActivityTab } from './_tabs/activity-tab';
+import { AuditTab } from './_tabs/audit-tab';
+import { CommunicationsTab } from './_tabs/communications-tab';
+import { DuplicatesTab } from './_tabs/duplicates-tab';
+import { InterviewsTab } from './_tabs/interviews-tab';
+import { NotesTab } from './_tabs/notes-tab';
+import { OverviewTab } from './_tabs/overview-tab';
+import { ResumesTab } from './_tabs/resumes-tab';
+import {
+  AVAILABILITY_LABELS, CANDIDATE_TRANSITIONS, STATUS_LABELS, STATUS_TONE,
+} from './_tabs/shared';
+import { SubmissionsTab } from './_tabs/submissions-tab';
 
 function DetailSkeleton() {
   return (
@@ -88,10 +61,7 @@ function DetailSkeleton() {
       <Skeleton className="h-10 w-96" />
       <Skeleton className="h-20" />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
-          <Skeleton className="h-40" />
-          <Skeleton className="h-40" />
-        </div>
+        <Skeleton className="h-96" />
         <div className="space-y-4">
           <Skeleton className="h-40" />
           <Skeleton className="h-40" />
@@ -101,105 +71,111 @@ function DetailSkeleton() {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
 export default function CandidateWorkspacePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { hasPermission } = useAuthContext();
 
   const { data: candidate, isLoading, isError } = useCandidate(id);
-  const { data: notes } = useCandidateNotes(id);
-  const { data: submissionsResp } = useSubmissions({ candidateId: id, limit: 50 });
-  const { data: interviewsResp } = useInterviews({ candidateId: id, limit: 50 });
-  const { data: remindersResp } = useReminders({ candidateId: id, limit: 20 });
-  const { data: activity = [], isLoading: activityLoading } = useEntityActivity('candidate', id, 30);
+  const { data: workspace } = useCandidateWorkspace(id);
+  const { data: usersResp } = useUsers({ limit: 200 });
 
   const deleteMutation = useDeleteCandidate();
-  const addNoteMutation = useAddNote(id);
-  const removeSkillMutation = useRemoveSkill(id);
+  const transitionStatus = useTransitionCandidateStatus(id);
+  const assignOwner = useAssignCandidateOwner(id);
 
-  const [noteContent, setNoteContent] = useState('');
-  const [noteType, setNoteType] = useState<NoteType>('NOTE');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const canUpdate = hasPermission('candidates:update');
   const canDelete = hasPermission('candidates:delete');
+  const canManageUsers = hasPermission('users:read');
 
-  const submissions = submissionsResp?.data ?? [];
-  const interviews = interviewsResp?.data ?? [];
-  const reminders = remindersResp?.data ?? [];
-
-  const activeSubmissions = submissions.filter(
-    (s) => !['CLOSED', 'REJECTED', 'WITHDRAWN', 'PLACED'].includes(s.status),
-  );
-  const placedSubmissions = submissions.filter((s) => s.status === 'PLACED');
-  const upcomingInterviews = interviews.filter(
-    (i) =>
-      (i.status === 'SCHEDULED' || i.status === 'CONFIRMED' || i.status === 'RESCHEDULED') &&
-      i.scheduledAt &&
-      new Date(i.scheduledAt).getTime() > Date.now(),
-  );
-  const openReminders = reminders.filter(
-    (r) => r.status === 'PENDING' || r.status === 'ACKNOWLEDGED' || r.status === 'SNOOZED',
-  );
-  const overdueReminders = openReminders.filter(
-    (r) => r.dueAt && new Date(r.dueAt).getTime() < Date.now(),
-  );
-
-  const daysSinceActivity = candidate?.lastActivityAt
-    ? differenceInCalendarDays(new Date(), new Date(candidate.lastActivityAt))
-    : null;
+  const metrics  = workspace?.metrics;
+  const health   = workspace?.health;
+  const summary  = workspace?.resumeSummary;
 
   // ── Next actions ────────────────────────────────────────────────────────────
   const nextActions: NextAction[] = useMemo(() => {
-    if (!candidate) return [];
+    if (!candidate || !metrics || !health) return [];
     const actions: NextAction[] = [];
 
-    if (overdueReminders.length > 0) {
+    if (metrics.overdueReminders > 0) {
       actions.push({
         id: 'overdue', icon: Bell, urgent: true,
-        label: `${overdueReminders.length} overdue reminder${overdueReminders.length > 1 ? 's' : ''}`,
+        label: `${metrics.overdueReminders} overdue reminder${metrics.overdueReminders > 1 ? 's' : ''}`,
         hint: 'Address overdue items', href: `/reminders?candidateId=${id}`,
       });
     }
-    if (candidate.availabilityStatus === 'IMMEDIATELY' && activeSubmissions.length === 0) {
+    if (health.hasResumesPendingReview) {
+      actions.push({
+        id: 'review-resume', icon: FileText, urgent: true,
+        label: 'Resume parsing needs review',
+        hint: 'A resume is awaiting human review',
+        href: `/reviews`,
+      });
+    }
+    if (health.hasDuplicatesPending) {
+      actions.push({
+        id: 'review-dupes', icon: AlertTriangle, urgent: true,
+        label: `${metrics.pendingDuplicates} duplicate${metrics.pendingDuplicates > 1 ? 's' : ''} pending review`,
+        hint: 'Decide before re-engaging',
+      });
+    }
+    if (candidate.availabilityStatus === 'IMMEDIATELY' && metrics.activeSubmissions === 0) {
       actions.push({
         id: 'submit', icon: Send, primary: true,
         label: 'Submit to an open job',
-        hint: 'Available immediately with no active submission',
+        hint: 'Available immediately, no active submission',
         href: `/submissions/new?candidateId=${id}`,
       });
-    } else if (activeSubmissions.length === 0 && candidate.status === 'AVAILABLE') {
+    } else if (metrics.activeSubmissions === 0 && candidate.status === 'AVAILABLE') {
       actions.push({
         id: 'find-jobs', icon: Briefcase, primary: true,
         label: 'Find matching jobs', href: `/jobs?status=OPEN`,
       });
     }
-    if (activeSubmissions.length > 0) {
+    if (metrics.activeSubmissions > 0) {
       actions.push({
         id: 'pipeline', icon: TrendingUp,
-        label: `View ${activeSubmissions.length} active submission${activeSubmissions.length > 1 ? 's' : ''}`,
-        href: `/submissions?candidateId=${id}`,
+        label: `View ${metrics.activeSubmissions} active submission${metrics.activeSubmissions > 1 ? 's' : ''}`,
       });
     }
-    if (daysSinceActivity !== null && daysSinceActivity >= 30 && candidate.status !== 'PLACED' && candidate.status !== 'BLACKLISTED') {
+    if (health.isStale && candidate.status !== 'PLACED' && candidate.status !== 'BLACKLISTED') {
       actions.push({
         id: 'reengage', icon: RefreshCw, urgent: true,
         label: 'Re-engage candidate',
-        hint: `No activity for ${daysSinceActivity} days`,
+        hint: metrics.daysSinceActivity ? `No activity for ${metrics.daysSinceActivity} days` : undefined,
       });
     }
-    if (candidate.allSkills.length === 0) {
+    if (health.isProfileIncomplete) {
       actions.push({
-        id: 'add-skills', icon: Sparkles,
-        label: 'Add skills',
-        hint: 'Improves matching and discoverability',
+        id: 'fill-profile', icon: Sparkles,
+        label: 'Complete profile',
+        hint: `${workspace?.profileCompleteness.missing.length ?? 0} fields missing`,
         href: `/candidates/${id}/edit`,
       });
     }
     return actions;
-  }, [candidate, id, activeSubmissions.length, daysSinceActivity, overdueReminders.length]);
+  }, [candidate, id, metrics, health, workspace?.profileCompleteness.missing.length]);
+
+  // ── Header quick actions ────────────────────────────────────────────────────
+  const quickActions: QuickAction[] = useMemo(() => {
+    if (!candidate) return [];
+    const a: QuickAction[] = [];
+    if (canUpdate) {
+      a.push({ id: 'submit',    icon: Send,        label: 'Submit to job',   href: `/submissions/new?candidateId=${id}` });
+      a.push({ id: 'reminder',  icon: Bell,        label: 'New reminder',    href: `/reminders/new?candidateId=${id}` });
+      a.push({ id: 'edit',      icon: Edit,        label: 'Edit profile',    href: `/candidates/${id}/edit`, separator: true });
+      a.push({ id: 'note',      icon: MessageSquare, label: 'Jump to notes', href: `#notes` });
+      a.push({ id: 'resumes',   icon: FileText,    label: 'Resume center',   href: `#resumes` });
+    }
+    if (canDelete) {
+      a.push({ id: 'delete', icon: Trash2, label: 'Delete candidate', danger: true, separator: true,
+        onClick: () => setShowDeleteConfirm(true),
+      });
+    }
+    return a;
+  }, [candidate, id, canUpdate, canDelete]);
 
   if (isLoading) return <DetailSkeleton />;
   if (isError || !candidate) {
@@ -215,21 +191,29 @@ export default function CandidateWorkspacePage() {
     );
   }
 
-  const visibleNotes = notes ?? candidate.notes;
-
-  function handleAddNote() {
-    if (!noteContent.trim()) return;
-    addNoteMutation.mutate(
-      { content: noteContent.trim(), noteType },
-      { onSuccess: () => setNoteContent('') },
-    );
-  }
+  const fullLocation = [candidate.city, candidate.country].filter(Boolean).join(', ') || candidate.location;
 
   function handleDelete() {
     deleteMutation.mutate(id, { onSuccess: () => router.push('/candidates') });
   }
 
-  const fullLocation = [candidate.city, candidate.country].filter(Boolean).join(', ') || candidate.location;
+  // Owner reassignment options — exclude inactive accounts from dropdown.
+  const ownerOptions = (usersResp?.data ?? [])
+    .filter((u) => u.status === 'ACTIVE')
+    .map((u) => ({ id: u.id, label: `${u.firstName} ${u.lastName}`, email: u.email }));
+
+  // ── Tab definitions ─────────────────────────────────────────────────────────
+  const tabs: WorkspaceTab[] = [
+    { id: 'overview',      label: 'Overview',     icon: ClipboardList },
+    { id: 'resumes',       label: 'Resumes',      icon: FileText, count: metrics?.resumeCount },
+    { id: 'submissions',   label: 'Submissions',  icon: Send,     count: metrics?.activeSubmissions },
+    { id: 'interviews',    label: 'Interviews',   icon: Calendar, count: metrics?.upcomingInterviews },
+    { id: 'notes',         label: 'Notes',        icon: MessageSquare },
+    { id: 'duplicates',    label: 'Duplicates',   icon: AlertTriangle, count: metrics?.pendingDuplicates },
+    { id: 'activity',      label: 'Activity',     icon: Activity },
+    { id: 'communications',label: 'Comms',        icon: Mail },
+    { id: 'audit',         label: 'Audit',        icon: History, hidden: !canManageUsers },
+  ];
 
   return (
     <div className="space-y-6">
@@ -251,19 +235,36 @@ export default function CandidateWorkspacePage() {
         ]}
         badges={
           <>
-            <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium', STATUS_TONE[candidate.status])}>
-              {candidate.status}
-            </span>
+            <StatusTransitionMenu<CandidateStatus>
+              current={candidate.status}
+              transitions={CANDIDATE_TRANSITIONS[candidate.status]}
+              labels={STATUS_LABELS}
+              tones={STATUS_TONE}
+              disabled={!canUpdate}
+              pending={transitionStatus.isPending}
+              onTransition={(next) => transitionStatus.mutate(next)}
+            />
             <Badge variant="secondary" className="text-xs">
               {AVAILABILITY_LABELS[candidate.availabilityStatus]}
             </Badge>
             {candidate.isRemote && <Badge variant="outline" className="text-xs">Remote</Badge>}
             <StaleIndicator lastActivityAt={candidate.lastActivityAt} thresholdDays={30} label="No contact" />
-            {overdueReminders.length > 0 && (
-              <span className="inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
-                <Bell className="h-3 w-3" />
-                {overdueReminders.length} overdue
-              </span>
+
+            {/* Health signals */}
+            {health?.hasOverdueReminders && (
+              <SignalBadge icon={Bell} label="Overdue" tone="danger" count={metrics?.overdueReminders} />
+            )}
+            {health?.hasResumesPendingReview && (
+              <SignalBadge icon={FileText} label="Resume review" tone="warning" />
+            )}
+            {health?.hasDuplicatesPending && (
+              <SignalBadge icon={AlertTriangle} label="Duplicates" tone="warning" count={metrics?.pendingDuplicates} />
+            )}
+            {health?.hasPendingFeedback && (
+              <SignalBadge icon={ShieldAlert} label="Feedback due" tone="warning" />
+            )}
+            {health?.isProfileIncomplete && metrics && (
+              <SignalBadge icon={Sparkles} label={`Profile ${metrics.profileCompleteness}%`} tone="info" />
             )}
           </>
         }
@@ -276,23 +277,25 @@ export default function CandidateWorkspacePage() {
                 </Link>
               </Button>
             )}
-            {canDelete && (
-              showDeleteConfirm ? (
-                <span className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Sure?</span>
-                  <Button size="sm" variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
-                    {deleteMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                    Delete
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </span>
-              ) : (
-                <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(true)}>
-                  <Trash2 className="mr-1 h-4 w-4" /> Delete
+            {canUpdate && (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/candidates/${id}/edit`}>
+                  <Edit className="mr-1 h-4 w-4" /> Edit
+                </Link>
+              </Button>
+            )}
+            {quickActions.length > 0 && <QuickActionMenu actions={quickActions} label="More" />}
+            {canDelete && showDeleteConfirm && (
+              <span className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Sure?</span>
+                <Button size="sm" variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+                  {deleteMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  Delete
                 </Button>
-              )
+                <Button size="sm" variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </span>
             )}
           </>
         }
@@ -312,14 +315,53 @@ export default function CandidateWorkspacePage() {
                 ? formatDistanceToNow(new Date(candidate.lastActivityAt), { addSuffix: true })
                 : '—'}
             </WorkspaceFact>
+            {metrics && (
+              <WorkspaceFact label="Health score">
+                <span className={cn(
+                  'tabular-nums',
+                  metrics.healthScore >= 70 ? 'text-green-700'
+                  : metrics.healthScore >= 40 ? 'text-amber-700' : 'text-red-700',
+                )}>
+                  {metrics.healthScore}/100
+                </span>
+              </WorkspaceFact>
+            )}
           </>
         }
       />
+
+      {/* Metric tile rail */}
+      {metrics && (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+          <MetricTile label="Active subs"        value={metrics.activeSubmissions} icon={Send}        tone={metrics.activeSubmissions > 0 ? 'info' : 'default'} href={`#submissions`} />
+          <MetricTile label="Interviews"         value={metrics.upcomingInterviews} icon={Calendar}    tone={metrics.upcomingInterviews > 0 ? 'info' : 'default'} href={`#interviews`} />
+          <MetricTile label="Open reminders"     value={metrics.openReminders}      icon={Bell}        tone={metrics.overdueReminders > 0 ? 'danger' : metrics.openReminders > 0 ? 'warning' : 'default'} hint={metrics.overdueReminders > 0 ? `${metrics.overdueReminders} overdue` : undefined} />
+          <MetricTile label="Resumes"            value={metrics.resumeCount}        icon={FileText}    tone={summary?.latestReviewState === 'PENDING' ? 'warning' : 'default'} hint={summary?.latestReviewState ? `Review: ${summary.latestReviewState}` : undefined} href={`#resumes`} />
+          <MetricTile label="Pending dupes"      value={metrics.pendingDuplicates}  icon={AlertTriangle} tone={metrics.pendingDuplicates > 0 ? 'warning' : 'default'} hint={metrics.exactDuplicates > 0 ? `${metrics.exactDuplicates} exact` : undefined} href={`#duplicates`} />
+          <MetricTile label="Profile"            value={`${metrics.profileCompleteness}%`} icon={Sparkles} tone={metrics.profileCompleteness >= 80 ? 'positive' : metrics.profileCompleteness >= 50 ? 'info' : 'warning'} hint={`Health ${metrics.healthScore}`} />
+        </div>
+      )}
 
       <WorkspaceShell
         rail={
           <>
             <NextActionsPanel actions={nextActions} />
+
+            <OwnerCard
+              owner={workspace?.owner ?? null}
+              canEdit={canUpdate}
+              options={ownerOptions}
+              pending={assignOwner.isPending}
+              onAssign={(ownerId) => assignOwner.mutate(ownerId)}
+            />
+
+            {workspace?.profileCompleteness && (
+              <ProfileCompletenessCard
+                score={workspace.profileCompleteness.score}
+                missing={workspace.profileCompleteness.missing}
+                hint={`Health ${workspace.metrics.healthScore}/100`}
+              />
+            )}
 
             {/* Contact */}
             <Card>
@@ -362,284 +404,35 @@ export default function CandidateWorkspacePage() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Activity */}
-            <Card>
-              <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm">Activity</CardTitle>
-                <span className="text-xs text-muted-foreground">{activity.length}</span>
-              </CardHeader>
-              <CardContent>
-                <ActivityTimeline
-                  entries={activity}
-                  loading={activityLoading}
-                  emptyMessage="No recorded activity yet."
-                />
-              </CardContent>
-            </Card>
-
-            {/* Meta */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1 text-xs text-muted-foreground">
-                <p>Source: <span className="text-foreground">{candidate.source}</span></p>
-                {candidate.sourceDetail && <p>{candidate.sourceDetail}</p>}
-                <p>Added: <span className="text-foreground">{new Date(candidate.createdAt).toLocaleDateString()}</span></p>
-              </CardContent>
-            </Card>
           </>
         }
       >
-        {/* Summary */}
-        {candidate.summary && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <FileText className="h-4 w-4" />
-                Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-wrap text-sm">{candidate.summary}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Active submissions */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Send className="h-4 w-4" />
-              Active submissions
-              <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{activeSubmissions.length}</span>
-            </CardTitle>
-            {canUpdate && (
-              <Button asChild size="sm" variant="outline">
-                <Link href={`/submissions/new?candidateId=${id}`}>
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Submit
-                </Link>
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {activeSubmissions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {submissions.length === 0
-                  ? 'No submissions yet.'
-                  : 'No active submissions — all engagements are closed or terminal.'}
-              </p>
-            ) : (
-              activeSubmissions.map((s) => (
-                <RelatedEntityCard
-                  key={s.id}
-                  eyebrow={s.job.reqId}
-                  icon={Briefcase}
-                  title={s.job.title}
-                  subtitle={(s.job.department ?? '') + (s.vendor ? ` · via ${s.vendor.companyName}` : '')}
-                  status={s.status}
-                  statusTone={SUBMISSION_TONE[s.status]}
-                  href={`/submissions/${s.id}`}
-                  meta={
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(s.updatedAt), { addSuffix: true })}
-                    </span>
-                  }
-                />
-              ))
-            )}
-            {placedSubmissions.length > 0 && (
-              <details className="pt-2">
-                <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                  {placedSubmissions.length} placed engagement{placedSubmissions.length > 1 ? 's' : ''}
-                </summary>
-                <div className="space-y-2 pt-2">
-                  {placedSubmissions.map((s) => (
-                    <RelatedEntityCard
-                      key={s.id}
-                      eyebrow={s.job.reqId}
-                      icon={Building2}
-                      title={s.job.title}
-                      subtitle={s.placedAt ? `Placed ${new Date(s.placedAt).toLocaleDateString()}` : undefined}
-                      status="PLACED"
-                      statusTone="green"
-                      href={`/submissions/${s.id}`}
-                    />
-                  ))}
-                </div>
-              </details>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Interview history */}
-        {interviews.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4" />
-                Interview history
-                <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{interviews.length}</span>
-                {upcomingInterviews.length > 0 && (
-                  <span className="rounded bg-blue-100 px-1.5 text-xs text-blue-700">{upcomingInterviews.length} upcoming</span>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {interviews.slice(0, 10).map((iv) => (
-                <RelatedEntityCard
-                  key={iv.id}
-                  eyebrow={iv.roundLabel ?? `Round ${iv.round}`}
-                  icon={Calendar}
-                  title={`${iv.type} · ${iv.job.title}`}
-                  subtitle={iv.scheduledAt ? new Date(iv.scheduledAt).toLocaleString() : 'Not scheduled'}
-                  status={iv.status}
-                  statusTone={INTERVIEW_TONE[iv.status]}
-                  href={`/interviews/${iv.id}`}
-                />
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Open reminders */}
-        {openReminders.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Bell className="h-4 w-4" />
-                Open reminders
-                <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{openReminders.length}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {openReminders.map((r) => (
-                <RelatedEntityCard
-                  key={r.id}
-                  eyebrow={r.priority}
-                  icon={Bell}
-                  title={r.title}
-                  subtitle={r.description ?? undefined}
-                  status={r.status}
-                  statusTone={REMINDER_TONE[r.status]}
-                  href={`/reminders?id=${r.id}`}
-                  meta={<OverdueIndicator dueAt={r.dueAt} />}
-                />
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Skills */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Sparkles className="h-4 w-4" />
-              Skills
-              <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{candidate.allSkills.length}</span>
-            </CardTitle>
-            {canUpdate && (
-              <Button asChild size="sm" variant="ghost">
-                <Link href={`/candidates/${id}/edit`}>
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Add
-                </Link>
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            {candidate.allSkills.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No skills added yet.</p>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {candidate.allSkills.map((cs) => (
-                  <div key={cs.id} className="group flex items-center gap-1">
-                    <Badge variant={cs.isPrimary ? 'default' : 'secondary'} className="text-xs">
-                      {cs.skill.displayName}
-                      {cs.yearsOfExperience !== null && (
-                        <span className="ml-1 opacity-60">· {cs.yearsOfExperience}y</span>
-                      )}
-                    </Badge>
-                    {canUpdate && (
-                      <button
-                        onClick={() => removeSkillMutation.mutate(cs.skill.id)}
-                        className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
-                        aria-label={`Remove ${cs.skill.displayName}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Notes */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <MessageSquare className="h-4 w-4" />
-              Notes
-              <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{visibleNotes.length}</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {canUpdate && (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <select
-                    value={noteType}
-                    onChange={(e) => setNoteType(e.target.value as NoteType)}
-                    className="rounded-md border border-input bg-background px-2 py-1.5 text-xs ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {(Object.keys(NOTE_TYPE_LABELS) as NoteType[])
-                      .filter((t) => t !== 'STATUS_CHANGE' && t !== 'SYSTEM')
-                      .map((t) => (
-                        <option key={t} value={t}>{NOTE_TYPE_LABELS[t]}</option>
-                      ))}
-                  </select>
-                </div>
-                <Textarea
-                  value={noteContent}
-                  onChange={(e) => setNoteContent(e.target.value)}
-                  rows={2}
-                  placeholder="Add a note..."
-                />
-                <Button size="sm" onClick={handleAddNote} disabled={!noteContent.trim() || addNoteMutation.isPending}>
-                  {addNoteMutation.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                  Add note
-                </Button>
-              </div>
-            )}
-
-            <div className="space-y-3 border-t pt-3">
-              {visibleNotes.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No notes yet.</p>
-              ) : (
-                visibleNotes.map((note) => (
-                  <div key={note.id} className="rounded-md bg-muted/40 p-3">
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="font-medium text-foreground">
-                        <Badge variant="outline" className="mr-1.5 text-[10px]">
-                          {NOTE_TYPE_LABELS[note.noteType]}
-                        </Badge>
-                        {note.authorName}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
-                      </span>
-                    </div>
-                    <p className="mt-1.5 whitespace-pre-wrap text-sm">{note.content}</p>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <WorkspaceTabs tabs={tabs} defaultTab="overview">
+          {(active) => {
+            switch (active) {
+              case 'overview':
+                return <OverviewTab candidate={candidate} workspace={workspace} canUpdate={canUpdate} />;
+              case 'resumes':
+                return <ResumesTab candidateId={id} canUpdate={canUpdate} />;
+              case 'submissions':
+                return <SubmissionsTab candidateId={id} canCreate={canUpdate} />;
+              case 'interviews':
+                return <InterviewsTab candidateId={id} />;
+              case 'notes':
+                return <NotesTab candidate={candidate} canUpdate={canUpdate} />;
+              case 'duplicates':
+                return <DuplicatesTab candidateId={id} canUpdate={canUpdate} />;
+              case 'activity':
+                return <ActivityTab candidateId={id} />;
+              case 'communications':
+                return <CommunicationsTab candidateEmail={candidate.email} candidateId={id} />;
+              case 'audit':
+                return <AuditTab candidateId={id} />;
+              default:
+                return null;
+            }
+          }}
+        </WorkspaceTabs>
       </WorkspaceShell>
     </div>
   );

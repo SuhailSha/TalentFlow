@@ -87,6 +87,7 @@ export interface CandidateDetail extends CandidateListItem {
   sourceDetail: string | null;
   allSkills: CandidateSkillView[]; // full skills list
   notes: CandidateNoteView[];
+  relationshipOwnerId: string | null;
   createdBy: string | null;
   updatedBy: string | null;
 }
@@ -219,6 +220,7 @@ export function toCandidateDetail(
       authorName: n.authorName,
       createdAt: n.createdAt,
     })),
+    relationshipOwnerId: (c as Candidate & { relationshipOwnerId?: string | null }).relationshipOwnerId ?? null,
     createdBy: c.createdBy,
     updatedBy: c.updatedBy,
   };
