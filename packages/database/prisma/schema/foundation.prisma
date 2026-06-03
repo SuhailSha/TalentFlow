@@ -389,3 +389,31 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// ── Transactional Outbox (TF-1-5 / ADR-003 Layer 1) ─────────────────────────
+// Domain events written inside the same Postgres transaction as the business
+// state change. The relay worker polls unpublished rows and forwards them to
+// Redis Streams. Consumers receive at-least-once delivery; handlers MUST be
+// idempotent. Successfully-published rows are retained 7 days for replay /
+// debugging, then purged by a scheduled job.
+
+model OutboxEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  sequenceNum     BigInt   @default(autoincrement()) @map("sequence_num")
+  organizationId  String   @map("organization_id") @db.Uuid
+  aggregateType   String   @map("aggregate_type")  @db.Text
+  aggregateId     String   @map("aggregate_id")    @db.Uuid
+  eventType       String   @map("event_type")      @db.Text
+  payload         Json
+  correlationId   String?  @map("correlation_id")  @db.Text
+
+  attempts        Int      @default(0)
+  lastError       String?  @map("last_error") @db.Text
+  publishedAt     DateTime? @map("published_at") @db.Timestamptz()
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@index([sequenceNum], map: "outbox_events_unpublished_idx")
+  @@index([publishedAt], map: "outbox_events_published_at_idx")
+  @@index([organizationId, createdAt(sort: Desc)], map: "outbox_events_org_created_idx")
+  @@map("outbox_events")
+}

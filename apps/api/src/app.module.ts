@@ -20,6 +20,8 @@ import { DatabaseModule } from './database';
 import { EmailModule } from './email/email.module';
 import { HealthModule } from './health/health.module';
 import { LoggerModule } from './logger/logger.module';
+import { AiModule } from './ai/ai.module';
+import { EventsModule } from './events/events.module';
 import { QueueModule } from './queue/queue.module';
 import { StorageModule } from './storage/storage.module';
 import { CandidatesModule } from './modules/candidates/candidates.module';
@@ -85,6 +87,12 @@ import { ScheduledModule } from './scheduled/scheduled.module';
 
     // ── Queue Infrastructure ───────────────────────────────────────────────
     QueueModule.register(),
+
+    // ── Events: transactional outbox + Redis Streams (TF-1-5/1-6) ──────────
+    EventsModule.register(),
+
+    // ── AI provider abstraction (TF-1.5-1) ────────────────────────────────
+    AiModule,
 
     // ── File Storage ───────────────────────────────────────────────────────
     StorageModule.register(),

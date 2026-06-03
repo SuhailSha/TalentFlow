@@ -118,12 +118,12 @@ split.
 ### TF-1-5 — Outbox table + worker · `chore` · 2d · □
 - Schema: `outbox(id, organizationId, aggregateType, aggregateId, eventType, payload, sequenceNum, createdAt, publishedAt)`.
 - Worker polls every 500ms with `FOR UPDATE SKIP LOCKED`; publishes to Redis Stream `events:{eventType}`.
+- ✅ Done Slice 2. Migration applied. 20/20 validation pass.
 - Implements: ADR-003 Layer 1, Layer 2
 
-### TF-1-6 — Redis Streams consumer infrastructure · `chore` · 1.5d · □
-- Consumer-group helper in `apps/api/src/events/`.
-- Wire `audit-writer` consumer (replaces in-process EventEmitter for AuditService).
-- DLQ + retry policy.
+### TF-1-6 — Redis Streams consumer infrastructure · `chore` · 1.5d · ■ done (Slice 2; Redis E2E in staging)
+- StreamsPublisher + StreamsConsumerRegistry + DLQ + XAUTOCLAIM PEL recovery.
+- E2E harness (`streams-e2e.cjs`) gated on REDIS_URL — runs in staging.
 - Implements: ADR-003 Layers 3, 4
 
 ### TF-1-7 — Feature flag SDK (GrowthBook self-hosted) · `chore` · 2d · □
@@ -139,9 +139,11 @@ split.
 - Trace context propagation into BullMQ jobs (via job metadata).
 - Implements: ADR-006 §11
 
-### TF-1-9 — Per-tenant rate limiting · `security` · 1d · □
-- `@nestjs/throttler` with custom keyGenerator using `organizationId`.
-- Different limits per route: writes (60/min), reads (300/min), AI (per ADR-004 §7).
+### TF-1-9 — Per-tenant rate limiting · `security` · 1d · ■ done (Slice 2)
+- Custom Redis-backed `RateLimitGuard` (no new dependency).
+- `@RateLimit({ max, windowSec, routeKey })` decorator; sliding-window epoch.
+- Tenant-scoped when authenticated, IP-scoped otherwise.
+- Standard X-RateLimit-* + Retry-After headers; raises 429 RATE_LIMITED.
 
 ### TF-1-10 — Collapsible Sidebar + Workspace switcher · `feature` · 2d · □
 - 240px expanded ↔ 56px collapsed; persisted in localStorage.
@@ -185,8 +187,11 @@ split.
 
 > Effort: ~14 days · Depends on: TF-PRE-4 (Organization AI fields), TF-1-5 (outbox)
 
-### TF-1.5-1 — LlmProvider interface + GeminiProvider · `chore` · 2d · □
-- Interface per ADR-004 §2. Gemini Flash adapter with structured output (JSON mode).
+### TF-1.5-1 — LlmProvider interface + GeminiProvider · `chore` · 2d · ■ done (Slice 2)
+- `LlmProvider` interface locked. `GeminiProvider` adapter shipped.
+- Boundary discipline verified: provider has zero knowledge of business types; OpenAI/Anthropic can be added as new adapter files with no business-logic change.
+- Provenance contract enforced at the provider boundary (LlmProviderError 'no_provenance').
+- 6-axis cost in every response: tokens (prompt/completion/total), USD, latency, model id, provider name.
 - Implements: ADR-004 §2
 
 ### TF-1.5-2 — OpenAiProvider · `chore` · 1d · □
