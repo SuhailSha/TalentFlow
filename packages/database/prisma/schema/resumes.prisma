@@ -100,6 +100,42 @@ enum ReviewPriority {
   @@map("review_priority")
 }
 
+// ─── Duplicate detection (Phase C — R4) ───────────────────────────────────────
+
+enum DuplicateRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+
+  @@map("duplicate_run_status")
+}
+
+enum DuplicateRunTrigger {
+  REVIEW_APPROVE      // ran automatically as part of an approve flow
+  MANUAL_SCAN         // recruiter clicked "Re-scan" on a candidate
+  API_BATCH           // future: bulk rescan via API
+
+  @@map("duplicate_run_trigger")
+}
+
+enum DuplicateConfidenceTier {
+  EXACT       // email / phone / LinkedIn — definitive
+  PROBABLE    // name trigram + corroborating signal
+  POSSIBLE    // name trigram alone, or weak corroborating signals
+
+  @@map("duplicate_confidence_tier")
+}
+
+enum DuplicateMatchStatus {
+  PENDING               // surfaced; awaiting recruiter decision
+  NOT_DUPLICATE         // recruiter rejected the match (terminal for this match)
+  DEFERRED              // recruiter parked the decision (still PENDING for blocking purposes)
+  SUPERSEDED            // a newer run replaced this match
+  CONFIRMED_DUPLICATE   // reserved for R5 merge — not set in R4
+
+  @@map("duplicate_match_status")
+}
+
 // ─── ResumeIntakeBatch ────────────────────────────────────────────────────────
 // Optional grouping for bulk uploads. A solo resume upload from a candidate
 // page doesn't use this — only the bulk-intake flow does. Vendor-blast usage:
@@ -421,4 +457,77 @@ model OrganizationExtractionConfig {
   updatedBy      String?  @db.Uuid        @map("updated_by")
 
   @@map("organization_extraction_configs")
+}
+
+// ─── DuplicateDetectionRun ────────────────────────────────────────────────────
+// One execution of the deterministic duplicate-detection algorithm against a
+// source candidate. Captures who triggered it, what surfaced, and how long it
+// took. Match details live in DuplicateCandidateMatch rows (one per pair).
+
+model DuplicateDetectionRun {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  organizationId      String                 @map("organization_id") @db.Uuid
+
+  sourceCandidateId   String                 @map("source_candidate_id") @db.Uuid
+  triggeredBy         DuplicateRunTrigger    @map("triggered_by")
+  triggeredById       String                 @map("triggered_by_id") @db.Uuid
+  reviewTaskId        String?                @map("review_task_id")   @db.Uuid
+
+  status              DuplicateRunStatus     @default(RUNNING)
+
+  // Aggregate counts (denormalised for the queue view).
+  totalMatches        Int                    @default(0) @map("total_matches")
+  exactMatches        Int                    @default(0) @map("exact_matches")
+  probableMatches     Int                    @default(0) @map("probable_matches")
+  possibleMatches     Int                    @default(0) @map("possible_matches")
+
+  durationMs          Int?                   @map("duration_ms")
+  errorMessage        String?                @map("error_message") @db.Text
+
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  completedAt         DateTime?              @map("completed_at") @db.Timestamptz
+
+  matches             DuplicateCandidateMatch[]
+
+  @@index([organizationId, sourceCandidateId, createdAt])
+  @@index([organizationId, status])
+  @@index([reviewTaskId])
+  @@map("duplicate_detection_runs")
+}
+
+// ─── DuplicateCandidateMatch ──────────────────────────────────────────────────
+// One (source, target) pair per run. Decision lifecycle is independent of the
+// run itself — a single recruiter dismisses or defers matches individually.
+
+model DuplicateCandidateMatch {
+  id                  String                  @id @default(uuid()) @db.Uuid
+  runId               String                  @map("run_id") @db.Uuid
+  organizationId      String                  @map("organization_id") @db.Uuid
+
+  sourceCandidateId   String                  @map("source_candidate_id") @db.Uuid
+  targetCandidateId   String                  @map("target_candidate_id") @db.Uuid
+
+  confidenceTier      DuplicateConfidenceTier @map("confidence_tier")
+  confidenceScore     Decimal                 @default(0) @map("confidence_score") @db.Decimal(4, 3)
+
+  // Array of { kind, label, value?, similarity? } — see MatchReason in TS types.
+  matchReasons        Json                    @default("[]") @map("match_reasons")
+
+  status              DuplicateMatchStatus    @default(PENDING)
+
+  decidedById         String?                 @map("decided_by_id") @db.Uuid
+  decidedAt           DateTime?               @map("decided_at") @db.Timestamptz
+  decisionNotes       String?                 @map("decision_notes") @db.Text
+
+  createdAt           DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime                @updatedAt      @map("updated_at") @db.Timestamptz
+
+  run                 DuplicateDetectionRun   @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, sourceCandidateId, targetCandidateId])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, sourceCandidateId, status])
+  @@index([organizationId, targetCandidateId])
+  @@index([organizationId, confidenceTier, status])
+  @@map("duplicate_candidate_matches")
 }

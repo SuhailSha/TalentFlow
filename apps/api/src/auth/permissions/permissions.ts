@@ -105,6 +105,11 @@ export const Permission = {
   RESUME_REVIEWS_APPROVE:  'resume_reviews:approve',
   RESUME_REVIEWS_REJECT:   'resume_reviews:reject',
   RESUME_REVIEWS_REASSIGN: 'resume_reviews:reassign',
+
+  // ── Duplicate detection (Phase C — R4) ────────────────────────────────────
+  DUPLICATES_READ:    'duplicates:read',
+  DUPLICATES_SCAN:    'duplicates:scan',
+  DUPLICATES_RESOLVE: 'duplicates:resolve',
 } as const;
 
 export type Permission = (typeof Permission)[keyof typeof Permission];

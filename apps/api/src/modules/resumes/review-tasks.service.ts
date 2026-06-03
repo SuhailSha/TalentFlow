@@ -11,6 +11,7 @@ import { Prisma, type ResumeParserProvider } from '@repo/database';
 import type { RequestUser } from '../../auth/types/request-user.interface';
 import { EventNames } from '../../common/events/event-names.constant';
 import { PrismaService } from '../../database';
+import { DuplicatesService } from '../duplicates/duplicates.service';
 import { ExtractionConfigService } from '../extraction-config/extraction-config.service';
 import { ParsingJobsService } from './parsing-jobs.service';
 import { ReviewTasksRepository } from './review-tasks.repository';
@@ -49,6 +50,7 @@ export class ReviewTasksService {
     private readonly repo:       ReviewTasksRepository,
     private readonly parsing:    ParsingJobsService,
     private readonly orgConfig:  ExtractionConfigService,
+    private readonly duplicates: DuplicatesService,
     private readonly events:     EventEmitter2,
   ) {}
 
@@ -163,6 +165,44 @@ export class ReviewTasksService {
     const payload      = (ext.payload     as ExtractionPayload) ?? {};
     const finalPayload = this.applyDecisionToPayload(payload, dto.decision);
     const candidateUpdate = this.buildCandidateUpdate(finalPayload);
+
+    // ── R4: duplicate-detection gate ──────────────────────────────────────
+    // Detection runs against the PROPOSED scalar values (post-edit) WITHOUT
+    // touching the candidate row first. Writing the new email/phone before
+    // detection would trip the (organizationId, email) unique constraint
+    // before we get a chance to warn the recruiter.
+    if (!dto.acknowledgeDuplicates) {
+      const u = candidateUpdate as Record<string, unknown>;
+      const sourceOverride = {
+        firstName:      (typeof u.firstName      === 'string' ? u.firstName      : null),
+        lastName:       (typeof u.lastName       === 'string' ? u.lastName       : null),
+        email:          (typeof u.email          === 'string' ? u.email          : null),
+        phone:          (typeof u.phone          === 'string' ? u.phone          : null),
+        linkedinUrl:    (typeof u.linkedinUrl    === 'string' ? u.linkedinUrl    : null),
+        currentCompany: (typeof u.currentCompany === 'string' ? u.currentCompany : null),
+        city:           (typeof u.city           === 'string' ? u.city           : null),
+      };
+
+      const { runId, summary } = await this.duplicates.scanForReviewApprove({
+        organizationId:    actor.organizationId,
+        sourceCandidateId: targetCandidateId,
+        triggeredById:     actor.userId,
+        reviewTaskId:      id,
+        sourceOverride,
+      });
+
+      if (summary.total > 0) {
+        throw new ConflictException({
+          code: 'DUPLICATE_REVIEW_REQUIRED',
+          message: 'Potential duplicates found. Review them before promoting this candidate.',
+          runId,
+          totalMatches:    summary.total,
+          exactMatches:    summary.exact,
+          probableMatches: summary.probable,
+          possibleMatches: summary.possible,
+        });
+      }
+    }
 
     await this.db.$transaction(async (tx) => {
       // 1. Promote the candidate

@@ -68,7 +68,7 @@ export interface ListReviewsParams {
 }
 
 export interface SaveDraftBody { decision: ReviewDecisionPayload; baseVersion: number }
-export interface ApproveBody  { decision: ReviewDecisionPayload }
+export interface ApproveBody  { decision: ReviewDecisionPayload; acknowledgeDuplicates?: boolean }
 export interface RejectBody   { reason:   string }
 export interface ReparseBody  { provider?: string; notes?: string }
 

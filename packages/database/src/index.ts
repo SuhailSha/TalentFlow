@@ -78,6 +78,9 @@ export type {
   ExtractionResult,
   // Resume Review queue (Phase C — R3)
   ReviewTask,
+  // Duplicate detection (Phase C — R4)
+  DuplicateDetectionRun,
+  DuplicateCandidateMatch,
 } from '@prisma/client';
 
 // Enum values — exported as values so @IsEnum() decorators can use them at runtime.
@@ -134,4 +137,9 @@ export {
   // Resume Review queue (Phase C — R3)
   ReviewTaskStatus,
   ReviewPriority,
+  // Duplicate detection (Phase C — R4)
+  DuplicateRunStatus,
+  DuplicateRunTrigger,
+  DuplicateConfidenceTier,
+  DuplicateMatchStatus,
 } from '@prisma/client';

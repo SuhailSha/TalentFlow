@@ -9,6 +9,7 @@ import {
   ClipboardList,
   FileText,
   FileUp,
+  GitMerge,
   LayoutDashboard,
   Settings,
   Users,
@@ -17,7 +18,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { useReviewStats } from '@/hooks';
+import { useDuplicateStats, useReviewStats } from '@/hooks';
 import { cn } from '@/lib/utils';
 import type { NavGroup } from '@/types';
 
@@ -42,6 +43,7 @@ const navGroups: NavGroup[] = [
       { title: 'Reminders',  href: '/reminders',  icon: Bell },
       { title: 'Resumes',    href: '/resumes',    icon: FileUp },
       { title: 'Resume reviews', href: '/resume-reviews', icon: ClipboardList },
+      { title: 'Duplicate reviews', href: '/duplicate-reviews', icon: GitMerge },
     ],
   },
   {
@@ -71,8 +73,10 @@ interface SidebarProps {
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
   // Pending-review count for the Resume reviews badge.
-  const { data: reviewStats } = useReviewStats();
-  const pendingReviews = reviewStats?.pending ?? 0;
+  const { data: reviewStats }    = useReviewStats();
+  const { data: duplicateStats } = useDuplicateStats();
+  const pendingReviews    = reviewStats?.pending    ?? 0;
+  const pendingDuplicates = duplicateStats?.pending ?? 0;
 
   return (
     <aside
@@ -104,11 +108,11 @@ export function Sidebar({ className }: SidebarProps) {
               {group.items.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const Icon = item.icon;
-                // Dynamic badge: pending review count on the Resume reviews link.
+                // Dynamic badges: pending counts on review surfaces.
                 const liveBadge =
-                  item.href === '/resume-reviews' && pendingReviews > 0
-                    ? pendingReviews
-                    : item.badge;
+                  item.href === '/resume-reviews'    && pendingReviews    > 0 ? pendingReviews
+                : item.href === '/duplicate-reviews' && pendingDuplicates > 0 ? pendingDuplicates
+                : item.badge;
                 return (
                   <li key={item.href}>
                     <Link

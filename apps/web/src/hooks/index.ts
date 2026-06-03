@@ -88,3 +88,8 @@ export {
   useApproveReview, useRejectReview, useReparseFromReview,
   reviewKeys,
 } from './use-reviews';
+export {
+  useDuplicateMatches, useDuplicateMatch, useDuplicateRun, useDuplicateStats,
+  useMarkNotDuplicate, useDeferDuplicateMatch, useManualDuplicateScan,
+  duplicateKeys,
+} from './use-duplicates';

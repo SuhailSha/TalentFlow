@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import {
-  IsArray, IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID,
+  IsArray, IsBoolean, IsEnum, IsInt, IsObject, IsOptional, IsString, IsUUID,
   MaxLength, Min, ValidateNested,
 } from 'class-validator';
 
@@ -61,6 +61,15 @@ export class ApproveReviewDto {
   @ValidateNested()
   @Type(() => ReviewDecisionDto)
   decision: ReviewDecisionDto;
+
+  /**
+   * When true, skip the duplicate-detection gate and proceed with promotion.
+   * Powers the "Continue Promotion" action on the duplicate review workspace.
+   * The recruiter has seen the matches and explicitly chosen to proceed.
+   */
+  @IsOptional()
+  @IsBoolean()
+  acknowledgeDuplicates?: boolean;
 }
 
 export class RejectReviewDto {

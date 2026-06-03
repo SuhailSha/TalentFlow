@@ -81,6 +81,14 @@ export type {
   SaveDraftBody, ApproveBody, RejectBody, ReparseBody,
 } from './reviews';
 export { REVIEW_STATUS_LABELS, REVIEW_PRIORITY_LABELS } from './reviews';
+export type {
+  DuplicateConfidenceTier, DuplicateMatchStatus, DuplicateRunStatus,
+  DuplicateRunTrigger, MatchReasonKind, MatchReason, CandidateSummary,
+  DuplicateMatchListItem, DuplicateMatchDetail,
+  DuplicateRunSummary, DuplicateRunDetail,
+  ListDuplicateMatchesParams,
+} from './duplicates';
+export { TIER_LABELS, MATCH_STATUS_LABELS } from './duplicates';
 export {
   PROVIDER_LABELS, EXTRACT_FIELD_CATEGORY_LABELS, EXTRACT_FIELD_LABELS,
 } from './extraction-config';
