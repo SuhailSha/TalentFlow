@@ -132,6 +132,8 @@ export {
   ResumeIntakeBatchStatus,
   ResumeAccessAction,
   ResumeParserProvider,
+  // Resume AV scan (Phase C — R1, TF-1-16)
+  ResumeScanStatus,
   // Resume Parsing pipeline (Phase C — R2)
   ParsingJobStatus,
   // Resume Review queue (Phase C — R3)

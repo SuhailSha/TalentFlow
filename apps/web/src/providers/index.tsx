@@ -2,6 +2,11 @@
 
 import { Toaster } from 'sonner';
 
+// Dev-only axe-core scan. Import is side-effectful and no-ops in prod.
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  void import('@/lib/a11y/axe-dev');
+}
+
 import { AuthProvider } from './auth-provider';
 import { FeatureFlagsProvider } from './feature-flags-provider';
 import { QueryProvider } from './query-provider';

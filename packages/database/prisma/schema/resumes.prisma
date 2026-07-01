@@ -136,6 +136,18 @@ enum DuplicateMatchStatus {
   @@map("duplicate_match_status")
 }
 
+// ─── ResumeScanStatus (TF-1-16) ───────────────────────────────────────────────
+enum ResumeScanStatus {
+  PENDING       // just uploaded; not yet processed
+  SCANNING      // scanner has claimed the version
+  CLEAN         // scanner cleared the file; safe to serve to recruiters
+  INFECTED      // scanner flagged malware; file quarantined
+  SCAN_TIMEOUT  // scanner exceeded budget; admin decision required
+  SCAN_ERROR    // scanner errored (config / infra); retryable
+
+  @@map("resume_scan_status")
+}
+
 // ─── ResumeIntakeBatch ────────────────────────────────────────────────────────
 // Optional grouping for bulk uploads. A solo resume upload from a candidate
 // page doesn't use this — only the bulk-intake flow does. Vendor-blast usage:
@@ -234,6 +246,17 @@ model ResumeVersion {
   uploadedBy      String   @db.Uuid                @map("uploaded_by")
   uploadedAt      DateTime @default(now())         @map("uploaded_at") @db.Timestamptz
   supersededAt    DateTime?                         @map("superseded_at") @db.Timestamptz
+
+  // ── AV scan (TF-1-16) ──────────────────────────────────────────────────
+  // Every uploaded file passes through an AV scanner (ClamAV in prod;
+  // permissive local provider in dev). Status starts at PENDING; only
+  // CLEAN files are visible to recruiters via the download endpoint.
+  // INFECTED files are retained in quarantine for forensics + audit.
+  scanStatus     ResumeScanStatus @default(PENDING) @map("scan_status")
+  scanCompletedAt DateTime?                          @map("scan_completed_at") @db.Timestamptz
+  scanProvider    String?                            @map("scan_provider") @db.VarChar(64)
+  scanSignatureId String?                            @map("scan_signature_id") @db.VarChar(256)
+  scanNotes       String?                            @map("scan_notes") @db.Text
 
   // Relations
   resume          Resume   @relation("ResumeVersions", fields: [resumeId], references: [id], onDelete: Cascade)

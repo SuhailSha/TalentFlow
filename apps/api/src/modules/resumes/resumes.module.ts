@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { DuplicatesModule } from '../duplicates/duplicates.module';
 import { ExtractionConfigModule } from '../extraction-config/extraction-config.module';
+import { AvScanModule } from './av-scan/av-scan.module';
 import { ResumeIntakeBatchesController, ResumesController } from './resumes.controller';
 import { ResumesRepository } from './resumes.repository';
 import { ResumesService } from './resumes.service';
@@ -26,7 +27,7 @@ import { ReviewTasksService } from './review-tasks.service';
 const redisEnabled = process.env['REDIS_ENABLED'] === 'true';
 
 @Module({
-  imports:     [ExtractionConfigModule, DuplicatesModule],
+  imports:     [ExtractionConfigModule, DuplicatesModule, AvScanModule],
   controllers: [
     ResumesController, ResumeIntakeBatchesController,
     ParsingJobsController,

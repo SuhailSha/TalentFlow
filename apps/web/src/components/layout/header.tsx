@@ -1,6 +1,6 @@
 'use client';
 
-import { Loader2, LogOut, Menu, Search, Settings, User } from 'lucide-react';
+import { Check, Loader2, LogOut, Menu, Rows3, Search, Settings, User } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,13 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/use-auth';
+import { useDensity, type Density } from '@/hooks/use-density';
 import { NotificationBell } from './notification-bell';
 import { ThemeToggle } from './theme-toggle';
 
@@ -25,8 +29,15 @@ function getInitials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 }
 
+const DENSITY_LABELS: Record<Density, string> = {
+  cozy: 'Cozy',
+  comfortable: 'Comfortable',
+  compact: 'Compact',
+};
+
 export function Header({ onMenuToggle, onOpenPalette }: HeaderProps) {
   const { user, logout, isLoggingOut } = useAuth();
+  const { density, setDensity } = useDensity();
 
   return (
     <header className="flex h-14 items-center gap-4 border-b border-border bg-background px-4 lg:px-6">
@@ -94,6 +105,28 @@ export function Header({ onMenuToggle, onOpenPalette }: HeaderProps) {
               <Settings className="mr-2 h-4 w-4" />
               Account settings
             </DropdownMenuItem>
+
+            {/* Density preference — Cozy / Comfortable / Compact. Applies
+                to the DataTable primitive and any density-aware surface.
+                Persisted per user via useDensity() → localStorage. */}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Rows3 className="mr-2 h-4 w-4" />
+                Density
+                <span className="ml-auto text-[11px] text-muted-foreground">
+                  {DENSITY_LABELS[density]}
+                </span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-44">
+                {(['cozy', 'comfortable', 'compact'] as const).map((d) => (
+                  <DropdownMenuItem key={d} onClick={() => setDensity(d)}>
+                    {DENSITY_LABELS[d]}
+                    {density === d && <Check className="ml-auto h-4 w-4 text-brand-600" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
