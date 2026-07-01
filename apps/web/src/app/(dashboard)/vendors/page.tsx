@@ -1,45 +1,31 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { Plus, Search } from 'lucide-react';
 import Link from 'next/link';
-import { AlertCircle, Building2, Plus, Search, Zap } from 'lucide-react';
-import { differenceInCalendarDays } from 'date-fns';
+import { useCallback, useMemo, useState } from 'react';
 
 import { PageHeader } from '@/components/common/page-header';
-import { Badge } from '@/components/ui/badge';
+import {
+  addView,
+  DataTable,
+  DataTableToolbar,
+  loadViews,
+  SavedViewsRow,
+  type DataTableConfig,
+  type FilterChipValue,
+  type SavedView,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useVendors } from '@/hooks/use-vendors';
 import { useDebounce } from '@/hooks/use-debounce';
-import type { ListVendorsParams, VendorListItem, VendorPriority, VendorStatus, VendorType } from '@/types/vendors';
+import { useVendors } from '@/hooks/use-vendors';
+import { cn } from '@/lib/utils';
+import type { ListVendorsParams, VendorListItem, VendorStatus } from '@/types/vendors';
 
-// ── Display maps ───────────────────────────────────────────────────────────────
+import { vendorColumns } from './columns';
 
-const STATUS_STYLES: Record<VendorStatus, string> = {
-  PROSPECT: 'bg-purple-100 text-purple-800',
-  ACTIVE:   'bg-green-100 text-green-800',
-  INACTIVE: 'bg-gray-100 text-gray-700',
-  BLOCKED:  'bg-red-100 text-red-800',
-  ARCHIVED: 'bg-gray-100 text-gray-400',
-};
-
-const PRIORITY_STYLES: Record<VendorPriority, string> = {
-  LOW:       'bg-gray-100 text-gray-600',
-  NORMAL:    'bg-blue-50 text-blue-700',
-  HIGH:      'bg-orange-100 text-orange-700',
-  STRATEGIC: 'bg-amber-100 text-amber-800',
-};
-
-const TYPE_LABELS: Record<VendorType, string> = {
-  STAFFING_AGENCY:      'Staffing',
-  CONSULTING_FIRM:      'Consulting',
-  FREELANCE_PLATFORM:   'Freelance Platform',
-  RECRUITMENT_PARTNER:  'Recruitment Partner',
-  DIRECT_CLIENT:        'Direct Client',
-  OTHER:                'Other',
-};
+const NAMESPACE = 'vendors';
+const PAGE_SIZE = 25;
 
 const STATUS_FILTERS: { label: string; value: VendorStatus }[] = [
   { label: 'Prospect', value: 'PROSPECT' },
@@ -48,276 +34,164 @@ const STATUS_FILTERS: { label: string; value: VendorStatus }[] = [
   { label: 'Blocked',  value: 'BLOCKED'  },
 ];
 
-// ── Health signals ────────────────────────────────────────────────────────────
-
-const STALLED_THRESHOLD_DAYS = 30;
-
-/**
- * Derive at-a-glance signals from the list payload. Mirrors the server-side
- * rules in VendorWorkspaceService.health so the list and the workspace agree.
- */
-function getVendorSignals(v: VendorListItem) {
-  const active   = v.activeSubmissionCount  ?? 0;
-  const stalled  = v.stalledSubmissionCount ?? 0;
-  const lastActivity = v.lastActivityAt ? new Date(v.lastActivityAt) : null;
-  const daysSince = lastActivity
-    ? differenceInCalendarDays(new Date(), lastActivity)
-    : null;
-
-  const isInactiveStatus = v.status === 'INACTIVE' || v.status === 'BLOCKED' || v.status === 'ARCHIVED';
-  const isStalled =
-    v.status === 'ACTIVE' &&
-    active === 0 &&
-    (daysSince === null || daysSince >= STALLED_THRESHOLD_DAYS);
-
-  return { active, stalled, daysSince, isInactiveStatus, isStalled };
-}
-
-// ── Vendor row ─────────────────────────────────────────────────────────────────
-
-function VendorRow({ vendor }: { vendor: VendorListItem }) {
-  const signals = getVendorSignals(vendor);
-  return (
-    <Link
-      href={`/vendors/${vendor.id}`}
-      className="block rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            {vendor.vendorCode && (
-              <span className="text-xs text-muted-foreground font-mono">{vendor.vendorCode}</span>
-            )}
-            <span className="font-medium text-sm">{vendor.companyName}</span>
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[vendor.status]}`}>
-              {vendor.status}
-            </span>
-            {vendor.priority !== 'NORMAL' && (
-              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[vendor.priority]}`}>
-                {vendor.priority}
-              </span>
-            )}
-            {signals.active > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
-                <Zap className="h-3 w-3" />
-                {signals.active} active
-              </span>
-            )}
-            {signals.stalled > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                <AlertCircle className="h-3 w-3" />
-                {signals.stalled} stalled
-              </span>
-            )}
-            {signals.isStalled && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
-                Stalled relationship
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
-            <span>{TYPE_LABELS[vendor.type]}</span>
-            {vendor.location && <span>{vendor.location}</span>}
-            {vendor.primaryContactName && (
-              <span>{vendor.primaryContactName}</span>
-            )}
-            {vendor.primaryContactEmail && (
-              <span className="truncate max-w-48">{vendor.primaryContactEmail}</span>
-            )}
-          </div>
-        </div>
-
-        <div className="shrink-0 text-right space-y-1 text-xs text-muted-foreground">
-          {vendor.lastActivityAt && (
-            <p>Active {new Date(vendor.lastActivityAt).toLocaleDateString()}</p>
-          )}
-        </div>
-      </div>
-
-      {vendor.domains.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {vendor.domains.slice(0, 4).map((d) => (
-            <Badge key={d} variant="secondary" className="text-xs">
-              {d}
-            </Badge>
-          ))}
-          {vendor.domains.length > 4 && (
-            <Badge variant="secondary" className="text-xs">
-              +{vendor.domains.length - 4}
-            </Badge>
-          )}
-        </div>
-      )}
-    </Link>
-  );
-}
-
-function VendorRowSkeleton() {
-  return (
-    <div className="rounded-lg border bg-card p-4 space-y-2">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 space-y-1.5">
-          <div className="flex gap-2">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-4 w-16 rounded-full" />
-          </div>
-          <div className="flex gap-3">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-        </div>
-        <Skeleton className="h-3 w-24" />
-      </div>
-      <div className="flex gap-1">
-        <Skeleton className="h-5 w-20 rounded-full" />
-        <Skeleton className="h-5 w-16 rounded-full" />
-      </div>
-    </div>
-  );
-}
-
-// ── Page ───────────────────────────────────────────────────────────────────────
-
 export default function VendorsPage() {
-  const [search, setSearch]           = useState('');
-  const [page, setPage]               = useState(1);
+  const [search, setSearch] = useState('');
+  const [page,   setPage]   = useState(1);
   const [statusFilter, setStatusFilter] = useState<VendorStatus[]>([]);
-  const debouncedSearch               = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, 300);
 
   const params: ListVendorsParams = {
     page,
-    limit: 20,
+    limit:  PAGE_SIZE,
     search: debouncedSearch || undefined,
     status: statusFilter.length ? statusFilter : undefined,
   };
 
-  const { data, isLoading, isError } = useVendors(params);
+  const { data, isLoading, isFetching, error } = useVendors(params);
 
-  const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearch(e.target.value);
+  const [views, setViews] = useState<SavedView[]>(() => loadViews(NAMESPACE));
+  const [activeViewId, setActiveViewId] = useState<string | undefined>();
+
+  const handleSaveView = useCallback((name: string) => {
+    const view: SavedView = {
+      id:    `v_${name.toLowerCase().replace(/\W+/g, '-')}_${views.length + 1}`,
+      name,
+      state: { q: debouncedSearch, status: statusFilter.join(',') },
+    };
+    setViews(addView(NAMESPACE, view));
+    setActiveViewId(view.id);
+  }, [debouncedSearch, statusFilter, views.length]);
+
+  const handleSelectView = useCallback((id: string) => {
+    const v = views.find((x) => x.id === id);
+    if (!v) return;
+    setActiveViewId(id);
+    setSearch(v.state.q ?? '');
+    setStatusFilter((v.state.status ?? '').split(',').filter(Boolean) as VendorStatus[]);
+    setPage(1);
+  }, [views]);
+
+  const toggleStatus = useCallback((s: VendorStatus) => {
+    setStatusFilter((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
     setPage(1);
   }, []);
 
-  const toggleStatus = (s: VendorStatus) => {
-    setStatusFilter((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
-    );
-    setPage(1);
+  const activeFilters: FilterChipValue[] = useMemo(() => {
+    const chips: FilterChipValue[] = [];
+    if (debouncedSearch) chips.push({ columnId: 'search', label: 'Search', value: debouncedSearch, serialized: debouncedSearch });
+    statusFilter.forEach((s) => chips.push({ columnId: `status:${s}`, label: 'Status', value: s, serialized: s }));
+    return chips;
+  }, [debouncedSearch, statusFilter]);
+
+  const removeFilter = useCallback((columnId: string) => {
+    if (columnId === 'search') { setSearch(''); return; }
+    if (columnId.startsWith('status:')) {
+      const s = columnId.slice(7) as VendorStatus;
+      setStatusFilter((prev) => prev.filter((x) => x !== s));
+    }
+  }, []);
+
+  const clearAll = useCallback(() => { setSearch(''); setStatusFilter([]); setPage(1); }, []);
+
+  const items = data?.data ?? [];
+  const total = data?.meta?.total ?? 0;
+
+  const config: DataTableConfig<VendorListItem> = {
+    columns:     vendorColumns,
+    data:        items,
+    total,
+    isLoading,
+    isFetching,
+    error:       error ?? null,
+    rowClick:    'navigate',
+    rowHref:     (r) => `/vendors/${r.id}`,
+    ariaLabel:   'Vendors',
+    virtualized: items.length > 50,
+    filters: {
+      active:     activeFilters,
+      onRemove:   removeFilter,
+      onClearAll: clearAll,
+    },
+    pagination: {
+      pageIndex:    page - 1,
+      pageSize:     PAGE_SIZE,
+      onPageChange: (idx) => setPage(idx + 1),
+      onPageSizeChange: () => { /* fixed in Slice 5 */ },
+    },
   };
 
-  const totalPages = data?.meta?.totalPages ?? 1;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Vendors"
-        description="Manage staffing partners and recruitment relationships"
+        description={`${total.toLocaleString()} staffing partners`}
         breadcrumbs={[{ title: 'Dashboard', href: '/dashboard' }, { title: 'Vendors' }]}
         actions={
           <Button asChild size="sm">
             <Link href="/vendors/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              New vendor
+              <Plus className="mr-1.5 h-4 w-4" /> New vendor
             </Link>
           </Button>
         }
       />
 
-      {/* Search + status filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, contact, specialization..."
-            value={search}
-            onChange={handleSearch}
-            className="pl-9"
-          />
-        </div>
+      <SavedViewsRow
+        views={views}
+        activeId={activeViewId}
+        onSelect={handleSelectView}
+        onSave={handleSaveView}
+      />
 
-        <div className="flex gap-1.5 flex-wrap">
-          {STATUS_FILTERS.map(({ label, value }) => (
-            <button
-              key={value}
-              onClick={() => toggleStatus(value)}
-              className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                statusFilter.includes(value)
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background text-muted-foreground border-border hover:border-primary/50'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Results */}
-      {isError ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-sm text-destructive">Failed to load vendors. Please try again.</p>
-          </CardContent>
-        </Card>
-      ) : isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <VendorRowSkeleton key={i} />
-          ))}
-        </div>
-      ) : data?.data.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center space-y-3">
-            <Building2 className="mx-auto h-10 w-10 text-muted-foreground/40" />
-            <p className="text-sm font-medium">No vendors found</p>
-            {search || statusFilter.length ? (
-              <button
-                onClick={() => { setSearch(''); setStatusFilter([]); }}
-                className="text-xs text-primary underline-offset-2 hover:underline"
-              >
-                Clear filters
-              </button>
-            ) : (
-              <Button asChild size="sm" variant="outline">
-                <Link href="/vendors/new">Add your first vendor</Link>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <div className="space-y-3">
-            {data?.data.map((v) => <VendorRow key={v.id} vendor={v} />)}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>
-                {data?.meta?.total} total &bull; page {page} of {totalPages}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </div>
+      <DataTableToolbar
+        activeFilters={activeFilters}
+        onRemoveFilter={removeFilter}
+        onClearAll={clearAll}
+        filterMenu={
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-[280px]">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search by name, contact, domain…"
+                className="h-8 pl-9 text-[12.5px]"
+                aria-label="Search vendors"
+              />
             </div>
-          )}
-        </>
+            <div className="flex flex-wrap gap-1">
+              {STATUS_FILTERS.map(({ label, value }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => toggleStatus(value)}
+                  aria-pressed={statusFilter.includes(value)}
+                  className={cn(
+                    'inline-flex items-center rounded-full border px-2.5 py-1 text-[11.5px] font-medium transition-colors',
+                    statusFilter.includes(value)
+                      ? 'border-brand-200 bg-brand-50 text-brand-700 dark:border-brand-500/40 dark:bg-brand-500/15 dark:text-brand-200'
+                      : 'border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        }
+      />
+
+      <DataTable<VendorListItem> config={config} />
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-[12px] text-muted-foreground">
+          <span>Page {page} of {totalPages}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1}          onClick={() => setPage((p) => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+          </div>
+        </div>
       )}
     </div>
   );

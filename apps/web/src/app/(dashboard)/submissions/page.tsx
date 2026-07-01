@@ -1,297 +1,205 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { Archive, Bell, Plus, UserPlus } from 'lucide-react';
 import Link from 'next/link';
-import { Plus, Briefcase } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { PageHeader } from '@/components/common/page-header';
+import {
+  addView,
+  DataTable,
+  DataTableToolbar,
+  loadViews,
+  SavedViewsRow,
+  type BulkAction,
+  type DataTableConfig,
+  type FilterChipValue,
+  type SavedView,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { SelectionCheckbox, useTableSelection } from '@/components/bulk';
 import { useSubmissions, useSubmissionStats } from '@/hooks/use-submissions';
-import type { SubmissionListItem, SubmissionStatus, ListSubmissionsParams } from '@/types/submissions';
+import { cn } from '@/lib/utils';
+import type { ListSubmissionsParams, SubmissionListItem, SubmissionStatus } from '@/types/submissions';
+
 import { SubmissionBulkActions } from './bulk-actions';
+import { submissionColumns } from './columns';
 
-const STATUS_COLORS: Record<SubmissionStatus, string> = {
-  DRAFT:        'bg-gray-100 text-gray-700',
-  SUBMITTED:    'bg-blue-100 text-blue-800',
-  UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
-  SHORTLISTED:  'bg-purple-100 text-purple-800',
-  INTERVIEW:    'bg-indigo-100 text-indigo-800',
-  OFFERED:      'bg-orange-100 text-orange-800',
-  PLACED:       'bg-green-100 text-green-800',
-  REJECTED:     'bg-red-100 text-red-800',
-  WITHDRAWN:    'bg-gray-100 text-gray-500',
-  ON_HOLD:      'bg-amber-100 text-amber-800',
-  CLOSED:       'bg-slate-100 text-slate-600',
-};
-
-const STATUS_LABELS: Record<SubmissionStatus, string> = {
-  DRAFT:        'Draft',
-  SUBMITTED:    'Submitted',
-  UNDER_REVIEW: 'Under Review',
-  SHORTLISTED:  'Shortlisted',
-  INTERVIEW:    'Interview',
-  OFFERED:      'Offered',
-  PLACED:       'Placed',
-  REJECTED:     'Rejected',
-  WITHDRAWN:    'Withdrawn',
-  ON_HOLD:      'On Hold',
-  CLOSED:       'Closed',
-};
+const NAMESPACE = 'submissions';
+const PAGE_SIZE = 25;
 
 const ACTIVE_STATUSES: SubmissionStatus[] = [
   'DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'ON_HOLD',
 ];
+const TERMINAL_STATUSES: SubmissionStatus[] = ['PLACED', 'REJECTED', 'WITHDRAWN', 'CLOSED'];
 
-interface SubmissionRowProps {
-  submission:  SubmissionListItem;
-  isSelected:  boolean;
-  onToggle:    (id: string) => void;
-}
+type Pipeline = 'all' | 'active' | 'terminal';
 
-function SubmissionRow({ submission, isSelected, onToggle }: SubmissionRowProps) {
-  const c = submission.candidate;
-  const j = submission.job;
-
-  return (
-    <Link
-      href={`/submissions/${submission.id}`}
-      className={`block rounded-lg border bg-card p-4 transition-colors ${isSelected ? 'border-primary/40 bg-primary/5' : 'hover:bg-muted/50'}`}
-    >
-      <div className="flex items-start gap-3">
-        <span className="pt-0.5">
-          <SelectionCheckbox
-            checked={isSelected}
-            onChange={() => onToggle(submission.id)}
-            aria-label={`Select submission for ${c.firstName} ${c.lastName}`}
-          />
-        </span>
-        <div className="flex flex-1 items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm">
-              {c.firstName} {c.lastName}
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[submission.status]}`}
-            >
-              {STATUS_LABELS[submission.status]}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{c.email}</p>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">
-            {j.reqId} · {j.title}
-            {j.department ? ` — ${j.department}` : ''}
-          </p>
-          {submission.vendor && (
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
-              Via {submission.vendor.companyName}
-            </p>
-          )}
-        </div>
-
-        <div className="shrink-0 text-right space-y-1">
-          <p className="text-xs text-muted-foreground">
-            {submission.owner.firstName} {submission.owner.lastName}
-          </p>
-          {submission.billRate !== null && (
-            <p className="text-xs text-muted-foreground">
-              {submission.currency} {submission.billRate}/hr
-            </p>
-          )}
-          {submission.submittedAt && (
-            <p className="text-xs text-muted-foreground">
-              {new Date(submission.submittedAt).toLocaleDateString()}
-            </p>
-          )}
-        </div>
-      </div>
-      </div>
-    </Link>
-  );
-}
-
-function SubmissionRowSkeleton() {
-  return (
-    <div className="rounded-lg border bg-card p-4 space-y-2">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 space-y-1">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-3 w-52" />
-          <Skeleton className="h-3 w-36" />
-        </div>
-        <div className="space-y-1 text-right">
-          <Skeleton className="h-3 w-24 ml-auto" />
-          <Skeleton className="h-3 w-16 ml-auto" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatsBar() {
+function StatsBar({ pipeline, onChange }: { pipeline: Pipeline; onChange: (p: Pipeline) => void }) {
   const { data } = useSubmissionStats();
-  if (!data) return null;
+  const total  = data?.total ?? 0;
+  const active = data?.byStatus.filter((s) => ACTIVE_STATUSES.includes(s.status)).reduce((sum, s) => sum + s.count, 0) ?? 0;
+  const placed = data?.byStatus.find((s) => s.status === 'PLACED')?.count ?? 0;
 
-  const active = data.byStatus
-    .filter((s) => ACTIVE_STATUSES.includes(s.status))
-    .reduce((sum, s) => sum + s.count, 0);
-  const placed = data.byStatus.find((s) => s.status === 'PLACED')?.count ?? 0;
+  const btn = (key: Pipeline, label: string, count: number, tone: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={() => onChange(key)}
+      aria-pressed={pipeline === key}
+      className={cn(
+        'inline-flex flex-col items-start rounded-md border px-3 py-1.5 text-left transition-colors',
+        pipeline === key
+          ? 'border-brand-300 bg-brand-50/70 dark:border-brand-500/40 dark:bg-brand-500/10'
+          : 'border-border hover:bg-muted/40',
+      )}
+    >
+      <span className={cn('text-[10.5px] uppercase tracking-wider', tone)}>{label}</span>
+      <span className="text-[15px] font-semibold text-foreground">{count.toLocaleString()}</span>
+    </button>
+  );
 
   return (
-    <div className="flex gap-4 text-sm text-muted-foreground">
-      <span>{data.total} total</span>
-      <span className="text-green-700 font-medium">{active} active</span>
-      <span className="text-blue-700 font-medium">{placed} placed</span>
+    <div className="flex flex-wrap gap-2">
+      {btn('all',      'Total',  total,  'text-muted-foreground')}
+      {btn('active',   'Active', active, 'text-emerald-700 dark:text-emerald-300')}
+      {btn('terminal', 'Placed', placed, 'text-blue-700    dark:text-blue-300')}
     </div>
   );
 }
 
 export default function SubmissionsPage() {
-  const [page, setPage] = useState(1);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'terminal'>('all');
+  const [page,     setPage]     = useState(1);
+  const [pipeline, setPipeline] = useState<Pipeline>('all');
 
   const params: ListSubmissionsParams = {
     page,
-    limit: 20,
-    ...(activeFilter === 'active' && { status: ACTIVE_STATUSES }),
-    ...(activeFilter === 'terminal' && {
-      status: ['PLACED', 'REJECTED', 'WITHDRAWN', 'CLOSED'] as SubmissionStatus[],
-    }),
+    limit: PAGE_SIZE,
+    ...(pipeline === 'active'   && { status: ACTIVE_STATUSES   }),
+    ...(pipeline === 'terminal' && { status: TERMINAL_STATUSES }),
   };
 
-  const { data, isLoading, isError } = useSubmissions(params);
+  const { data, isLoading, isFetching, error } = useSubmissions(params);
 
-  const handleFilter = useCallback((f: 'all' | 'active' | 'terminal') => {
-    setActiveFilter(f);
+  const [views, setViews] = useState<SavedView[]>(() => loadViews(NAMESPACE));
+  const [activeViewId, setActiveViewId] = useState<string | undefined>();
+  const [selectedIds,  setSelectedIds]  = useState<string[]>([]);
+  const clearSelection = useCallback(() => setSelectedIds([]), []);
+
+  const handleSaveView = useCallback((name: string) => {
+    const view: SavedView = {
+      id: `v_${name.toLowerCase().replace(/\W+/g, '-')}_${views.length + 1}`,
+      name,
+      state: { pipeline },
+    };
+    setViews(addView(NAMESPACE, view));
+    setActiveViewId(view.id);
+  }, [pipeline, views.length]);
+
+  const handleSelectView = useCallback((id: string) => {
+    const v = views.find((x) => x.id === id);
+    if (!v) return;
+    setActiveViewId(id);
+    if (v.state.pipeline === 'all' || v.state.pipeline === 'active' || v.state.pipeline === 'terminal') {
+      setPipeline(v.state.pipeline);
+    }
     setPage(1);
-  }, []);
+  }, [views]);
 
-  const totalPages = data?.meta.totalPages ?? 1;
+  const activeFilters: FilterChipValue[] = useMemo(() => {
+    if (pipeline === 'all') return [];
+    return [{
+      columnId: 'pipeline',
+      label:    'Pipeline',
+      value:    pipeline === 'active' ? 'Active' : 'Closed',
+      serialized: pipeline,
+    }];
+  }, [pipeline]);
+
+  const removeFilter = useCallback(() => { setPipeline('all'); setPage(1); }, []);
+  const clearAll     = useCallback(() => { setPipeline('all'); setPage(1); }, []);
 
   const items = data?.data ?? [];
-  const selection = useTableSelection<SubmissionListItem>(items);
+  const total = data?.meta.total ?? 0;
+
+  const bulkActions: BulkAction<SubmissionListItem>[] = useMemo(() => [
+    { id: 'status',   label: 'Change status', icon: <UserPlus className="h-3.5 w-3.5" />, onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)) },
+    { id: 'reminder', label: 'Add reminder',  icon: <Bell     className="h-3.5 w-3.5" />, onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)) },
+    { id: 'archive',  label: 'Archive',       icon: <Archive  className="h-3.5 w-3.5" />, onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)), danger: true },
+  ], []);
+
+  const config: DataTableConfig<SubmissionListItem> = {
+    columns:     submissionColumns,
+    data:        items,
+    total,
+    isLoading,
+    isFetching,
+    error:       error ?? null,
+    rowClick:    'navigate',
+    rowHref:     (r) => `/submissions/${r.id}`,
+    ariaLabel:   'Submissions',
+    virtualized: items.length > 50,
+    bulkActions,
+    filters: {
+      active:     activeFilters,
+      onRemove:   removeFilter,
+      onClearAll: clearAll,
+    },
+    pagination: {
+      pageIndex:    page - 1,
+      pageSize:     PAGE_SIZE,
+      onPageChange: (idx) => setPage(idx + 1),
+      onPageSizeChange: () => { /* fixed in Slice 5 */ },
+    },
+  };
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Submissions"
-        description="Track candidate pipeline across all jobs"
+        description="Candidate pipeline across all jobs"
         breadcrumbs={[{ title: 'Dashboard', href: '/dashboard' }, { title: 'Submissions' }]}
         actions={
           <Button asChild size="sm">
             <Link href="/submissions/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              New submission
+              <Plus className="mr-1.5 h-4 w-4" /> New submission
             </Link>
           </Button>
         }
       />
 
-      {/* Stats + filters */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <StatsBar />
-        <div className="flex gap-1">
-          {(['all', 'active', 'terminal'] as const).map((f) => (
-            <Button
-              key={f}
-              variant={activeFilter === f ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => handleFilter(f)}
-            >
-              {f === 'all' ? 'All' : f === 'active' ? 'Active' : 'Closed'}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <StatsBar pipeline={pipeline} onChange={(p) => { setPipeline(p); setPage(1); }} />
 
-      {/* Results */}
-      {isError ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-sm text-destructive">Failed to load submissions. Please try again.</p>
-          </CardContent>
-        </Card>
-      ) : isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <SubmissionRowSkeleton key={i} />
-          ))}
-        </div>
-      ) : data?.data.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center space-y-3">
-            <Briefcase className="mx-auto h-10 w-10 text-muted-foreground/40" />
-            <p className="text-sm font-medium">No submissions found</p>
-            <Button asChild size="sm" variant="outline">
-              <Link href="/submissions/new">Create your first submission</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {items.length > 0 && (
-            <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-              <SelectionCheckbox
-                checked={selection.isAllSelected}
-                indeterminate={selection.isIndeterminate}
-                onChange={(c) => (c ? selection.selectAll() : selection.clear())}
-                aria-label={selection.isAllSelected ? 'Clear selection' : 'Select all visible'}
-                stopPropagation={false}
-              />
-              <span>
-                {selection.selectedCount > 0
-                  ? `${selection.selectedCount} of ${items.length} selected`
-                  : `Select all ${items.length} on this page`}
-              </span>
-            </div>
-          )}
+      <SavedViewsRow
+        views={views}
+        activeId={activeViewId}
+        onSelect={handleSelectView}
+        onSave={handleSaveView}
+      />
 
-          <div className="space-y-3">
-            {items.map((s) => (
-              <SubmissionRow
-                key={s.id}
-                submission={s}
-                isSelected={selection.isSelected(s.id)}
-                onToggle={selection.toggle}
-              />
-            ))}
+      <DataTableToolbar
+        activeFilters={activeFilters}
+        onRemoveFilter={removeFilter}
+        onClearAll={clearAll}
+      />
+
+      <DataTable<SubmissionListItem> config={config} />
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-[12px] text-muted-foreground">
+          <span>Page {page} of {totalPages}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1}          onClick={() => setPage((p) => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
           </div>
-
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>
-                {data?.meta.total} total &bull; page {page} of {totalPages}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </>
+        </div>
       )}
 
       <SubmissionBulkActions
-        selectedIds={Array.from(selection.selectedIds)}
-        selectedCount={selection.selectedCount}
-        onClear={selection.clear}
+        selectedIds={selectedIds}
+        selectedCount={selectedIds.length}
+        onClear={clearSelection}
       />
     </div>
   );
