@@ -3,6 +3,7 @@
 import { Toaster } from 'sonner';
 
 import { AuthProvider } from './auth-provider';
+import { FeatureFlagsProvider } from './feature-flags-provider';
 import { QueryProvider } from './query-provider';
 import { ThemeProvider } from './theme-provider';
 import { WorkspaceBrandingProvider } from './workspace-branding-provider';
@@ -30,15 +31,17 @@ export function Providers({ children }: ProvidersProps) {
     <ThemeProvider>
       <QueryProvider>
         <AuthProvider>
-          <WorkspaceBrandingProvider>
-            <Toaster
-              richColors
-              position="top-right"
-              closeButton
-              toastOptions={{ duration: 4_000 }}
-            />
-            {children}
-          </WorkspaceBrandingProvider>
+          <FeatureFlagsProvider>
+            <WorkspaceBrandingProvider>
+              <Toaster
+                richColors
+                position="top-right"
+                closeButton
+                toastOptions={{ duration: 4_000 }}
+              />
+              {children}
+            </WorkspaceBrandingProvider>
+          </FeatureFlagsProvider>
         </AuthProvider>
       </QueryProvider>
     </ThemeProvider>

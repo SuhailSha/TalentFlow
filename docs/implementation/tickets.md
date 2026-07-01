@@ -126,14 +126,14 @@ split.
 - E2E harness (`streams-e2e.cjs`) gated on REDIS_URL — runs in staging.
 - Implements: ADR-003 Layers 3, 4
 
-### TF-1-7 — Feature flag SDK (GrowthBook self-hosted) · `chore` · 2d · □
+### TF-1-7 — Feature flag SDK (GrowthBook self-hosted) · `chore` · 2d · ■ done (Slice 3; MVP resolver + swap-ready)
 - Server-side SDK in NestJS via `@Inject(FEATURE_FLAGS)`.
 - Client-side SDK in Next.js with hydration-safe `useFlag(name)` hook.
 - Targeting axes: orgId, userId, role, plan.
 - Define first 3 flags: `ai_features_enabled`, `data_table_v2`, `reports_module`.
 - Implements: architecture review §2
 
-### TF-1-8 — OpenTelemetry instrumentation · `chore` · 2d · □
+### TF-1-8 — OpenTelemetry instrumentation · `chore` · 2d · ■ done (Slice 3; shim)
 - NestJS auto-instrumentation: HTTP, Prisma, Axios, ioredis.
 - Next.js Sentry SDK + Web Vitals.
 - Trace context propagation into BullMQ jobs (via job metadata).
@@ -145,19 +145,19 @@ split.
 - Tenant-scoped when authenticated, IP-scoped otherwise.
 - Standard X-RateLimit-* + Retry-After headers; raises 429 RATE_LIMITED.
 
-### TF-1-10 — Collapsible Sidebar + Workspace switcher · `feature` · 2d · □
+### TF-1-10 — Collapsible Sidebar + Workspace switcher · `feature` · 2d · ■ done (Slice 3)
 - 240px expanded ↔ 56px collapsed; persisted in localStorage.
 - Workspace switcher with popover (placeholder; backend in Phase 7).
 - Resume Intelligence sidebar group.
 - Reports group reserved (hidden until `reports_module` flag).
 - Implements: Phase 0A blueprint §5.1–5.4
 
-### TF-1-11 — Real Command Palette · `feature` · 1.5d · □
+### TF-1-11 — Real Command Palette · `feature` · 1.5d · ■ done (Slice 3)
 - Entity-prefix shortcuts (`c:`, `j:`, `s:`, `v:`, `i:`).
 - Recent records section (server-backed).
 - Jump-to actions + create actions.
 
-### TF-1-12 — `/inbox` placeholder shell · `feature` · 0.5d · □
+### TF-1-12 — `/inbox` placeholder shell · `feature` · 0.5d · ■ done (Slice 3; two-pane with row hover-actions, empty + filtered-empty states, reply box reserved for Phase 4)
 - Route stub + sidebar wiring; full implementation Phase 4.
 
 ### TF-1-13 — Forgot password flow · `feature` · 1d · □
@@ -203,12 +203,12 @@ split.
 ### TF-1.5-4 — RuleBasedProvider · `feature` · 1d · □
 - Deterministic non-LLM fallback per ADR-004 §8.
 
-### TF-1.5-5 — Prompt registry · `chore` · 1.5d · □
+### TF-1.5-5 — Prompt registry · `chore` · 1.5d · ■ done (Slice 3; candidate_summary@v1 seeded, provenance enforced at load time)
 - `apps/api/src/modules/ai/prompts/<use-case>/v{N}.ts` structure.
 - Pinned model IDs; Zod response schemas; test fixtures.
 - Implements: ADR-004 §3
 
-### TF-1.5-6 — Context assembler · `chore` · 1.5d · □
+### TF-1.5-6 — Context assembler · `chore` · 1.5d · ■ done (Slice 3; ContextAssemblerService with SHA-256 contextHash cache key)
 - Builds prompt input from candidate + resume + notes + jobs.
 - Computes `contextHash` (SHA-256).
 - Anti-prompt-injection wrapping.

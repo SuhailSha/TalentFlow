@@ -1,7 +1,11 @@
 import { Global, Module } from '@nestjs/common';
 
+import { ContextAssemblerService } from './context-assembler.service';
 import { GeminiProvider } from './providers/gemini.provider';
 import { LLM_PROVIDERS } from './llm-providers.token';
+
+// Side-effect import: loads every prompt definition into the registry.
+import './prompts';
 
 /**
  * AiModule — Phase 1.5 boundary module.
@@ -26,6 +30,7 @@ import { LLM_PROVIDERS } from './llm-providers.token';
 @Module({
   providers: [
     GeminiProvider,
+    ContextAssemblerService,
     {
       provide: LLM_PROVIDERS,
       // List form so the router can iterate. When OpenAI / Anthropic
@@ -34,6 +39,6 @@ import { LLM_PROVIDERS } from './llm-providers.token';
       inject: [GeminiProvider],
     },
   ],
-  exports: [LLM_PROVIDERS, GeminiProvider],
+  exports: [LLM_PROVIDERS, GeminiProvider, ContextAssemblerService],
 })
 export class AiModule {}

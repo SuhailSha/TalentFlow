@@ -5,10 +5,12 @@ import { useState } from 'react';
 import { CommandPalette, useCommandPalette } from '@/components/layout/command-palette';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
+import { useSidebarState } from '@/hooks/use-sidebar-state';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [, setSidebarOpen] = useState(false);
   const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
+  const { collapsed, toggle: toggleSidebar } = useSidebarState();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -17,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         Skip to main content
       </a>
 
-      <Sidebar />
+      <Sidebar collapsed={collapsed} onToggleCollapsed={toggleSidebar} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           onMenuToggle={() => setSidebarOpen((prev) => !prev)}

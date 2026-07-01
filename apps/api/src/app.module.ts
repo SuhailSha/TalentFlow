@@ -22,6 +22,7 @@ import { HealthModule } from './health/health.module';
 import { LoggerModule } from './logger/logger.module';
 import { AiModule } from './ai/ai.module';
 import { EventsModule } from './events/events.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 import { QueueModule } from './queue/queue.module';
 import { StorageModule } from './storage/storage.module';
 import { CandidatesModule } from './modules/candidates/candidates.module';
@@ -93,6 +94,9 @@ import { ScheduledModule } from './scheduled/scheduled.module';
 
     // ── AI provider abstraction (TF-1.5-1) ────────────────────────────────
     AiModule,
+
+    // ── Feature flags (TF-1-7) ────────────────────────────────────────────
+    FeatureFlagsModule,
 
     // ── File Storage ───────────────────────────────────────────────────────
     StorageModule.register(),
