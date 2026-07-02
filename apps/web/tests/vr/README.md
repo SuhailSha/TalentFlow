@@ -11,8 +11,8 @@ pnpm dev
 # 2. Terminal B: install browsers once (skipped in CI, which provides them).
 pnpm --filter @repo/web exec playwright install chromium
 
-# 3. Terminal B: seed the VR fixture tenant (script lands in follow-up).
-#    node packages/database/scripts/seed-vr.cjs
+# 3. Terminal B: seed the deterministic VR fixture tenant.
+pnpm --filter @repo/database db:seed:vr
 
 # 4. Run the tests.
 pnpm --filter @repo/web vr
@@ -36,8 +36,21 @@ pnpm --filter @repo/web vr:update
 | `shell.spec.ts › Inbox › list state` | `inbox-list.png` | TF-1-12 |
 | `shell.spec.ts › Inbox › detail state` | `inbox-detail.png` | TF-1-12 |
 
+Slice 6 adds:
+
+| Spec | Screenshot | Surface |
+|---|---|---|
+| `candidate-list.spec.ts › default (light)` | `candidates-list-light.png` | TF-2-1 |
+| `candidate-list.spec.ts › no-results` | `candidates-no-results.png` | TF-2-1 |
+| `candidate-list.spec.ts › filter chip` | `candidates-filter-chip.png` | TF-2-1 |
+| `candidate-list.spec.ts › dark mode` | `candidates-list-dark.png` | TF-2-1 |
+| `dashboard.spec.ts › action-required` | `dashboard-action-required-light.png` | TF-2-5 |
+| `dashboard.spec.ts › kpi strip crop` | `dashboard-kpi-strip.png` | TF-2-5 |
+| `dashboard.spec.ts › command center crop` | `dashboard-command-center.png` | TF-2-5 |
+| `dashboard.spec.ts › dark mode` | `dashboard-action-required-dark.png` | TF-2-5 |
+
 Two projects (`desktop-1440`, `desktop-1920`) capture each state at both
-viewports, producing 20 images per run.
+viewports.
 
 ## CI wiring (follow-up)
 
