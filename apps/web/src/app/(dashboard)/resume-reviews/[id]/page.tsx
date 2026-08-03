@@ -410,7 +410,7 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
 
             {isLive && !claimedByMe && (
               <p className="rounded-md border border-dashed py-3 text-center text-xs text-muted-foreground">
-                Click "Claim" above to edit fields and approve.
+                Click &quot;Claim&quot; above to edit fields and approve.
               </p>
             )}
 

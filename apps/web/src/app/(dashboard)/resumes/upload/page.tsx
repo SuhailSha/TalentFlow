@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, FileText, Upload } from 'lucide-react';
 
@@ -14,7 +14,7 @@ import { getApiErrorMessage } from '@/lib/api';
 
 const ACCEPT = '.pdf,.doc,.docx,.txt,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/rtf';
 
-export default function UploadResumePage() {
+function UploadResumeForm() {
   const router = useRouter();
   const search = useSearchParams();
   // ?candidateId=... pre-binds to an existing candidate (e.g. from candidate page).
@@ -147,5 +147,13 @@ export default function UploadResumePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function UploadResumePage() {
+  return (
+    <Suspense fallback={null}>
+      <UploadResumeForm />
+    </Suspense>
   );
 }

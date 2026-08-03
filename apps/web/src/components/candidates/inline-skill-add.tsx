@@ -71,7 +71,6 @@ export function InlineSkillAdd({
         </button>
       </div>
       <Input
-        autoFocus
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search skills (e.g. TypeScript, AWS)"

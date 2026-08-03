@@ -72,7 +72,6 @@ export function SavedViewsRow({ views, activeId, onSelect, onSave }: SavedViewsR
 
       {naming ? (
         <input
-          autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {

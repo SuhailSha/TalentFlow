@@ -187,7 +187,6 @@ function PlainBody<T extends DataTableRow>({
   return (
     <div className="overflow-auto">
       <table
-        role="grid"
         aria-label={ariaLabel}
         aria-rowcount={table.getRowModel().rows.length}
         className="w-full border-collapse text-body-sm"
@@ -249,7 +248,6 @@ function VirtualizedBody<T extends DataTableRow>({
       style={{ containIntrinsicSize: `auto ${totalSize}px` }}
     >
       <table
-        role="grid"
         aria-label={ariaLabel}
         aria-rowcount={table.getRowModel().rows.length}
         className="w-full border-collapse text-body-sm"

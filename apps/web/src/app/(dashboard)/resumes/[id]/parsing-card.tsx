@@ -124,7 +124,7 @@ export function ParsingCard({ resumeId, versionId }: { resumeId: string; version
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : !jobs || jobs.length === 0 ? (
           <p className="rounded-md border border-dashed py-4 text-center text-sm text-muted-foreground">
-            Click "Reparse" to extract structured data from this resume.
+            Click &quot;Reparse&quot; to extract structured data from this resume.
           </p>
         ) : (
           <div className="space-y-2">
