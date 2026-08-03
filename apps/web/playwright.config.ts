@@ -49,11 +49,19 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop-1440',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: process.env['PLAYWRIGHT_CHANNEL'] ?? undefined,
+        viewport: { width: 1440, height: 900 },
+      },
     },
     {
       name: 'desktop-1920',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1920, height: 1080 } },
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: process.env['PLAYWRIGHT_CHANNEL'] ?? undefined,
+        viewport: { width: 1920, height: 1080 },
+      },
     },
   ],
 });

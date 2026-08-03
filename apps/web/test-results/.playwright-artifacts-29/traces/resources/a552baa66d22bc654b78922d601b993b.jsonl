@@ -1,0 +1,15 @@
+{"type":"receive","time":1782982264525.52,"opcode":1,"data":"{\"action\":\"isrManifest\",\"data\":{\"/login\":true}}"}
+{"type":"receive","time":1782982264528.175,"opcode":1,"data":"{\"action\":\"turbopack-connected\",\"data\":{\"sessionId\":5389548419823013}}"}
+{"type":"receive","time":1782982264850.071,"opcode":1,"data":"{\"action\":\"sync\",\"errors\":[],\"warnings\":[],\"hash\":\"\",\"versionInfo\":{\"staleness\":\"stale-major\",\"expected\":\"16.2.10\",\"installed\":\"15.5.18\"},\"debug\":{},\"devIndicator\":{\"disabledUntil\":0},\"devToolsConfig\":{}}"}
+{"type":"send","time":1782982264851.574,"opcode":1,"data":"{\"event\":\"client-success\",\"clientId\":1782982263250}"}
+{"type":"send","time":1782982265285.4521,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/apps_web_a0ff3932._.js\"}"}
+{"type":"send","time":1782982265285.895,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/apps_web_src_app_layout_tsx_9eb335e6._.js\"}"}
+{"type":"send","time":1782982265285.998,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/apps_web_src_app_error_tsx_2c41fe34._.js\"}"}
+{"type":"send","time":1782982265286.068,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/apps_web_src_app_not-found_tsx_2c41fe34._.js\"}"}
+{"type":"send","time":1782982265286.131,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/apps_web_src_app_(auth)_login_page_tsx_2c41fe34._.js\"}"}
+{"type":"send","time":1782982265286.196,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/991a7_next_dist_client_components_builtin_global-error_2c41fe34.js\"}"}
+{"type":"send","time":1782982265286.258,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/apps_web_src_lib_a11y_axe-dev_ts_48a75bfb._.js\"}"}
+{"type":"send","time":1782982265286.572,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/be0fe_@axe-core_react_dist_index_mjs_9ae6b184._.js\"}"}
+{"type":"send","time":1782982265286.7231,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/7634d_@tanstack_query-devtools_build_DevtoolsComponent_VKXKX7EQ_48a75bfb.js\"}"}
+{"type":"send","time":1782982265286.873,"opcode":1,"data":"{\"type\":\"turbopack-subscribe\",\"path\":\"static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_41675a49._.js\"}"}
+{"type":"receive","time":1782982265491.939,"opcode":1,"data":"{\"action\":\"building\"}"}
