@@ -3,15 +3,15 @@ import { Injectable } from '@nestjs/common';
 import { ParsingError } from '../parsers/parser-errors';
 
 export interface TextExtractionResult {
-  rawText:   string;
+  rawText: string;
   pageCount?: number;
 }
 
-const PDF_MIME    = 'application/pdf';
-const DOCX_MIME   = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-const DOC_MIME    = 'application/msword';
-const TXT_MIME    = 'text/plain';
-const RTF_MIME    = 'application/rtf';
+const PDF_MIME = 'application/pdf';
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const DOC_MIME = 'application/msword';
+const TXT_MIME = 'text/plain';
+const RTF_MIME = 'application/rtf';
 
 /**
  * Stage 2 — MIME-aware text extraction.
@@ -30,10 +30,14 @@ const RTF_MIME    = 'application/rtf';
 export class TextExtractionService {
   async extract(bytes: Buffer, mimeType: string): Promise<TextExtractionResult> {
     switch (mimeType) {
-      case PDF_MIME:  return this.extractPdf(bytes);
-      case DOCX_MIME: return this.extractDocx(bytes);
-      case TXT_MIME:  return { rawText: bytes.toString('utf8') };
-      case RTF_MIME:  return { rawText: this.extractRtf(bytes) };
+      case PDF_MIME:
+        return this.extractPdf(bytes);
+      case DOCX_MIME:
+        return this.extractDocx(bytes);
+      case TXT_MIME:
+        return { rawText: bytes.toString('utf8') };
+      case RTF_MIME:
+        return { rawText: this.extractRtf(bytes) };
       case DOC_MIME:
         throw new ParsingError(
           'permanent',
@@ -47,7 +51,9 @@ export class TextExtractionService {
   private async extractPdf(bytes: Buffer): Promise<TextExtractionResult> {
     // pdf-parse is CJS-only; require keeps types/imports happy under tsc strict.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require('pdf-parse') as (b: Buffer) => Promise<{ text: string; numpages: number }>;
+    const pdfParse = require('pdf-parse') as (
+      b: Buffer,
+    ) => Promise<{ text: string; numpages: number }>;
     try {
       const result = await pdfParse(bytes);
       return { rawText: (result.text ?? '').trim(), pageCount: result.numpages };
@@ -58,7 +64,9 @@ export class TextExtractionService {
 
   private async extractDocx(bytes: Buffer): Promise<TextExtractionResult> {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mammoth = require('mammoth') as { extractRawText: (i: { buffer: Buffer }) => Promise<{ value: string }> };
+    const mammoth = require('mammoth') as {
+      extractRawText: (i: { buffer: Buffer }) => Promise<{ value: string }>;
+    };
     try {
       const result = await mammoth.extractRawText({ buffer: bytes });
       return { rawText: (result.value ?? '').trim() };
