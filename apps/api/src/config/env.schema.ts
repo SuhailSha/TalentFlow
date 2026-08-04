@@ -89,6 +89,42 @@ export const envSchema = z.object({
   // Within this window, a same-key send in non-terminal state short-circuits
   // to the existing delivery row (no second email goes out).
   EMAIL_DEDUP_WINDOW_SECONDS: z.coerce.number().int().min(10).max(86_400).default(300),
+
+  // ─── AI / resume parsing ──────────────────────────────────────────────────
+  // IMPORTANT: every var the app reads MUST be declared here. This schema is a
+  // z.object(), which STRIPS unknown keys, and @nestjs/config only copies the
+  // *validated* result back into process.env. An undeclared key set in .env is
+  // therefore invisible at runtime — which is how GEMINI_API_KEY silently
+  // disabled the Gemini parser while looking correctly configured on disk.
+  //
+  // Optional: when unset, GeminiFlashParser.isAvailable() returns false and the
+  // ParserRegistry falls back to RULE_BASED.
+  GEMINI_API_KEY: z.string().min(1).optional(),
+
+  // Model id for the resume parser. Pinned (not `gemini-flash-latest`) so cost
+  // accounting and output shape stay reproducible. Google retires model ids —
+  // when this 404s, list available models and bump it.
+  GEMINI_MODEL: z.string().min(1).default('gemini-2.5-flash'),
+
+  // Per-1M-token rates for ParsingJob.costUsd. Override when Google's rate card
+  // changes or when GEMINI_MODEL points at a differently-priced tier.
+  GEMINI_PRICE_INPUT_PER_1M:  z.coerce.number().nonnegative().optional(),
+  GEMINI_PRICE_OUTPUT_PER_1M: z.coerce.number().nonnegative().optional(),
+
+  // Concurrency for the resume-parse BullMQ worker. NOTE: resume-parse.worker.ts
+  // reads this at module-load time, i.e. before ConfigModule populates
+  // process.env, so it effectively always uses its own '4' fallback. Declared
+  // here so the var is documented and not stripped.
+  RESUME_PARSE_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(4),
+
+  // Elevated-privilege connection used only by maintenance/migration paths.
+  DATABASE_ADMIN_URL: z.string().min(1).optional(),
+
+  // Escape hatch to stop the transactional-outbox relay (incident response).
+  // Kept as a raw string (no boolean transform): the consumer compares
+  // `process.env['OUTBOX_RELAY_DISABLED'] === 'true'`, and a transformed boolean
+  // would be re-stringified on its way into process.env.
+  OUTBOX_RELAY_DISABLED: z.enum(['true', 'false']).default('false'),
 }).superRefine((env, ctx) => {
   // ─── Production hardening (Pre-Phase-1, per architecture review) ────────
   // In development, REDIS_ENABLED=false is acceptable: queue modules become

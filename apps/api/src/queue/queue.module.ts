@@ -94,17 +94,27 @@ export class QueueModule {
             logger.log(`Connecting to Redis: ${redisUrl.replace(/:\/\/.*@/, '://***@')}`);
             return {
               connection: {
-                // ioredis options. maxRetriesPerRequest caps how long a
-                // single command waits before failing — protects API
-                // request paths from hanging when Redis is unreachable.
-                maxRetriesPerRequest: 3,
+                // `url` MUST live inside `connection`. BullMQ's RedisConnection
+                // does `const { url } = this.opts` on the *connection* options
+                // and then `new IORedis(url, rest)`. A top-level `url` sibling
+                // of `connection` is silently ignored, and the connection
+                // options then fall back to BullMQ's built-in
+                // `{ host: '127.0.0.1', port: 6379 }` default — which is how a
+                // configured Upstash URL turned into ECONNREFUSED on localhost.
+                //
+                // ioredis enables TLS automatically for `rediss://` URLs, which
+                // is what Upstash requires.
+                url: redisUrl,
+                // Must be null: BullMQ uses blocking connections for workers and
+                // logs `maxRetriesPerRequest must be null` otherwise — then
+                // overrides it to null regardless, so any other value is a lie.
+                maxRetriesPerRequest: null,
                 // Background reconnect strategy (every 2s, capped).
                 retryStrategy: (times: number) => Math.min(times * 200, 2000),
                 // Quietly drop the noisy ECONNREFUSED log on retry — the
                 // health endpoint surfaces the issue via /health.
                 reconnectOnError: () => true,
               },
-              url: redisUrl,
               defaultJobOptions: {
                 removeOnComplete: { age: 7 * 24 * 3600, count: 1_000 },
                 removeOnFail:     { age: 30 * 24 * 3600, count: 5_000 },

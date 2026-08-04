@@ -121,7 +121,9 @@ import { ScheduledModule } from './scheduled/scheduled.module';
     DashboardModule,
     SearchModule,
     CommunicationsModule,
-    ResumesModule,
+    // register() so the REDIS_ENABLED check runs after ConfigModule.forRoot()
+    // has populated process.env (see ResumesModule for the full rationale).
+    ResumesModule.register(),
     ExtractionConfigModule,
     DuplicatesModule,
     ScheduledModule,

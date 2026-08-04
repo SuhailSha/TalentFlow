@@ -38,11 +38,11 @@ import {
 // runtime-fetched one that might silently change cost calculations
 // behind our back.
 const GEMINI_PRICING: Record<string, { promptPer1M: number; completionPer1M: number }> = {
-  'gemini-1.5-flash':     { promptPer1M: 0.075, completionPer1M: 0.30 },
-  'gemini-1.5-flash-002': { promptPer1M: 0.075, completionPer1M: 0.30 },
-  'gemini-1.5-pro':       { promptPer1M: 1.25,  completionPer1M: 5.00 },
-  'gemini-2.0-flash':     { promptPer1M: 0.10,  completionPer1M: 0.40 },
-  'gemini-2.0-flash-001': { promptPer1M: 0.10,  completionPer1M: 0.40 },
+  'gemini-1.5-flash': { promptPer1M: 0.075, completionPer1M: 0.3 },
+  'gemini-1.5-flash-002': { promptPer1M: 0.075, completionPer1M: 0.3 },
+  'gemini-1.5-pro': { promptPer1M: 1.25, completionPer1M: 5.0 },
+  'gemini-2.0-flash': { promptPer1M: 0.1, completionPer1M: 0.4 },
+  'gemini-2.0-flash-001': { promptPer1M: 0.1, completionPer1M: 0.4 },
 };
 
 @Injectable()
@@ -56,7 +56,7 @@ export class GeminiProvider implements LlmProvider {
     if (!apiKey) {
       this.logger.warn(
         'GEMINI_API_KEY not set — GeminiProvider will throw on call(). ' +
-        'In dev, the RuleBasedProvider serves as a fallback.',
+          'In dev, the RuleBasedProvider serves as a fallback.',
       );
       this.client = null;
     } else {
@@ -70,25 +70,25 @@ export class GeminiProvider implements LlmProvider {
 
   estimateCost(req: { model: LlmModelId; prompt: string; maxTokens: number }): number {
     const pricing = GEMINI_PRICING[req.model];
-    if (!pricing) return 0;  // Unknown model → can't estimate; surfacing as $0 forces caller to either pick a known model or accept the unknown.
+    if (!pricing) return 0; // Unknown model → can't estimate; surfacing as $0 forces caller to either pick a known model or accept the unknown.
     // Rough token estimation: 4 chars per token. Accurate enough for budget warnings.
     const promptTokens = Math.ceil(req.prompt.length / 4);
     const cost =
-      (promptTokens     / 1_000_000) * pricing.promptPer1M +
-      (req.maxTokens    / 1_000_000) * pricing.completionPer1M;
+      (promptTokens / 1_000_000) * pricing.promptPer1M +
+      (req.maxTokens / 1_000_000) * pricing.completionPer1M;
     return Math.round(cost * 1_000_000) / 1_000_000;
   }
 
   async call<TOutput>(req: LlmRequest<TOutput>): Promise<LlmResponse<TOutput>> {
     if (!this.client) {
-      throw new LlmProviderError(
-        'GEMINI_API_KEY is not configured', 'auth', this.name, false,
-      );
+      throw new LlmProviderError('GEMINI_API_KEY is not configured', 'auth', this.name, false);
     }
     if (!this.supportsModel(req.model)) {
       throw new LlmProviderError(
         `Model "${req.model}" is not supported by GeminiProvider`,
-        'unknown', this.name, false,
+        'unknown',
+        this.name,
+        false,
       );
     }
 
@@ -105,7 +105,7 @@ export class GeminiProvider implements LlmProvider {
         // also want sources, so we use a hand-rolled JSON contract via
         // prompt instruction. Defer responseSchema until the prompt
         // registry encodes JSON schemas alongside Zod.
-        temperature: 0,         // Determinism for cache hits.
+        temperature: 0, // Determinism for cache hits.
       },
       systemInstruction: req.systemPrompt,
     });
@@ -120,14 +120,23 @@ export class GeminiProvider implements LlmProvider {
       const generation = await Promise.race([
         model.generateContent(req.prompt),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new LlmProviderError(
-            'Gemini call exceeded 30s timeout', 'timeout', this.name, true,
-          )), 30_000),
+          setTimeout(
+            () =>
+              reject(
+                new LlmProviderError(
+                  'Gemini call exceeded 30s timeout',
+                  'timeout',
+                  this.name,
+                  true,
+                ),
+              ),
+            30_000,
+          ),
         ),
       ]);
       rawText = generation.response.text();
       const usage = generation.response.usageMetadata;
-      promptTokens     = usage?.promptTokenCount     ?? 0;
+      promptTokens = usage?.promptTokenCount ?? 0;
       completionTokens = usage?.candidatesTokenCount ?? 0;
     } catch (err) {
       if (err instanceof LlmProviderError) throw err;
@@ -140,7 +149,7 @@ export class GeminiProvider implements LlmProvider {
       if (/quota|rate|429/i.test(msg)) {
         throw new LlmProviderError(msg, 'rate_limit', this.name, true, err);
       }
-      if (/api[\- _]?key|unauth|401|403/i.test(msg)) {
+      if (/api[- _]?key|unauth|401|403/i.test(msg)) {
         throw new LlmProviderError(msg, 'auth', this.name, false, err);
       }
       throw new LlmProviderError(msg, 'unknown', this.name, true, err);
@@ -157,7 +166,10 @@ export class GeminiProvider implements LlmProvider {
     } catch (err) {
       throw new LlmProviderError(
         `Model returned non-JSON output (first 200 chars: ${rawText.slice(0, 200)})`,
-        'invalid_output', this.name, true, err,
+        'invalid_output',
+        this.name,
+        true,
+        err,
       );
     }
 
@@ -165,7 +177,9 @@ export class GeminiProvider implements LlmProvider {
     if (!Array.isArray(parsed.sources) || parsed.sources.length === 0) {
       throw new LlmProviderError(
         'Model output missing required sources[] array (provenance contract)',
-        'no_provenance', this.name, false,
+        'no_provenance',
+        this.name,
+        false,
       );
     }
 
@@ -174,27 +188,35 @@ export class GeminiProvider implements LlmProvider {
     if (!validated.success) {
       throw new LlmProviderError(
         `Output failed schema validation: ${validated.error.message}`,
-        'invalid_output', this.name, true, validated.error,
+        'invalid_output',
+        this.name,
+        true,
+        validated.error,
       );
     }
 
     const latencyMs = Date.now() - startedAt;
     const pricing = GEMINI_PRICING[req.model];
     const costUsd = pricing
-      ? Math.round((
-          (promptTokens     / 1_000_000) * pricing.promptPer1M +
-          (completionTokens / 1_000_000) * pricing.completionPer1M
-        ) * 1_000_000) / 1_000_000
+      ? Math.round(
+          ((promptTokens / 1_000_000) * pricing.promptPer1M +
+            (completionTokens / 1_000_000) * pricing.completionPer1M) *
+            1_000_000,
+        ) / 1_000_000
       : 0;
 
     return {
-      output:    validated.data,
-      sources:   parsed.sources as LlmResponse<TOutput>['sources'],
-      usage:     { prompt: promptTokens, completion: completionTokens, total: promptTokens + completionTokens },
+      output: validated.data,
+      sources: parsed.sources as LlmResponse<TOutput>['sources'],
+      usage: {
+        prompt: promptTokens,
+        completion: completionTokens,
+        total: promptTokens + completionTokens,
+      },
       costUsd,
       latencyMs,
-      model:     req.model,
-      provider:  this.name,
+      model: req.model,
+      provider: this.name,
     };
   }
 }

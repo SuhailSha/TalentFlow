@@ -1,15 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
+// NOT `import { type ConfigService }` — a type-only import is erased at compile
+// time, so emitDecoratorMetadata records `Function` instead of the ConfigService
+// token and Nest fails with "can't resolve dependencies ... at index [0]".
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
 
 import type { ConfidenceMap, ExtractionPayload } from '../types/extraction-payload';
 import { ParsingError } from './parser-errors';
-import type { ParseOpts, ParseResult, ResumeParserProviderAdapter } from './parser-provider.interface';
+import type {
+  ParseOpts,
+  ParseResult,
+  ResumeParserProviderAdapter,
+} from './parser-provider.interface';
 
-// Gemini 1.5 Flash pricing (per Google's published rates as of 2025-08).
-// Used for per-tenant budget accounting on ParsingJob.costUsd.
-const PRICE_INPUT_PER_1M  = 0.075;   // USD per 1M input tokens
-const PRICE_OUTPUT_PER_1M = 0.30;    // USD per 1M output tokens
+// Default model. `gemini-1.5-flash` was hardcoded here and has since been
+// retired — the API now answers `404 models/gemini-1.5-flash is not found for
+// API version v1beta`, which silently pushed every parse onto the RULE_BASED
+// fallback while ParsingJob still reported SUCCEEDED. Override with GEMINI_MODEL.
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+
+// Per-1M-token rates used for per-tenant budget accounting on ParsingJob.costUsd.
+// These MUST be checked against Google's current rate card when the model
+// changes — they are not fetched at runtime. Override via env when rates move.
+const DEFAULT_PRICE_INPUT_PER_1M = 0.3;
+const DEFAULT_PRICE_OUTPUT_PER_1M = 2.5;
 
 const PROMPT_VERSION = 'gemini-resume-v1';
 
@@ -41,10 +55,11 @@ export class GeminiFlashParser implements ResumeParserProviderAdapter {
   private readonly logger = new Logger(GeminiFlashParser.name);
 
   readonly name = 'GEMINI_FLASH' as const;
-  readonly version = 'gemini-1.5-flash';
+  /** Reported as ParsingJob.providerVersion — reflects the model actually used. */
+  readonly version: string;
   readonly capabilities = {
     supportsConfidenceScores: true,
-    supportsFieldProvenance:  false,
+    supportsFieldProvenance: false,
     supportedMimeTypes: [
       'application/pdf',
       'application/msword',
@@ -56,24 +71,37 @@ export class GeminiFlashParser implements ResumeParserProviderAdapter {
   };
 
   private readonly apiKey: string | undefined;
-  private readonly model:  GenerativeModel | null;
+  private readonly model: GenerativeModel | null;
+  private readonly modelName: string;
+  private readonly priceInputPer1M: number;
+  private readonly priceOutputPer1M: number;
 
   constructor(config: ConfigService) {
     this.apiKey = config.get<string>('GEMINI_API_KEY') ?? process.env['GEMINI_API_KEY'];
+    this.modelName =
+      config.get<string>('GEMINI_MODEL') ?? process.env['GEMINI_MODEL'] ?? DEFAULT_GEMINI_MODEL;
+    this.version = this.modelName;
+    this.priceInputPer1M =
+      Number(config.get<string>('GEMINI_PRICE_INPUT_PER_1M')) || DEFAULT_PRICE_INPUT_PER_1M;
+    this.priceOutputPer1M =
+      Number(config.get<string>('GEMINI_PRICE_OUTPUT_PER_1M')) || DEFAULT_PRICE_OUTPUT_PER_1M;
+
     if (this.apiKey) {
       const client = new GoogleGenerativeAI(this.apiKey);
       this.model = client.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: this.modelName,
         generationConfig: { responseMimeType: 'application/json' },
       });
-      this.logger.log('Gemini Flash parser initialised');
+      this.logger.log(`Gemini Flash parser initialised (model=${this.modelName})`);
     } else {
       this.model = null;
       this.logger.warn('GEMINI_API_KEY not set — Gemini Flash parser is inactive');
     }
   }
 
-  isAvailable(): boolean { return !!this.model; }
+  isAvailable(): boolean {
+    return !!this.model;
+  }
 
   async parse(rawText: string, opts: ParseOpts): Promise<ParseResult> {
     if (!this.model) {
@@ -105,14 +133,14 @@ export class GeminiFlashParser implements ResumeParserProviderAdapter {
     }
 
     const usage = resp.response.usageMetadata;
-    const inputTokens  = usage?.promptTokenCount     ?? 0;
+    const inputTokens = usage?.promptTokenCount ?? 0;
     const outputTokens = usage?.candidatesTokenCount ?? 0;
     const costUsd =
-      (inputTokens  / 1_000_000) * PRICE_INPUT_PER_1M +
-      (outputTokens / 1_000_000) * PRICE_OUTPUT_PER_1M;
+      (inputTokens / 1_000_000) * this.priceInputPer1M +
+      (outputTokens / 1_000_000) * this.priceOutputPer1M;
 
     return {
-      payload:    parsed.payload,
+      payload: parsed.payload,
       confidence: parsed.confidence,
       inputTokens,
       outputTokens,
@@ -174,7 +202,10 @@ export class GeminiFlashParser implements ResumeParserProviderAdapter {
 
   // ── Response validation ───────────────────────────────────────────────────
 
-  private parseAndValidate(text: string): { payload: ExtractionPayload; confidence: ConfidenceMap } {
+  private parseAndValidate(text: string): {
+    payload: ExtractionPayload;
+    confidence: ConfidenceMap;
+  } {
     let parsed: unknown;
     try {
       // Gemini sometimes wraps JSON in ```json fences despite responseMimeType.
@@ -187,7 +218,7 @@ export class GeminiFlashParser implements ResumeParserProviderAdapter {
       throw new Error('Top-level response is not an object');
     }
     const root = parsed as { payload?: unknown; confidence?: unknown };
-    const payload    = (root.payload    ?? {}) as ExtractionPayload;
+    const payload = (root.payload ?? {}) as ExtractionPayload;
     const confidence = (root.confidence ?? {}) as ConfidenceMap;
     if (typeof payload !== 'object' || typeof confidence !== 'object') {
       throw new Error('payload or confidence missing / wrong type');
@@ -200,14 +231,49 @@ export class GeminiFlashParser implements ResumeParserProviderAdapter {
   private classifyError(e: unknown): ParsingError {
     const msg = (e as Error)?.message ?? String(e);
     const lower = msg.toLowerCase();
-    if (lower.includes('429') || lower.includes('rate limit') || lower.includes('quota')) {
+
+    // The SDK embeds the HTTP status as "[404 Not Found]" / "[503 ...]". Match on
+    // that bracketed form rather than a bare substring search.
+    //
+    // This previously tested `lower.includes('5')`, presumably meaning "5xx".
+    // That matches the digit 5 ANYWHERE — including in the model name
+    // `gemini-1.5-flash` — so a hard 404 was reported as `transient` and got
+    // pointlessly retried through the whole BullMQ backoff chain.
+    const status = /\[(\d{3})\s/.exec(msg)?.[1];
+
+    if (status === '429' || lower.includes('rate limit') || lower.includes('quota')) {
       return new ParsingError('rate_limit', `Gemini rate-limited: ${msg}`, e);
     }
-    if (lower.includes('timeout') || lower.includes('etimedout') || lower.includes('econnreset') || lower.includes('5')) {
-      return new ParsingError('transient', `Gemini transient error: ${msg}`, e);
-    }
-    if (lower.includes('api key') || lower.includes('unauthorized') || lower.includes('403')) {
+    if (status === '401' || status === '403' || lower.includes('api key') || lower.includes('unauthorized')) {
       return new ParsingError('provider_unavailable', `Gemini auth error: ${msg}`, e);
+    }
+    // A missing/unsupported model is a config error, not something to retry.
+    if (status === '404' || lower.includes('is not found for api version')) {
+      return new ParsingError(
+        'permanent',
+        `Gemini model unavailable (check GEMINI_MODEL): ${msg}`,
+        e,
+      );
+    }
+    if (status && status.startsWith('5')) {
+      return new ParsingError('transient', `Gemini server error: ${msg}`, e);
+    }
+    // Network-level faults surface as an opaque `fetch failed`; the useful detail
+    // is on `error.cause` (e.g. UNABLE_TO_GET_ISSUER_CERT_LOCALLY behind a
+    // TLS-inspecting corporate proxy), so fold it into the message.
+    const cause = (e as { cause?: { code?: string; message?: string } })?.cause;
+    if (
+      lower.includes('timeout') ||
+      lower.includes('etimedout') ||
+      lower.includes('econnreset') ||
+      lower.includes('fetch failed')
+    ) {
+      const detail = cause?.code ?? cause?.message;
+      return new ParsingError(
+        'transient',
+        `Gemini network error: ${msg}${detail ? ` (cause: ${detail})` : ''}`,
+        e,
+      );
     }
     return new ParsingError('permanent', `Gemini error: ${msg}`, e);
   }
