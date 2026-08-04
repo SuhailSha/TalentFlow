@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { IsString, MinLength, IsOptional } from 'class-validator';
@@ -96,8 +97,11 @@ export class AuthController {
     const rawRefreshToken: unknown = req.cookies?.[REFRESH_TOKEN_COOKIE];
 
     if (typeof rawRefreshToken !== 'string' || !rawRefreshToken) {
-      res.status(HttpStatus.UNAUTHORIZED).json({ message: 'No refresh token' });
-      return { ok: true };
+      // Don't hand-write the response here: with @Res({ passthrough: true })
+      // Nest still serializes the returned value, so a manual res.json() plus
+      // a return double-sends and throws ERR_HTTP_HEADERS_SENT. Throw instead
+      // and let GlobalExceptionFilter emit the standard 401 body.
+      throw new UnauthorizedException('No refresh token');
     }
 
     const ipAddress = req.ip ?? req.socket.remoteAddress ?? '';

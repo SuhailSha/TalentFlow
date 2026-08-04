@@ -48,6 +48,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       this.logger.warn({ requestId: body.requestId, code }, message);
     }
 
+    // If the response has already started (e.g. a handler sent partial data
+    // then threw), we can't set a status or body without throwing
+    // ERR_HTTP_HEADERS_SENT. Bail out — the request is already terminating.
+    if (response.headersSent) {
+      return;
+    }
+
     response.status(status).json(body);
   }
 
