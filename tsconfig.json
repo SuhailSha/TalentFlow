@@ -8,6 +8,14 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": [],
+  "files": [],
+  "references": [
+    { "path": "./apps/api" },
+    { "path": "./apps/web" },
+    { "path": "./packages/config" },
+    { "path": "./packages/database" },
+    { "path": "./packages/types" },
+    { "path": "./packages/validators" }
+  ],
   "exclude": ["node_modules", "**/dist/**", "**/.next/**"]
 }
