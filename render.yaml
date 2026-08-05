@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     plan: starter
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm --filter @repo/config build && pnpm --filter @repo/types build && pnpm --filter @repo/validators build && pnpm --filter @repo/database build && pnpm --filter @repo/database exec prisma generate && pnpm --filter @repo/database exec prisma migrate deploy && pnpm --filter @repo/api build
+    buildCommand: pnpm install --no-frozen-lockfile && pnpm --filter @repo/config build && pnpm --filter @repo/types build && pnpm --filter @repo/validators build && pnpm --filter @repo/database exec prisma generate && pnpm --filter @repo/database build && pnpm --filter @repo/database exec prisma migrate deploy && pnpm --filter @repo/api build
     startCommand: node apps/api/dist/main
     rootDir: .
     healthCheckPath: /api/v1/health

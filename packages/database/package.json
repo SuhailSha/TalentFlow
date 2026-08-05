@@ -36,7 +36,8 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "@repo/tsconfig": "workspace:*"
+    "@repo/tsconfig": "workspace:*",
+    "@types/node": "^22.19.18"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
