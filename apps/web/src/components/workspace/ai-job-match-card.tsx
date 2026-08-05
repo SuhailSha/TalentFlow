@@ -43,13 +43,13 @@ export function AIJobMatchCard({
               AI
             </div>
           </div>
-          <a
-            href="#"
-            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+          <button
+            type="button"
+            className="text-xs text-blue-600 hover:text-blue-700 font-medium bg-transparent border-0 p-0"
             onClick={(e) => e.preventDefault()}
           >
             View all {totalMatches} →
-          </a>
+          </button>
         </div>
       </CardHeader>
       <CardContent className="pt-0">

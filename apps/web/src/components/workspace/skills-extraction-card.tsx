@@ -81,7 +81,7 @@ export function SkillsExtractionCard({
         </div>
         <p className="text-xs text-muted-foreground mt-4 mb-0">
           Confidence reflects how strongly the skill appears in resume + interview notes. Below the
-          org's {threshold}% threshold gets flagged for review.
+          org&apos;s {threshold}% threshold gets flagged for review.
         </p>
       </CardContent>
     </Card>
