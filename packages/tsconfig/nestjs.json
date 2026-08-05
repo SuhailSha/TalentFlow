@@ -5,7 +5,7 @@
   "compilerOptions": {
     // ─── NestJS requires CommonJS and decorator support ──────────────────────
     "module": "CommonJS",
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "target": "ES2022",
     "lib": ["ES2022"],
 
