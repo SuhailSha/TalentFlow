@@ -9,6 +9,7 @@
     "lib": ["ES2022"],
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "useDefineForClassFields": false,
     "downlevelIteration": true,
     "strictPropertyInitialization": false,
     "outDir": "./dist",
