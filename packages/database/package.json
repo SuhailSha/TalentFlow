@@ -37,12 +37,12 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@repo/tsconfig": "workspace:*",
-    "@types/node": "^22.19.18"
+    "@types/node": "^22.19.18",
+    "prisma": "^5.22.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
-    "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   }
