@@ -35,10 +35,10 @@
     "db:diff": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema --script"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0"
+    "@prisma/client": "^5.22.0",
+    "@repo/tsconfig": "workspace:*"
   },
   "devDependencies": {
-    "@repo/tsconfig": "workspace:*",
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
     "prisma": "^5.22.0",

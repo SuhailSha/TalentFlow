@@ -18,8 +18,10 @@
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix"
   },
+  "dependencies": {
+    "@repo/tsconfig": "workspace:*"
+  },
   "devDependencies": {
-    "@repo/tsconfig": "workspace:*",
     "typescript": "^5.7.2"
   }
 }
