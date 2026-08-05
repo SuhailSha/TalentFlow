@@ -4,7 +4,7 @@
   "extends": "./base.json",
   "compilerOptions": {
     // ─── NestJS requires CommonJS and decorator support ──────────────────────
-    "module": "CommonJS",
+    "module": "Node16",
     "moduleResolution": "node16",
     "target": "ES2022",
     "lib": ["ES2022"],
