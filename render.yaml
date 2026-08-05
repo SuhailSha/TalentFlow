@@ -4,7 +4,19 @@ services:
     env: node
     region: oregon
     plan: starter
-    buildCommand: pnpm install && pnpm --filter @repo/database build && pnpm --filter @repo/database exec prisma migrate deploy && pnpm --filter @repo/api build
+    buildCommand: |
+      echo "Installing dependencies..."
+      pnpm install --frozen-lockfile
+      echo "Building shared packages..."
+      pnpm --filter @repo/config build
+      pnpm --filter @repo/types build
+      pnpm --filter @repo/validators build
+      echo "Generating Prisma client..."
+      pnpm --filter @repo/database exec prisma generate
+      echo "Running database migrations..."
+      pnpm --filter @repo/database exec prisma migrate deploy
+      echo "Building API..."
+      pnpm --filter @repo/api build
     startCommand: node dist/main
     rootDir: apps/api
     healthCheckPath: /api/v1/health
