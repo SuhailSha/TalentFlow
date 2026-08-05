@@ -1,5 +1,9 @@
 export { WorkspaceShell } from './workspace-shell';
 export { WorkspaceHeader, WorkspaceFact } from './workspace-header';
+export { AISummaryCard } from './ai-summary-card';
+export { AIJobMatchCard } from './ai-job-match-card';
+export { AISuggestedActionsCard } from './ai-suggested-actions-card';
+export { SkillsExtractionCard } from './skills-extraction-card';
 export { ActivityTimeline } from './activity-timeline';
 export { NextActionsPanel, type NextAction } from './next-actions-panel';
 export { RelatedEntityCard } from './related-entity-card';

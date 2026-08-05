@@ -8,6 +8,21 @@ import { getMe, login, logout } from '@/lib/api/auth';
 import { getApiErrorMessage } from '@/lib/api/client';
 import type { LoginCredentials, UserProfile } from '@/types/auth';
 
+interface UseAuthReturn {
+  user: UserProfile | null;
+  isLoading: boolean;
+  isError: boolean;
+  isAuthenticated: boolean;
+  login: (credentials: LoginCredentials) => void;
+  loginAsync: (credentials: LoginCredentials) => Promise<UserProfile>;
+  isLoggingIn: boolean;
+  logout: () => void;
+  isLoggingOut: boolean;
+  hasPermission: (permission: string) => boolean;
+  hasRole: (role: string) => boolean;
+  hasAnyRole: (roles: string[]) => boolean;
+}
+
 export const AUTH_QUERY_KEY = ['auth', 'me'] as const;
 
 /**
@@ -21,7 +36,7 @@ export const AUTH_QUERY_KEY = ['auth', 'me'] as const;
  * The query is refetched on window focus so sessions stay fresh
  * (overrides the global `refetchOnWindowFocus: false` default).
  */
-export function useAuth() {
+export function useAuth(): UseAuthReturn {
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -42,6 +57,7 @@ export function useAuth() {
     staleTime: 5 * 60 * 1_000, // 5 min — aligned with access token TTL
     refetchOnWindowFocus: true,
     retry: false, // don't retry auth check failures
+    refetchInterval: false, // Disable automatic background refetching
   });
 
   const loginMutation = useMutation({

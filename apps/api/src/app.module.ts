@@ -126,7 +126,7 @@ import { ScheduledModule } from './scheduled/scheduled.module';
     ResumesModule.register(),
     ExtractionConfigModule,
     DuplicatesModule,
-    ScheduledModule,
+    ScheduledModule.register(),
   ],
   providers: [
     {
