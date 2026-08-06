@@ -41,8 +41,9 @@ class AcceptInvitationDto {
 
 const BASE_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
-  sameSite: 'lax', // TEMPORARY TEST: Change back to 'none' after debugging
-  // secure is set dynamically per-response based on NODE_ENV
+  sameSite: 'none', // Required for cross-origin requests (Vercel -> Render)
+  secure: true, // Required when sameSite is 'none' and for HTTPS cross-origin requests
+  // Domain is intentionally NOT set to allow cross-origin cookie transmission
 };
 
 @Controller('auth')
@@ -152,8 +153,8 @@ export class AuthController {
 
     const clearOptions: CookieOptions = {
       httpOnly: true,
-      sameSite: 'lax', // TEMPORARY TEST: Must match the sameSite setting used when setting cookies
-      secure: process.env['NODE_ENV'] === 'production',
+      sameSite: 'none', // Must match the sameSite setting used when setting cookies
+      secure: true, // Must match the secure setting used when setting cookies
     };
 
     res.clearCookie(ACCESS_TOKEN_COOKIE, { ...clearOptions, path: '/' });
