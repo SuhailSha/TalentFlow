@@ -9,11 +9,22 @@ import { apiClient } from './client';
 
 export async function login(credentials: LoginCredentials): Promise<UserProfile> {
   const { data } = await apiClient.post<AuthResponse>('/auth/login', credentials);
+
+  // Store tokens in localStorage for cross-origin scenarios where cookies don't work
+  if (data.tokens) {
+    localStorage.setItem('access_token', data.tokens.accessToken);
+    localStorage.setItem('refresh_token', data.tokens.refreshToken);
+  }
+
   return data.user;
 }
 
 export async function logout(): Promise<void> {
   await apiClient.post<{ ok: true }>('/auth/logout');
+
+  // Clear localStorage tokens for cross-origin scenarios
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
 }
 
 /** Silent token refresh — called by the interceptor on 401. */
@@ -32,7 +43,9 @@ export async function getMe(): Promise<UserProfile> {
  * Throws if the token is invalid, revoked, accepted, or expired.
  */
 export async function previewInvitation(token: string): Promise<InvitationPreview> {
-  const { data } = await apiClient.get<InvitationPreview>(`/auth/invitations/${encodeURIComponent(token)}/preview`);
+  const { data } = await apiClient.get<InvitationPreview>(
+    `/auth/invitations/${encodeURIComponent(token)}/preview`,
+  );
   return data;
 }
 

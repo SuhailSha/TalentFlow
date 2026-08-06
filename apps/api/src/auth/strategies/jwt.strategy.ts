@@ -24,10 +24,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(config: ConfigService<EnvConfig, true>) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        // Primary: Extract from httpOnly cookie (secure, XSS-immune)
         (req: Request) => {
           const token: unknown = req?.cookies?.['access_token'];
           return typeof token === 'string' ? token : null;
         },
+        // Fallback: Extract from Authorization header (cross-origin scenarios)
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
       secretOrKey: config.get('JWT_SECRET', { infer: true }),

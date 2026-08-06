@@ -59,7 +59,7 @@ export class AuthController {
   async login(
     @Req() req: Request & { user: User },
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ user: UserProfile }> {
+  ): Promise<{ user: UserProfile; tokens: { accessToken: string; refreshToken: string } }> {
     const ipAddress = req.ip ?? req.socket.remoteAddress ?? '';
     const userAgent = req.headers['user-agent'] ?? '';
 
@@ -78,11 +78,18 @@ export class AuthController {
     res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
       ...BASE_COOKIE_OPTIONS,
       maxAge: 30 * 24 * 60 * 60 * 1_000, // 30 days — matches JWT_REFRESH_EXPIRES_IN
-      // Narrow path: refresh cookie only sent to auth endpoints (reduces attack surface)
+      // Narrow path: refresh token only sent to auth endpoints (reduces attack surface)
       path: '/api/v1/auth',
     });
 
-    return { user: userProfile };
+    return {
+      user: userProfile,
+      // Include tokens in response for cross-origin scenarios where cookies may not work
+      tokens: {
+        accessToken,
+        refreshToken,
+      },
+    };
   }
 
   // ── POST /api/v1/auth/refresh ─────────────────────────────────────────────

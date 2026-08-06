@@ -36,4 +36,9 @@ export interface LoginCredentials {
 /** API response shape from POST /auth/login and GET /auth/me */
 export interface AuthResponse {
   user: UserProfile;
+  // Optional tokens for cross-origin scenarios (only present in login response)
+  tokens?: {
+    accessToken: string;
+    refreshToken: string;
+  };
 }

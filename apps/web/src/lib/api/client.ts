@@ -28,9 +28,18 @@ function notifySubscribers(success: boolean): void {
 
 // ── Request interceptor ────────────────────────────────────────────────────
 // Cookies are sent automatically by the browser (withCredentials: true).
-// No Authorization header needed — the JWT lives in an httpOnly cookie.
+// For cross-origin scenarios where cookies don't work, also send Authorization header.
 apiClient.interceptors.request.use(
-  (config) => config,
+  (config) => {
+    // Add Authorization header from localStorage if available (cross-origin fallback)
+    if (typeof window !== 'undefined') {
+      const accessToken = localStorage.getItem('access_token');
+      if (accessToken && !config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+      }
+    }
+    return config;
+  },
   (error: unknown) => Promise.reject(error),
 );
 
