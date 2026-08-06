@@ -44,7 +44,7 @@ apiClient.interceptors.response.use(
 
     // Only attempt refresh for 401s that aren't already a retry,
     // and not for auth endpoints themselves (avoid infinite loops).
-    const isAuthEndpoint = originalRequest?.url?.includes('/auth/');
+    const isAuthEndpoint = originalRequest?.url?.includes('/api/v1/auth/');
     if (status !== 401 || originalRequest._retry || isAuthEndpoint) {
       return Promise.reject(error);
     }
