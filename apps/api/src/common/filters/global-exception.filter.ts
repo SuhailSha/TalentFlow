@@ -25,7 +25,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const body: ErrorResponse = {
       success: false,
       error: { code, message, details },
-      requestId: request.requestId ?? request.id ?? 'unknown',
+      requestId: request.requestId || String(request.id) || 'unknown',
       timestamp: new Date().toISOString(),
     };
 
@@ -37,10 +37,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     // are scrubbed by the OTel pipeline.
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
       if (process.env['NODE_ENV'] === 'production') {
-        this.logger.error(
-          { requestId: body.requestId, code, status },
-          'Internal server error',
-        );
+        this.logger.error({ requestId: body.requestId, code, status }, 'Internal server error');
       } else {
         this.logger.error({ err: exception, requestId: body.requestId }, message);
       }

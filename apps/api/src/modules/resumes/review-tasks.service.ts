@@ -5,16 +5,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma, type ResumeParserProvider } from '@repo/database';
+import { type EventEmitter2 } from '@nestjs/event-emitter';
+import type { Prisma, ResumeParserProvider } from '@repo/database';
 
 import type { RequestUser } from '../../auth/types/request-user.interface';
 import { EventNames } from '../../common/events/event-names.constant';
-import { PrismaService } from '../../database';
-import { DuplicatesService } from '../duplicates/duplicates.service';
-import { ExtractionConfigService } from '../extraction-config/extraction-config.service';
-import { ParsingJobsService } from './parsing-jobs.service';
-import { ReviewTasksRepository } from './review-tasks.repository';
+import { type PrismaService } from '../../database';
+import { type DuplicatesService } from '../duplicates/duplicates.service';
+import { type ExtractionConfigService } from '../extraction-config/extraction-config.service';
+import { type ParsingJobsService } from './parsing-jobs.service';
+import { type ReviewTasksRepository } from './review-tasks.repository';
 import {
   toReviewDetail,
   toReviewListItem,
@@ -24,7 +24,10 @@ import {
 import type { ExtractedSkill, ExtractionPayload } from './types/extraction-payload';
 import type { ListReviewsDto } from './dto/list-reviews.dto';
 import type {
-  ApproveReviewDto, RejectReviewDto, ReviewDecisionDto, SaveDraftDto,
+  ApproveReviewDto,
+  RejectReviewDto,
+  ReviewDecisionDto,
+  SaveDraftDto,
 } from './dto/review-decision.dto';
 
 /**
@@ -46,12 +49,12 @@ import type {
 @Injectable()
 export class ReviewTasksService {
   constructor(
-    private readonly db:         PrismaService,
-    private readonly repo:       ReviewTasksRepository,
-    private readonly parsing:    ParsingJobsService,
-    private readonly orgConfig:  ExtractionConfigService,
+    private readonly db: PrismaService,
+    private readonly repo: ReviewTasksRepository,
+    private readonly parsing: ParsingJobsService,
+    private readonly orgConfig: ExtractionConfigService,
     private readonly duplicates: DuplicatesService,
-    private readonly events:     EventEmitter2,
+    private readonly events: EventEmitter2,
   ) {}
 
   // ── List + detail ──────────────────────────────────────────────────────────
@@ -61,7 +64,11 @@ export class ReviewTasksService {
     dto: ListReviewsDto,
     currentUserId: string,
   ): Promise<{ tasks: ReviewTaskListItem[]; total: number }> {
-    const { tasks, total } = await this.repo.findManyWithContext(organizationId, dto, currentUserId);
+    const { tasks, total } = await this.repo.findManyWithContext(
+      organizationId,
+      dto,
+      currentUserId,
+    );
     return { tasks: tasks.map(toReviewListItem), total };
   }
 
@@ -90,9 +97,9 @@ export class ReviewTasksService {
       });
     }
     this.events.emit(EventNames.RESUME_REVIEW_CLAIMED, {
-      reviewTaskId:   id,
+      reviewTaskId: id,
       organizationId: actor.organizationId,
-      assigneeId:     actor.userId,
+      assigneeId: actor.userId,
     });
     return this.findById(id, actor.organizationId);
   }
@@ -103,16 +110,20 @@ export class ReviewTasksService {
 
   // ── Draft autosave ─────────────────────────────────────────────────────────
 
-  async saveDraft(id: string, dto: SaveDraftDto, actor: RequestUser): Promise<{ draftVersion: number }> {
+  async saveDraft(
+    id: string,
+    dto: SaveDraftDto,
+    actor: RequestUser,
+  ): Promise<{ draftVersion: number }> {
     const result = await this.repo.saveDraft({
       id,
       organizationId: actor.organizationId,
-      userId:         actor.userId,
-      baseVersion:    dto.baseVersion,
-      decision:       dto.decision as Prisma.InputJsonValue,
+      userId: actor.userId,
+      baseVersion: dto.baseVersion,
+      decision: dto.decision as Prisma.InputJsonValue,
     });
     if (!result.ok) {
-      if (result.reason === 'STALE') {
+      if ('reason' in result && result.reason === 'STALE') {
         throw new ConflictException({
           message: 'Your draft is out of date. Reload to merge with the latest version.',
           code: 'REVIEW_DRAFT_STALE',
@@ -134,11 +145,7 @@ export class ReviewTasksService {
    *
    * Returns the updated ReviewTaskDetail (with resultingCandidateId set).
    */
-  async approve(
-    id: string,
-    dto: ApproveReviewDto,
-    actor: RequestUser,
-  ): Promise<ReviewTaskDetail> {
+  async approve(id: string, dto: ApproveReviewDto, actor: RequestUser): Promise<ReviewTaskDetail> {
     const task = await this.repo.findByIdWithContext(id, actor.organizationId);
     if (!task) throw new NotFoundException(`Review task ${id} not found`);
     if (task.status !== 'PENDING' && task.status !== 'IN_REVIEW') {
@@ -151,9 +158,10 @@ export class ReviewTasksService {
     }
 
     const action = dto.decision.candidateAction ?? { kind: 'CREATE' as const };
-    const targetCandidateId = action.kind === 'UPDATE' && action.existingCandidateId
-      ? action.existingCandidateId
-      : version.resume.candidateId;
+    const targetCandidateId =
+      action.kind === 'UPDATE' && action.existingCandidateId
+        ? action.existingCandidateId
+        : version.resume.candidateId;
 
     const candidate = await this.db.candidate.findFirst({
       where: { id: targetCandidateId, organizationId: actor.organizationId, deletedAt: null },
@@ -162,7 +170,7 @@ export class ReviewTasksService {
       throw new NotFoundException(`Target candidate ${targetCandidateId} not found`);
     }
 
-    const payload      = (ext.payload     as ExtractionPayload) ?? {};
+    const payload = (ext.payload as ExtractionPayload) ?? {};
     const finalPayload = this.applyDecisionToPayload(payload, dto.decision);
     const candidateUpdate = this.buildCandidateUpdate(finalPayload);
 
@@ -174,20 +182,20 @@ export class ReviewTasksService {
     if (!dto.acknowledgeDuplicates) {
       const u = candidateUpdate as Record<string, unknown>;
       const sourceOverride = {
-        firstName:      (typeof u.firstName      === 'string' ? u.firstName      : null),
-        lastName:       (typeof u.lastName       === 'string' ? u.lastName       : null),
-        email:          (typeof u.email          === 'string' ? u.email          : null),
-        phone:          (typeof u.phone          === 'string' ? u.phone          : null),
-        linkedinUrl:    (typeof u.linkedinUrl    === 'string' ? u.linkedinUrl    : null),
-        currentCompany: (typeof u.currentCompany === 'string' ? u.currentCompany : null),
-        city:           (typeof u.city           === 'string' ? u.city           : null),
+        firstName: typeof u.firstName === 'string' ? u.firstName : null,
+        lastName: typeof u.lastName === 'string' ? u.lastName : null,
+        email: typeof u.email === 'string' ? u.email : null,
+        phone: typeof u.phone === 'string' ? u.phone : null,
+        linkedinUrl: typeof u.linkedinUrl === 'string' ? u.linkedinUrl : null,
+        currentCompany: typeof u.currentCompany === 'string' ? u.currentCompany : null,
+        city: typeof u.city === 'string' ? u.city : null,
       };
 
       const { runId, summary } = await this.duplicates.scanForReviewApprove({
-        organizationId:    actor.organizationId,
+        organizationId: actor.organizationId,
         sourceCandidateId: targetCandidateId,
-        triggeredById:     actor.userId,
-        reviewTaskId:      id,
+        triggeredById: actor.userId,
+        reviewTaskId: id,
         sourceOverride,
       });
 
@@ -196,8 +204,8 @@ export class ReviewTasksService {
           code: 'DUPLICATE_REVIEW_REQUIRED',
           message: 'Potential duplicates found. Review them before promoting this candidate.',
           runId,
-          totalMatches:    summary.total,
-          exactMatches:    summary.exact,
+          totalMatches: summary.total,
+          exactMatches: summary.exact,
           probableMatches: summary.probable,
           possibleMatches: summary.possible,
         });
@@ -222,7 +230,9 @@ export class ReviewTasksService {
       //    skipped: they'll surface in the review history and may be added
       //    when the recruiter manually curates.
       const skills = finalPayload.professional?.skills ?? [];
-      const normalised = skills.filter((s): s is ExtractedSkill & { normalizedSkillId: string } => !!s.normalizedSkillId);
+      const normalised = skills.filter(
+        (s): s is ExtractedSkill & { normalizedSkillId: string } => !!s.normalizedSkillId,
+      );
       if (normalised.length > 0) {
         const existing = await tx.candidateSkill.findMany({
           where: {
@@ -236,12 +246,12 @@ export class ReviewTasksService {
         if (toInsert.length > 0) {
           await tx.candidateSkill.createMany({
             data: toInsert.map((s) => ({
-              candidateId:        targetCandidateId,
-              skillId:            s.normalizedSkillId,
-              proficiencyLevel:   'INTERMEDIATE' as const,
-              yearsOfExperience:  s.yearsOfExperience,
-              isPrimary:          false,
-              assignedBy:         actor.userId,
+              candidateId: targetCandidateId,
+              skillId: s.normalizedSkillId,
+              proficiencyLevel: 'INTERMEDIATE' as const,
+              yearsOfExperience: s.yearsOfExperience,
+              isPrimary: false,
+              assignedBy: actor.userId,
             })),
           });
         }
@@ -250,36 +260,40 @@ export class ReviewTasksService {
       // 3. Resume → ACTIVE (status flip out of NEEDS_REVIEW)
       await tx.resume.update({
         where: { id: version.resume.id },
-        data:  { status: 'ACTIVE', updatedBy: actor.userId },
+        data: { status: 'ACTIVE', updatedBy: actor.userId },
       });
 
       // 4. Mark the review APPROVED with resulting candidate
       await tx.reviewTask.updateMany({
-        where: { id, organizationId: actor.organizationId, status: { in: ['PENDING', 'IN_REVIEW'] } },
+        where: {
+          id,
+          organizationId: actor.organizationId,
+          status: { in: ['PENDING', 'IN_REVIEW'] },
+        },
         data: {
-          status:               'APPROVED',
-          decision:             dto.decision as unknown as Prisma.InputJsonValue,
-          decisionNotes:        dto.decision.notes ?? null,
-          decidedById:          actor.userId,
-          decidedAt:            new Date(),
+          status: 'APPROVED',
+          decision: dto.decision as unknown as Prisma.InputJsonValue,
+          decisionNotes: dto.decision.notes ?? null,
+          decidedById: actor.userId,
+          decidedAt: new Date(),
           resultingCandidateId: targetCandidateId,
-          claimExpiresAt:       null,
+          claimExpiresAt: null,
         },
       });
     });
 
     this.events.emit(EventNames.RESUME_REVIEW_COMPLETED, {
-      reviewTaskId:    id,
-      organizationId:  actor.organizationId,
-      action:          action.kind,
-      candidateId:     targetCandidateId,
-      decidedById:     actor.userId,
+      reviewTaskId: id,
+      organizationId: actor.organizationId,
+      action: action.kind,
+      candidateId: targetCandidateId,
+      decidedById: actor.userId,
     });
     this.events.emit(EventNames.CANDIDATE_UPDATED, {
-      candidateId:    targetCandidateId,
+      candidateId: targetCandidateId,
       organizationId: actor.organizationId,
-      actorId:        actor.userId,
-      source:         'resume-review-approved',
+      actorId: actor.userId,
+      source: 'resume-review-approved',
     });
 
     return this.findById(id, actor.organizationId);
@@ -296,13 +310,17 @@ export class ReviewTasksService {
 
     await this.db.$transaction(async (tx) => {
       await tx.reviewTask.updateMany({
-        where: { id, organizationId: actor.organizationId, status: { in: ['PENDING', 'IN_REVIEW'] } },
+        where: {
+          id,
+          organizationId: actor.organizationId,
+          status: { in: ['PENDING', 'IN_REVIEW'] },
+        },
         data: {
-          status:        'REJECTED',
-          decision:      { rejection: true, reason: dto.reason } as unknown as Prisma.InputJsonValue,
+          status: 'REJECTED',
+          decision: { rejection: true, reason: dto.reason } as unknown as Prisma.InputJsonValue,
           decisionNotes: dto.reason,
-          decidedById:   actor.userId,
-          decidedAt:     new Date(),
+          decidedById: actor.userId,
+          decidedAt: new Date(),
           claimExpiresAt: null,
         },
       });
@@ -314,18 +332,18 @@ export class ReviewTasksService {
         if (version) {
           await tx.resume.update({
             where: { id: version.resumeId },
-            data:  { status: 'REJECTED', updatedBy: actor.userId },
+            data: { status: 'REJECTED', updatedBy: actor.userId },
           });
         }
       }
     });
 
     this.events.emit(EventNames.RESUME_REVIEW_COMPLETED, {
-      reviewTaskId:   id,
+      reviewTaskId: id,
       organizationId: actor.organizationId,
-      action:         'REJECT',
-      reason:         dto.reason,
-      decidedById:    actor.userId,
+      action: 'REJECT',
+      reason: dto.reason,
+      decidedById: actor.userId,
     });
 
     return this.findById(id, actor.organizationId);
@@ -352,8 +370,8 @@ export class ReviewTasksService {
     await this.repo.markReparseRequested({
       id,
       organizationId: actor.organizationId,
-      userId:         actor.userId,
-      notes:          notes ?? null,
+      userId: actor.userId,
+      notes: notes ?? null,
     });
 
     const job = await this.parsing.reparse(versionId, actor, providerOverride);
@@ -416,18 +434,18 @@ export class ReviewTasksService {
   private buildCandidateUpdate(payload: ExtractionPayload): Prisma.CandidateUpdateInput {
     const out: Prisma.CandidateUpdateInput = {};
     const id = payload.identity;
-    if (id?.firstName)   out.firstName   = id.firstName;
-    if (id?.lastName)    out.lastName    = id.lastName;
-    if (id?.emails?.[0]) out.email       = id.emails[0]!.toLowerCase();
-    if (id?.phones?.[0]) out.phone       = id.phones[0];
+    if (id?.firstName) out.firstName = id.firstName;
+    if (id?.lastName) out.lastName = id.lastName;
+    if (id?.emails?.[0]) out.email = id.emails[0]!.toLowerCase();
+    if (id?.phones?.[0]) out.phone = id.phones[0];
     if (id?.linkedinUrl) out.linkedinUrl = id.linkedinUrl;
-    if (id?.location?.city)    out.city          = id.location.city;
-    if (id?.location?.state)   out.stateProvince = id.location.state;
-    if (id?.location?.country) out.country       = id.location.country;
+    if (id?.location?.city) out.city = id.location.city;
+    if (id?.location?.state) out.stateProvince = id.location.state;
+    if (id?.location?.country) out.country = id.location.country;
     const pro = payload.professional;
-    if (pro?.currentTitle)   out.currentTitle   = pro.currentTitle;
+    if (pro?.currentTitle) out.currentTitle = pro.currentTitle;
     if (pro?.currentCompany) out.currentCompany = pro.currentCompany;
-    if (pro?.summary)        out.summary        = pro.summary;
+    if (pro?.summary) out.summary = pro.summary;
     return out;
   }
 }

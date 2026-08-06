@@ -19,17 +19,27 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 
+// Type declaration for Multer file
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
+
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Permission } from '../../auth/permissions/permissions';
 import type { RequestUser } from '../../auth/types/request-user.interface';
 import { ok, paginated } from '../../common/helpers/response.helper';
 import type { ApiResponse, PaginatedResponse } from '../../common/types';
-import { ResumesService } from './resumes.service';
-import { CreateIntakeBatchDto } from './dto/create-intake-batch.dto';
-import { ListResumesDto } from './dto/list-resumes.dto';
-import { UpdateResumeDto } from './dto/update-resume.dto';
-import { UploadResumeDto } from './dto/upload-resume.dto';
+import { type ResumesService } from './resumes.service';
+import { type CreateIntakeBatchDto } from './dto/create-intake-batch.dto';
+import { type ListResumesDto } from './dto/list-resumes.dto';
+import { type UpdateResumeDto } from './dto/update-resume.dto';
+import { type UploadResumeDto } from './dto/upload-resume.dto';
 import type { ResumeDetail, ResumeListItem } from './types/resume.types';
 
 // 50 MB Multer ceiling — actual per-org ceiling is enforced inside the
@@ -61,14 +71,19 @@ export class ResumesController {
   @RequirePermissions(Permission.RESUMES_CREATE)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MULTER_MAX_BYTES } }))
   async upload(
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile() file: MulterFile | undefined,
     @Body() dto: UploadResumeDto,
     @CurrentUser() user: RequestUser,
     @Req() req: Request,
   ): Promise<ApiResponse<{ resume: ResumeDetail; draftCandidateCreated: boolean }>> {
     if (!file) throw new BadRequestException('Multipart field "file" is required');
     const result = await this.resumes.upload(
-      { buffer: file.buffer, originalname: file.originalname, mimetype: file.mimetype, size: file.size },
+      {
+        buffer: file.buffer,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+      },
       dto,
       user,
     );
@@ -122,14 +137,19 @@ export class ResumesController {
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MULTER_MAX_BYTES } }))
   async uploadNewVersion(
     @Param('id', ParseUUIDPipe) id: string,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile() file: MulterFile | undefined,
     @CurrentUser() user: RequestUser,
     @Req() req: Request,
   ): Promise<ApiResponse<ResumeDetail>> {
     if (!file) throw new BadRequestException('Multipart field "file" is required');
     const resume = await this.resumes.uploadNewVersion(
       id,
-      { buffer: file.buffer, originalname: file.originalname, mimetype: file.mimetype, size: file.size },
+      {
+        buffer: file.buffer,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+      },
       user,
     );
     return ok(resume, req.requestId);
@@ -147,15 +167,18 @@ export class ResumesController {
     @Res() res: Response,
   ): Promise<void> {
     const { data, contentType, fileName } = await this.resumes.download(id, vid, user, {
-      ip:        req.ip ?? undefined,
+      ip: req.ip ?? undefined,
       userAgent: req.headers['user-agent'] ?? undefined,
     });
     // RFC 5987 — quote the filename so spaces and unicode survive transport.
     const safeName = encodeURIComponent(fileName);
     res
-      .setHeader('Content-Type',        contentType)
-      .setHeader('Content-Length',      data.length.toString())
-      .setHeader('Content-Disposition', `attachment; filename="${fileName}"; filename*=UTF-8''${safeName}`)
+      .setHeader('Content-Type', contentType)
+      .setHeader('Content-Length', data.length.toString())
+      .setHeader(
+        'Content-Disposition',
+        `attachment; filename="${fileName}"; filename*=UTF-8''${safeName}`,
+      )
       .send(data);
   }
 
