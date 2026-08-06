@@ -55,7 +55,7 @@ export function useAuth(): UseAuthReturn {
       }
     },
     staleTime: 5 * 60 * 1_000, // 5 min — aligned with access token TTL
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Prevent infinite auth loops on unauthenticated pages
     retry: false, // don't retry auth check failures
     refetchInterval: false, // Disable automatic background refetching
   });
