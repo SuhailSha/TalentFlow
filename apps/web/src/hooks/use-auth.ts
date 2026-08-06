@@ -62,9 +62,12 @@ export function useAuth(): UseAuthReturn {
 
   const loginMutation = useMutation({
     mutationFn: (credentials: LoginCredentials) => login(credentials),
-    onSuccess: (profile) => {
+    onSuccess: async (profile) => {
       queryClient.setQueryData(AUTH_QUERY_KEY, profile);
-      router.push('/dashboard');
+      // Invalidate and refetch to ensure middleware sees updated auth state
+      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+      // Use window.location for immediate redirect to bypass client-side routing
+      window.location.href = '/dashboard';
     },
     onError: (error: unknown) => {
       toast.error(getApiErrorMessage(error));
