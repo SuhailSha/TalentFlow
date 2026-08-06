@@ -9,7 +9,13 @@
       "@/*": ["src/*"]
     },
     "declaration": false,
-    "declarationMap": false
+    "declarationMap": false,
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false,
+    "downlevelIteration": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "test"],
