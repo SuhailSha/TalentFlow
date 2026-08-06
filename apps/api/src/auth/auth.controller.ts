@@ -15,7 +15,7 @@ import { IsString, MinLength, IsOptional } from 'class-validator';
 import type { User } from '@repo/database';
 import type { CookieOptions, Request, Response } from 'express';
 
-import { AuthService, ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from './auth.service';
+import { type AuthService, ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { LocalAuthGuard } from './guards/local-auth.guard';
@@ -29,16 +29,18 @@ class AcceptInvitationDto {
   @MinLength(8, { message: 'Password must be at least 8 characters' })
   password!: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   firstName?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   lastName?: string;
 }
 
 const BASE_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
-  sameSite: 'lax',
+  sameSite: 'none', // Required for cross-origin requests between Vercel and Render
   // secure is set dynamically per-response based on NODE_ENV
 };
 
@@ -149,7 +151,7 @@ export class AuthController {
 
     const clearOptions: CookieOptions = {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'none', // Must match the sameSite setting used when setting cookies
       secure: process.env['NODE_ENV'] === 'production',
     };
 
@@ -189,10 +191,10 @@ export class AuthController {
     const userAgent = req.headers['user-agent'] ?? '';
 
     const { accessToken, refreshToken, userProfile } = await this.authService.acceptInvitation({
-      rawToken:  dto.token,
-      password:  dto.password,
+      rawToken: dto.token,
+      password: dto.password,
       firstName: dto.firstName,
-      lastName:  dto.lastName,
+      lastName: dto.lastName,
       ipAddress,
       userAgent,
     });
