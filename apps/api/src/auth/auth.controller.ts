@@ -69,18 +69,14 @@ export class AuthController {
       userAgent,
     );
 
-    const isProduction = process.env['NODE_ENV'] === 'production';
-
     res.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
       ...BASE_COOKIE_OPTIONS,
-      secure: isProduction,
       maxAge: 15 * 60 * 1_000, // 15 minutes — matches JWT_EXPIRES_IN
       path: '/',
     });
 
     res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
       ...BASE_COOKIE_OPTIONS,
-      secure: isProduction,
       maxAge: 30 * 24 * 60 * 60 * 1_000, // 30 days — matches JWT_REFRESH_EXPIRES_IN
       // Narrow path: refresh cookie only sent to auth endpoints (reduces attack surface)
       path: '/api/v1/auth',
@@ -117,18 +113,14 @@ export class AuthController {
       userAgent,
     );
 
-    const isProduction = process.env['NODE_ENV'] === 'production';
-
     res.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
       ...BASE_COOKIE_OPTIONS,
-      secure: isProduction,
       maxAge: 15 * 60 * 1_000,
       path: '/',
     });
 
     res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
       ...BASE_COOKIE_OPTIONS,
-      secure: isProduction,
       maxAge: 30 * 24 * 60 * 60 * 1_000,
       path: '/api/v1/auth',
     });
@@ -201,18 +193,14 @@ export class AuthController {
       userAgent,
     });
 
-    const isProduction = process.env['NODE_ENV'] === 'production';
-
     res.cookie(ACCESS_TOKEN_COOKIE, accessToken, {
       ...BASE_COOKIE_OPTIONS,
-      secure: isProduction,
       maxAge: 15 * 60 * 1_000,
       path: '/',
     });
 
     res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
       ...BASE_COOKIE_OPTIONS,
-      secure: isProduction,
       maxAge: 30 * 24 * 60 * 60 * 1_000,
       path: '/api/v1/auth',
     });
