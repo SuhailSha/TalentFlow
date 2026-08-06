@@ -40,13 +40,21 @@ interface AccessTokenPayload extends JWTPayload {
 }
 
 async function verifyAccessToken(token: string): Promise<AccessTokenPayload | null> {
-  if (!JWT_SECRET) return null;
+  if (!JWT_SECRET) {
+    console.error('[Middleware] JWT_SECRET is not defined');
+    return null;
+  }
 
   try {
     const secret = new TextEncoder().encode(JWT_SECRET);
     const { payload } = await jwtVerify(token, secret);
+    console.log('[Middleware] JWT verification SUCCESS for user:', payload.sub);
     return payload as AccessTokenPayload;
-  } catch {
+  } catch (error) {
+    console.error(
+      '[Middleware] JWT verification FAILED:',
+      error instanceof Error ? error.message : String(error),
+    );
     return null;
   }
 }
@@ -62,6 +70,15 @@ function isAuthPath(pathname: string): boolean {
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get('access_token')?.value;
+
+  console.log(
+    '[Middleware]',
+    pathname,
+    'Cookie present:',
+    !!accessToken,
+    'Cookie length:',
+    accessToken?.length || 0,
+  );
 
   const user = accessToken ? await verifyAccessToken(accessToken) : null;
 
