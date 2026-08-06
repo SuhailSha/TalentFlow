@@ -41,7 +41,7 @@ class AcceptInvitationDto {
 
 const BASE_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
-  sameSite: 'none', // Required for cross-origin requests between Vercel and Render
+  sameSite: 'lax', // TEMPORARY TEST: Change back to 'none' after debugging
   // secure is set dynamically per-response based on NODE_ENV
 };
 
@@ -152,7 +152,7 @@ export class AuthController {
 
     const clearOptions: CookieOptions = {
       httpOnly: true,
-      sameSite: 'none', // Must match the sameSite setting used when setting cookies
+      sameSite: 'lax', // TEMPORARY TEST: Must match the sameSite setting used when setting cookies
       secure: process.env['NODE_ENV'] === 'production',
     };
 
