@@ -1,6 +1,5 @@
 import { type DynamicModule, Logger, Module } from '@nestjs/common';
 
-import { DatabaseModule } from '../../database/prisma.module';
 import { DuplicatesModule } from '../duplicates/duplicates.module';
 import { ExtractionConfigModule } from '../extraction-config/extraction-config.module';
 import { AvScanModule } from './av-scan/av-scan.module';
@@ -58,7 +57,7 @@ export class ResumesModule {
 
     return {
       module: ResumesModule,
-      imports: [DatabaseModule, ExtractionConfigModule, DuplicatesModule, AvScanModule],
+      imports: [ExtractionConfigModule, DuplicatesModule, AvScanModule],
       controllers: [
         ResumesController,
         ResumeIntakeBatchesController,
