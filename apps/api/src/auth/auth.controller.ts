@@ -15,7 +15,7 @@ import { IsString, MinLength, IsOptional } from 'class-validator';
 import type { User } from '@repo/database';
 import type { CookieOptions, Request, Response } from 'express';
 
-import { type AuthService, ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from './auth.service';
+import { AuthService, ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { LocalAuthGuard } from './guards/local-auth.guard';
