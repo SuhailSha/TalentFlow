@@ -1,5 +1,6 @@
 import { type DynamicModule, Logger, Module } from '@nestjs/common';
 
+import { DatabaseModule } from '../../database/prisma.module';
 import { DuplicatesModule } from '../duplicates/duplicates.module';
 import { ExtractionConfigModule } from '../extraction-config/extraction-config.module';
 import { AvScanModule } from './av-scan/av-scan.module';
@@ -51,21 +52,23 @@ export class ResumesModule {
     if (!redisEnabled) {
       logger.warn(
         'REDIS_ENABLED is not true — ResumeParseWorker not registered. ' +
-        'Parses will run inline via ParsingJobsService (dev-only sync fallback).',
+          'Parses will run inline via ParsingJobsService (dev-only sync fallback).',
       );
     }
 
     return {
       module: ResumesModule,
-      imports:     [ExtractionConfigModule, DuplicatesModule, AvScanModule],
+      imports: [DatabaseModule, ExtractionConfigModule, DuplicatesModule, AvScanModule],
       controllers: [
-        ResumesController, ResumeIntakeBatchesController,
+        ResumesController,
+        ResumeIntakeBatchesController,
         ParsingJobsController,
         ReviewTasksController,
       ],
-      providers:   [
+      providers: [
         // R1
-        ResumesService, ResumesRepository,
+        ResumesService,
+        ResumesRepository,
         // R2 — pipeline
         FileRetrievalService,
         TextExtractionService,
@@ -87,7 +90,7 @@ export class ResumesModule {
         ReviewTasksRepository,
         ResumeReviewListener,
       ],
-      exports:     [ResumesService, ParsingJobsService, ReviewTasksService],
+      exports: [ResumesService, ParsingJobsService, ReviewTasksService],
     };
   }
 }
