@@ -11,9 +11,7 @@ interface ErrorPageProps {
 }
 
 /**
- * Route-segment error boundary — Next.js calls this when an unhandled error
- * propagates up from a page or layout within the same segment.
- *
+ * Route-segment error boundary — Next.js calls this when an unhandled error occurs.
  * Must be a Client Component (Next.js requirement for error.tsx files).
  */
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
@@ -31,9 +29,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
         <p className="max-w-sm text-muted-foreground">
           {error.message || 'An unexpected error occurred. Our team has been notified.'}
         </p>
-        {error.digest && (
-          <p className="text-xs text-muted-foreground">Error ID: {error.digest}</p>
-        )}
+        {error.digest && <p className="text-xs text-muted-foreground">Error ID: {error.digest}</p>}
       </div>
       <Button onClick={reset} variant="outline">
         <RefreshCw className="mr-2 h-4 w-4" />
