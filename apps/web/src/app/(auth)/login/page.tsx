@@ -2,6 +2,8 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -24,7 +26,15 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { login, isLoggingIn } = useAuth();
+  const { login, isLoggingIn, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   const {
     register,
@@ -53,9 +63,7 @@ export default function LoginPage() {
         <LogoLockup size="lg" subline="Recruitment intelligence for staffing teams" />
 
         <div className="space-y-8">
-          <p className="text-display-xl text-foreground">
-            Hire with momentum.
-          </p>
+          <p className="text-display-xl text-foreground">Hire with momentum.</p>
           <ul className="space-y-3 text-body-md text-foreground/80">
             <li className="flex items-start gap-2">
               <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-brand-600" />
@@ -86,9 +94,7 @@ export default function LoginPage() {
           <Card variant="bordered">
             <CardHeader className="space-y-2">
               <CardTitle className="text-display-xl">Sign in</CardTitle>
-              <CardDescription>
-                Welcome back. Enter your workspace to continue.
-              </CardDescription>
+              <CardDescription>Welcome back. Enter your workspace to continue.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>

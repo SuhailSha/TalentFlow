@@ -71,43 +71,37 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get('access_token')?.value;
 
-  console.log(
-    '[Middleware]',
-    pathname,
-    'Cookie present:',
-    !!accessToken,
-    'Cookie length:',
-    accessToken?.length || 0,
-  );
+  // Only enforce middleware protection when cookies are present
+  // This allows localStorage token authentication to work client-side
+  if (accessToken) {
+    const user = await verifyAccessToken(accessToken);
 
-  const user = accessToken ? await verifyAccessToken(accessToken) : null;
+    // Authenticated user visiting /login → redirect to dashboard
+    if (user && isAuthPath(pathname)) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
 
-  // Authenticated user visiting /login → redirect to dashboard
-  if (user && isAuthPath(pathname)) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    // Invalid cookie and visiting protected route → redirect to /login
+    if (!user && isProtectedPath(pathname)) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('from', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Pass request through with user context headers
+    const response = NextResponse.next();
+    if (user) {
+      response.headers.set('x-user-id', user.sub);
+      response.headers.set('x-org-id', user.orgId);
+      response.headers.set('x-user-email', user.email);
+      response.headers.set('x-user-roles', user.roles.join(','));
+    }
+    return response;
   }
 
-  // Unauthenticated user visiting a protected route → redirect to /login
-  if (!user && isProtectedPath(pathname)) {
-    const loginUrl = new URL('/login', request.url);
-    // Preserve the intended destination so post-login redirect works
-    loginUrl.searchParams.set('next', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // Pass request through, optionally forwarding user context to Server Components
-  const response = NextResponse.next();
-
-  if (user) {
-    // Server Components can read these headers to avoid an extra /auth/me call.
-    // Header values are strings — complex objects must be JSON-serialized.
-    response.headers.set('x-user-id', user.sub);
-    response.headers.set('x-org-id', user.orgId);
-    response.headers.set('x-user-email', user.email);
-    response.headers.set('x-user-roles', user.roles.join(','));
-  }
-
-  return response;
+  // No cookies present: allow client-side auth to handle routing
+  // This enables localStorage token authentication for cross-origin deployments
+  return NextResponse.next();
 }
 
 export const config = {
