@@ -66,8 +66,10 @@ export function useAuth(): UseAuthReturn {
       queryClient.setQueryData(AUTH_QUERY_KEY, profile);
       // Invalidate and refetch to ensure middleware sees updated auth state
       await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      // Use window.location for immediate redirect to bypass client-side routing
-      window.location.href = '/dashboard';
+      // Small delay to ensure cookies are set before navigation
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 200);
     },
     onError: (error: unknown) => {
       toast.error(getApiErrorMessage(error));
