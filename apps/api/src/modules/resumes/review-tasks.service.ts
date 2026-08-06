@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -49,12 +50,12 @@ import type {
 @Injectable()
 export class ReviewTasksService {
   constructor(
-    private readonly db: PrismaService,
-    private readonly repo: ReviewTasksRepository,
-    private readonly parsing: ParsingJobsService,
-    private readonly orgConfig: ExtractionConfigService,
-    private readonly duplicates: DuplicatesService,
-    private readonly events: EventEmitter2,
+    @Inject(PrismaService) private readonly db: PrismaService,
+    @Inject(ReviewTasksRepository) private readonly repo: ReviewTasksRepository,
+    @Inject(ParsingJobsService) private readonly parsing: ParsingJobsService,
+    @Inject(ExtractionConfigService) private readonly orgConfig: ExtractionConfigService,
+    @Inject(DuplicatesService) private readonly duplicates: DuplicatesService,
+    @Inject(EventEmitter2) private readonly events: EventEmitter2,
   ) {}
 
   // ── List + detail ──────────────────────────────────────────────────────────
