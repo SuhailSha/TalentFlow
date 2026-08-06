@@ -6,6 +6,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -49,7 +50,7 @@ const MULTER_MAX_BYTES = 50 * 1024 * 1024;
 
 @Controller('resumes')
 export class ResumesController {
-  constructor(private readonly resumes: ResumesService) {}
+  constructor(@Inject(ResumesService) private readonly resumes: ResumesService) {}
 
   // ── GET /resumes ──────────────────────────────────────────────────────────
 
@@ -201,7 +202,7 @@ export class ResumesController {
 
 @Controller('resume-intake-batches')
 export class ResumeIntakeBatchesController {
-  constructor(private readonly resumes: ResumesService) {}
+  constructor(@Inject(ResumesService) private readonly resumes: ResumesService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
