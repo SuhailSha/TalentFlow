@@ -6,16 +6,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { type EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import type { Prisma, ResumeParserProvider } from '@repo/database';
 
 import type { RequestUser } from '../../auth/types/request-user.interface';
 import { EventNames } from '../../common/events/event-names.constant';
-import { type PrismaService } from '../../database';
-import { type DuplicatesService } from '../duplicates/duplicates.service';
-import { type ExtractionConfigService } from '../extraction-config/extraction-config.service';
-import { type ParsingJobsService } from './parsing-jobs.service';
-import { type ReviewTasksRepository } from './review-tasks.repository';
+import { PrismaService } from '../../database';
+import { DuplicatesService } from '../duplicates/duplicates.service';
+import { ExtractionConfigService } from '../extraction-config/extraction-config.service';
+import { ParsingJobsService } from './parsing-jobs.service';
+import { ReviewTasksRepository } from './review-tasks.repository';
 import {
   toReviewDetail,
   toReviewListItem,
