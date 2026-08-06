@@ -32,6 +32,7 @@
     "@nestjs/terminus": "^11.0.0",
     "@repo/config": "workspace:*",
     "@repo/database": "workspace:*",
+    "@repo/tsconfig": "workspace:*",
     "@repo/types": "workspace:*",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.0.0",
@@ -64,7 +65,6 @@
   "devDependencies": {
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
-    "@repo/tsconfig": "workspace:*",
     "@types/bcrypt": "^6.0.0",
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.10",
