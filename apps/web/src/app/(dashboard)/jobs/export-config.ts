@@ -2,36 +2,30 @@ import { formatters, type ExportColumn } from '@/lib/export/csv-export';
 
 /**
  * Export column definitions for jobs list
+ * Based on JobListItem structure from types/jobs.ts
  */
 export const jobExportColumns: ExportColumn[] = [
   {
-    key: 'title',
-    header: 'Job Title',
-  },
-  {
     key: 'reqId',
     header: 'Req ID',
+  },
+  {
+    key: 'title',
+    header: 'Job Title',
   },
   {
     key: 'department',
     header: 'Department',
   },
   {
-    key: 'location.city',
-    header: 'City',
+    key: 'employmentType',
+    header: 'Employment Type',
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
-    key: 'location.state',
-    header: 'State',
-  },
-  {
-    key: 'location.country',
-    header: 'Country',
-  },
-  {
-    key: 'remote',
-    header: 'Remote',
-    formatter: (value: unknown) => formatters.boolean(Boolean(value)),
+    key: 'workMode',
+    header: 'Work Mode',
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'status',
@@ -39,54 +33,69 @@ export const jobExportColumns: ExportColumn[] = [
     formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
-    key: 'priority',
+    key: 'hiringPriority',
     header: 'Priority',
     formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
-    key: 'urgency',
-    header: 'Urgency',
-    formatter: (value: unknown) => formatters.status(String(value || '')),
+    key: 'hiringManagerName',
+    header: 'Hiring Manager',
   },
   {
-    key: 'headcount',
-    header: 'Headcount',
+    key: 'openPositions',
+    header: 'Open Positions',
   },
   {
-    key: 'compensation.min',
-    header: 'Compensation Min',
-    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
+    key: 'filledPositions',
+    header: 'Filled Positions',
   },
   {
-    key: 'compensation.max',
-    header: 'Compensation Max',
-    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
-  },
-  {
-    key: 'compensation.currency',
-    header: 'Currency',
-  },
-  {
-    key: 'yearsOfExperience.min',
+    key: 'experienceMin',
     header: 'Min Experience (Years)',
   },
   {
-    key: 'yearsOfExperience.max',
+    key: 'experienceMax',
     header: 'Max Experience (Years)',
   },
   {
-    key: 'hiringManagerId',
-    header: 'Hiring Manager ID',
+    key: 'city',
+    header: 'City',
   },
   {
-    key: 'recruiterIds',
-    header: 'Recruiter IDs',
-    formatter: (value: unknown) => formatters.array(Array.isArray(value) ? value : []),
+    key: 'country',
+    header: 'Country',
   },
   {
-    key: 'targetStartDate',
-    header: 'Target Start Date',
-    formatter: (value: unknown) => formatters.date(value as string | Date),
+    key: 'topSkills',
+    header: 'Top Skills',
+    formatter: (skills: unknown) => {
+      if (!Array.isArray(skills)) return '';
+      return skills
+        .map((skillView) => {
+          if (skillView && typeof skillView === 'object') {
+            const sv = skillView as { skill?: { displayName?: string; name?: string } };
+            return sv.skill?.displayName || sv.skill?.name || '';
+          }
+          return String(skillView || '');
+        })
+        .filter(Boolean)
+        .join(', ');
+    },
+  },
+  {
+    key: 'targetHireDate',
+    header: 'Target Hire Date',
+    formatter: (value: unknown) => (value ? formatters.date(value as string | Date) : ''),
+  },
+  {
+    key: 'openedAt',
+    header: 'Opened Date',
+    formatter: (value: unknown) => (value ? formatters.date(value as string | Date) : ''),
+  },
+  {
+    key: 'closedAt',
+    header: 'Closed Date',
+    formatter: (value: unknown) => (value ? formatters.date(value as string | Date) : ''),
   },
   {
     key: 'createdAt',

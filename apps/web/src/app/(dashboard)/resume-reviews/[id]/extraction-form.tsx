@@ -144,18 +144,68 @@ function stringify(v: unknown): string {
   if (v === null || v === undefined) return '';
   if (typeof v === 'string') return v;
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
-  if (Array.isArray(v)) return v.map(stringify).filter(Boolean).join(', ');
 
-  // Handle skill objects - show normalized name or raw value instead of JSON
+  // Handle arrays (like phone numbers, emails, skills)
+  if (Array.isArray(v)) {
+    return v
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object' && item !== null) {
+          const obj = item as Record<string, unknown>;
+          // Handle phone objects: { number: "+1234567890", type: "mobile" }
+          if ('number' in obj) return String(obj.number || '');
+          // Handle email objects: { email: "user@example.com", type: "primary" }
+          if ('email' in obj) return String(obj.email || '');
+          // Handle skill objects: { raw: "JavaScript", normalized: "JavaScript" }
+          if ('raw' in obj) return String(obj.normalized || obj.raw || '');
+          // Handle other named objects
+          if ('name' in obj) return String(obj.name || '');
+          if ('value' in obj) return String(obj.value || '');
+        }
+        return String(item || '');
+      })
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  // Handle objects (single phone, email, skill, etc.)
   if (typeof v === 'object' && v !== null) {
     const obj = v as Record<string, unknown>;
+
+    // Phone number object: { number: "+1234567890", type: "mobile" }
+    if ('number' in obj) {
+      const type = obj.type ? ` (${obj.type})` : '';
+      return `${obj.number}${type}`;
+    }
+
+    // Email object: { email: "user@example.com", type: "primary" }
+    if ('email' in obj) {
+      const type = obj.type ? ` (${obj.type})` : '';
+      return `${obj.email}${type}`;
+    }
+
     // Skills have 'raw' and optionally 'normalized' fields
     if ('raw' in obj) {
       return String(obj.normalized || obj.raw || '');
     }
-    // Other objects might have 'name' or 'value' fields
+
+    // Location object: { city: "San Francisco", state: "CA", country: "USA" }
+    if ('city' in obj || 'state' in obj || 'country' in obj) {
+      const parts = [obj.city, obj.state, obj.country].filter(Boolean);
+      return parts.join(', ');
+    }
+
+    // Salary/CTC object: { amount: 100000, currency: "USD" }
+    if ('amount' in obj) {
+      const currency = obj.currency || '';
+      const amount = obj.amount;
+      return currency ? `${currency} ${amount}` : String(amount);
+    }
+
+    // Generic objects with name or value fields
     if ('name' in obj) return String(obj.name || '');
     if ('value' in obj) return String(obj.value || '');
+    if ('title' in obj) return String(obj.title || '');
   }
 
   try {

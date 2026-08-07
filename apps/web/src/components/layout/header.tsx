@@ -21,7 +21,7 @@ import { NotificationBell } from './notification-bell';
 import { ThemeToggle } from './theme-toggle';
 
 interface HeaderProps {
-  onMenuToggle?:  () => void;
+  onMenuToggle?: () => void;
   onOpenPalette?: () => void;
 }
 
@@ -40,7 +40,7 @@ export function Header({ onMenuToggle, onOpenPalette }: HeaderProps) {
   const { density, setDensity } = useDensity();
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b border-border bg-background px-4 lg:px-6">
+    <header className="sticky top-0 z-50 flex h-14 items-center gap-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:px-6">
       {/* Mobile sidebar toggle */}
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuToggle}>
         <Menu className="h-5 w-5" />
@@ -52,7 +52,7 @@ export function Header({ onMenuToggle, onOpenPalette }: HeaderProps) {
         <button
           type="button"
           onClick={onOpenPalette}
-          className="flex w-full items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-body-sm text-muted-foreground transition-colors hover:bg-muted/70 focus-visible:bg-muted/70"
+          className="flex w-full items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/70 focus-visible:bg-muted/70 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         >
           <Search className="h-4 w-4 shrink-0" />
           <span className="flex-1 text-left">Search or jump to…</span>
@@ -62,14 +62,18 @@ export function Header({ onMenuToggle, onOpenPalette }: HeaderProps) {
         </button>
       </div>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <NotificationBell />
         <ThemeToggle />
 
         {/* User menu — settings link moved out of the dedicated icon button */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0" aria-label="Account menu">
+            <Button
+              variant="ghost"
+              className="relative h-9 w-9 rounded-full p-0"
+              aria-label="Account menu"
+            >
               <Avatar className="h-9 w-9">
                 {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.firstName} />}
                 <AvatarFallback className="bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-200">

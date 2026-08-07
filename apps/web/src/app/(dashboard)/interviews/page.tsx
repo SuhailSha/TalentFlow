@@ -5,43 +5,41 @@ import Link from 'next/link';
 import { Plus, CalendarClock } from 'lucide-react';
 
 import { PageHeader } from '@/components/common/page-header';
+import { ExportMenu } from '@/components/common/export-menu';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SelectionCheckbox, useTableSelection } from '@/components/bulk';
 import { useInterviews, useInterviewStats } from '@/hooks/use-interviews';
 import { InterviewBulkActions } from './bulk-actions';
-import type {
-  InterviewListItem,
-  InterviewStatus,
-  ListInterviewsParams,
-} from '@/types/interviews';
+import type { InterviewListItem, InterviewStatus, ListInterviewsParams } from '@/types/interviews';
 import {
   FSM_TRANSITIONS,
   INTERVIEW_STATUS_LABELS,
   INTERVIEW_TYPE_LABELS,
 } from '@/types/interviews';
+import { interviewExportColumns } from './export-config';
 
 const STATUS_COLORS: Record<InterviewStatus, string> = {
-  SCHEDULED:        'bg-blue-100 text-blue-800',
-  CONFIRMED:        'bg-green-100 text-green-800',
-  RESCHEDULED:      'bg-amber-100 text-amber-800',
-  IN_PROGRESS:      'bg-indigo-100 text-indigo-800',
-  COMPLETED:        'bg-gray-100 text-gray-700',
+  SCHEDULED: 'bg-blue-100 text-blue-800',
+  CONFIRMED: 'bg-green-100 text-green-800',
+  RESCHEDULED: 'bg-amber-100 text-amber-800',
+  IN_PROGRESS: 'bg-indigo-100 text-indigo-800',
+  COMPLETED: 'bg-gray-100 text-gray-700',
   FEEDBACK_PENDING: 'bg-orange-100 text-orange-800',
-  PASSED:           'bg-emerald-100 text-emerald-800',
-  FAILED:           'bg-red-100 text-red-800',
-  NO_SHOW:          'bg-rose-100 text-rose-800',
-  CANCELLED:        'bg-slate-100 text-slate-600',
+  PASSED: 'bg-emerald-100 text-emerald-800',
+  FAILED: 'bg-red-100 text-red-800',
+  NO_SHOW: 'bg-rose-100 text-rose-800',
+  CANCELLED: 'bg-slate-100 text-slate-600',
 };
 
 const NEEDS_ACTION_STATUSES: InterviewStatus[] = ['FEEDBACK_PENDING', 'NO_SHOW'];
 const UPCOMING_STATUSES: InterviewStatus[] = ['SCHEDULED', 'CONFIRMED', 'RESCHEDULED'];
 
 interface InterviewRowProps {
-  interview:  InterviewListItem;
+  interview: InterviewListItem;
   isSelected: boolean;
-  onToggle:   (id: string) => void;
+  onToggle: (id: string) => void;
 }
 
 function InterviewRow({ interview, isSelected, onToggle }: InterviewRowProps) {
@@ -63,53 +61,53 @@ function InterviewRow({ interview, isSelected, onToggle }: InterviewRowProps) {
           />
         </span>
         <div className="flex flex-1 items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm">
-              {c.firstName} {c.lastName}
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[interview.status]}`}
-            >
-              {INTERVIEW_STATUS_LABELS[interview.status]}
-            </span>
-            {hasNextSteps && (
-              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
-                Action needed
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-sm">
+                {c.firstName} {c.lastName}
               </span>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[interview.status]}`}
+              >
+                {INTERVIEW_STATUS_LABELS[interview.status]}
+              </span>
+              {hasNextSteps && (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
+                  Action needed
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">{c.email}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+              {j.reqId} · {j.title}
+              {j.department ? ` — ${j.department}` : ''}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Round {interview.round}
+              {interview.roundLabel ? ` · ${interview.roundLabel}` : ''}
+              {' · '}
+              {INTERVIEW_TYPE_LABELS[interview.type]}
+            </p>
+          </div>
+
+          <div className="shrink-0 text-right space-y-1">
+            <p className="text-xs text-muted-foreground">
+              {interview.owner.firstName} {interview.owner.lastName}
+            </p>
+            {interview.scheduledAt && (
+              <p className="text-xs font-medium text-foreground">
+                {new Date(interview.scheduledAt).toLocaleDateString()}{' '}
+                {new Date(interview.scheduledAt).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+            )}
+            {interview.interviewerName && (
+              <p className="text-xs text-muted-foreground">{interview.interviewerName}</p>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{c.email}</p>
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">
-            {j.reqId} · {j.title}
-            {j.department ? ` — ${j.department}` : ''}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Round {interview.round}
-            {interview.roundLabel ? ` · ${interview.roundLabel}` : ''}
-            {' · '}
-            {INTERVIEW_TYPE_LABELS[interview.type]}
-          </p>
         </div>
-
-        <div className="shrink-0 text-right space-y-1">
-          <p className="text-xs text-muted-foreground">
-            {interview.owner.firstName} {interview.owner.lastName}
-          </p>
-          {interview.scheduledAt && (
-            <p className="text-xs font-medium text-foreground">
-              {new Date(interview.scheduledAt).toLocaleDateString()}{' '}
-              {new Date(interview.scheduledAt).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </p>
-          )}
-          {interview.interviewerName && (
-            <p className="text-xs text-muted-foreground">{interview.interviewerName}</p>
-          )}
-        </div>
-      </div>
       </div>
     </Link>
   );
@@ -185,8 +183,8 @@ export default function InterviewsPage() {
 
   const tabs: { key: TabFilter; label: string }[] = [
     { key: 'needs_action', label: 'Needs Action' },
-    { key: 'upcoming',     label: 'Upcoming' },
-    { key: 'all',          label: 'All' },
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'all', label: 'All' },
   ];
 
   return (
@@ -195,14 +193,22 @@ export default function InterviewsPage() {
         title="Interviews"
         description="Manage scheduling, feedback, and interview pipeline"
         breadcrumbs={[{ title: 'Dashboard', href: '/dashboard' }, { title: 'Interviews' }]}
-        actions={
-          <Button asChild size="sm">
+        actions={[
+          <ExportMenu
+            key="export"
+            data={items as unknown as Record<string, unknown>[]}
+            columns={interviewExportColumns}
+            filename="interviews"
+            disabled={isLoading || items.length === 0}
+            loading={isLoading}
+          />,
+          <Button key="schedule" asChild size="sm">
             <Link href="/interviews/new">
               <Plus className="mr-1.5 h-4 w-4" />
               Schedule interview
             </Link>
-          </Button>
-        }
+          </Button>,
+        ]}
       />
 
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -241,8 +247,8 @@ export default function InterviewsPage() {
               {tab === 'needs_action'
                 ? 'No interviews need action'
                 : tab === 'upcoming'
-                ? 'No upcoming interviews'
-                : 'No interviews yet'}
+                  ? 'No upcoming interviews'
+                  : 'No interviews yet'}
             </p>
             <Button asChild size="sm" variant="outline">
               <Link href="/interviews/new">Schedule an interview</Link>

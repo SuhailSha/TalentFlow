@@ -2,68 +2,66 @@ import { formatters, type ExportColumn } from '@/lib/export/csv-export';
 
 /**
  * Export column definitions for candidates list
+ * Based on CandidateListItem structure from types/candidates.ts
  */
 export const candidateExportColumns: ExportColumn[] = [
   {
-    key: 'identity.fullName',
+    key: 'fullName',
     header: 'Full Name',
   },
   {
-    key: 'identity.firstName',
+    key: 'firstName',
     header: 'First Name',
   },
   {
-    key: 'identity.lastName',
+    key: 'lastName',
     header: 'Last Name',
   },
   {
-    key: 'identity.emails.0',
+    key: 'email',
     header: 'Email',
   },
   {
-    key: 'identity.phones.0',
+    key: 'phone',
     header: 'Phone',
   },
   {
-    key: 'professional.currentTitle',
+    key: 'currentTitle',
     header: 'Current Title',
   },
   {
-    key: 'professional.currentCompany',
+    key: 'currentCompany',
     header: 'Current Company',
   },
   {
-    key: 'professional.yearsOfExperience',
+    key: 'experienceYears',
     header: 'Years of Experience',
   },
   {
-    key: 'professional.skills',
-    header: 'Skills',
+    key: 'location',
+    header: 'Location',
+  },
+  {
+    key: 'isRemote',
+    header: 'Remote Work',
+    formatter: (value: unknown) => formatters.boolean(Boolean(value)),
+  },
+  {
+    key: 'topSkills',
+    header: 'Top Skills',
     formatter: (skills: unknown) => {
       if (!Array.isArray(skills)) return '';
       return skills
-        .map((skill) => {
-          if (skill && typeof skill === 'object') {
-            const skillObj = skill as { normalized?: string; raw?: string };
-            return skillObj.normalized || skillObj.raw || String(skill);
+        .map((skillView) => {
+          if (skillView && typeof skillView === 'object') {
+            const sv = skillView as { skill?: { displayName?: string; name?: string } };
+            return sv.skill?.displayName || sv.skill?.name || '';
           }
-          return String(skill || '');
+          return String(skillView || '');
         })
         .filter(Boolean)
         .join(', ');
     },
-  },
-  {
-    key: 'identity.location.city',
-    header: 'City',
-  },
-  {
-    key: 'identity.location.state',
-    header: 'State',
-  },
-  {
-    key: 'identity.location.country',
-    header: 'Country',
   },
   {
     key: 'status',
@@ -71,37 +69,24 @@ export const candidateExportColumns: ExportColumn[] = [
     formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
+    key: 'availabilityStatus',
+    header: 'Availability',
+    formatter: (value: unknown) => formatters.status(String(value || '')),
+  },
+  {
+    key: 'availableFrom',
+    header: 'Available From',
+    formatter: (value: unknown) => (value ? formatters.date(value as string | Date) : ''),
+  },
+  {
     key: 'source',
     header: 'Source',
     formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
-    key: 'recruiting.currentCtc.amount',
-    header: 'Current CTC',
-    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
-  },
-  {
-    key: 'recruiting.expectedCtc.amount',
-    header: 'Expected CTC',
-    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
-  },
-  {
-    key: 'recruiting.noticePeriodDays',
-    header: 'Notice Period (Days)',
-  },
-  {
-    key: 'recruiting.visaStatus',
-    header: 'Visa Status',
-    formatter: (value: unknown) => formatters.status(String(value || '')),
-  },
-  {
-    key: 'recruiting.workAuthorization',
-    header: 'Work Authorization',
-    formatter: (value: unknown) => formatters.status(String(value || '')),
-  },
-  {
-    key: 'ownerId',
-    header: 'Owner ID',
+    key: 'lastActivityAt',
+    header: 'Last Activity',
+    formatter: (value: unknown) => (value ? formatters.datetime(value as string | Date) : 'Never'),
   },
   {
     key: 'createdAt',

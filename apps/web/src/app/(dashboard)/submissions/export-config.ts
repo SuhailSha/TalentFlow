@@ -2,23 +2,40 @@ import { formatters, type ExportColumn } from '@/lib/export/csv-export';
 
 /**
  * Export column definitions for submissions list
+ * Based on SubmissionListItem structure from types/submissions.ts
  */
 export const submissionExportColumns: ExportColumn[] = [
   {
-    key: 'candidateName',
-    header: 'Candidate Name',
+    key: 'candidate.firstName',
+    header: 'Candidate First Name',
   },
   {
-    key: 'candidateEmail',
+    key: 'candidate.lastName',
+    header: 'Candidate Last Name',
+  },
+  {
+    key: 'candidate.email',
     header: 'Candidate Email',
   },
   {
-    key: 'jobReqId',
+    key: 'candidate.currentTitle',
+    header: 'Current Title',
+  },
+  {
+    key: 'candidate.location',
+    header: 'Location',
+  },
+  {
+    key: 'job.reqId',
     header: 'Job Req ID',
   },
   {
-    key: 'jobTitle',
+    key: 'job.title',
     header: 'Job Title',
+  },
+  {
+    key: 'job.department',
+    header: 'Department',
   },
   {
     key: 'status',
@@ -26,71 +43,59 @@ export const submissionExportColumns: ExportColumn[] = [
     formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
-    key: 'stage',
-    header: 'Stage',
-    formatter: (value: unknown) => formatters.status(String(value || '')),
+    key: 'vendor.companyName',
+    header: 'Vendor Company',
   },
   {
-    key: 'source',
-    header: 'Source',
-    formatter: (value: unknown) => formatters.status(String(value || '')),
+    key: 'owner.firstName',
+    header: 'Owner First Name',
   },
   {
-    key: 'vendorId',
-    header: 'Vendor ID',
+    key: 'owner.lastName',
+    header: 'Owner Last Name',
   },
   {
-    key: 'vendorName',
-    header: 'Vendor Name',
+    key: 'owner.email',
+    header: 'Owner Email',
   },
   {
-    key: 'submittedById',
-    header: 'Submitted By ID',
-  },
-  {
-    key: 'assignedRecruiterId',
-    header: 'Assigned Recruiter ID',
-  },
-  {
-    key: 'priority',
-    header: 'Priority',
-    formatter: (value: unknown) => formatters.status(String(value || '')),
-  },
-  {
-    key: 'expectedSalary.amount',
-    header: 'Expected Salary',
+    key: 'billRate',
+    header: 'Bill Rate',
     formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
   },
   {
-    key: 'expectedSalary.currency',
-    header: 'Salary Currency',
+    key: 'payRate',
+    header: 'Pay Rate',
+    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
   },
   {
-    key: 'availableFrom',
-    header: 'Available From',
-    formatter: (value: unknown) => formatters.date(value as string | Date),
+    key: 'currency',
+    header: 'Currency',
   },
   {
-    key: 'noticePeriodDays',
-    header: 'Notice Period (Days)',
-  },
-  {
-    key: 'overallRating',
-    header: 'Overall Rating',
-  },
-  {
-    key: 'fitScore',
-    header: 'Fit Score',
-  },
-  {
-    key: 'rejectionReason',
-    header: 'Rejection Reason',
-    formatter: (value: unknown) => formatters.status(String(value || '')),
+    key: 'startDate',
+    header: 'Start Date',
+    formatter: (value: unknown) => (value ? formatters.date(value as string | Date) : ''),
   },
   {
     key: 'submittedAt',
     header: 'Submitted Date',
-    formatter: (value: unknown) => formatters.datetime(value as string | Date),
+    formatter: (value: unknown) => (value ? formatters.datetime(value as string | Date) : ''),
+  },
+  {
+    key: 'offeredAt',
+    header: 'Offered Date',
+    formatter: (value: unknown) => (value ? formatters.datetime(value as string | Date) : ''),
+  },
+  {
+    key: 'placedAt',
+    header: 'Placed Date',
+    formatter: (value: unknown) => (value ? formatters.datetime(value as string | Date) : ''),
+  },
+  {
+    key: 'rejectedAt',
+    header: 'Rejected Date',
+    formatter: (value: unknown) => (value ? formatters.datetime(value as string | Date) : ''),
   },
   {
     key: 'createdAt',

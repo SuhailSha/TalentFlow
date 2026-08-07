@@ -9,6 +9,7 @@ import {
   addView,
   DataTable,
   DataTableToolbar,
+  ExportButton,
   loadViews,
   SavedViewsRow,
   type BulkAction,
@@ -19,16 +20,27 @@ import {
 import { Button } from '@/components/ui/button';
 import { useSubmissions, useSubmissionStats } from '@/hooks/use-submissions';
 import { cn } from '@/lib/utils';
-import type { ListSubmissionsParams, SubmissionListItem, SubmissionStatus } from '@/types/submissions';
+import type {
+  ListSubmissionsParams,
+  SubmissionListItem,
+  SubmissionStatus,
+} from '@/types/submissions';
 
 import { SubmissionBulkActions } from './bulk-actions';
 import { submissionColumns } from './columns';
+import { submissionExportColumns } from './export-config';
 
 const NAMESPACE = 'submissions';
 const PAGE_SIZE = 25;
 
 const ACTIVE_STATUSES: SubmissionStatus[] = [
-  'DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SHORTLISTED', 'INTERVIEW', 'OFFERED', 'ON_HOLD',
+  'DRAFT',
+  'SUBMITTED',
+  'UNDER_REVIEW',
+  'SHORTLISTED',
+  'INTERVIEW',
+  'OFFERED',
+  'ON_HOLD',
 ];
 const TERMINAL_STATUSES: SubmissionStatus[] = ['PLACED', 'REJECTED', 'WITHDRAWN', 'CLOSED'];
 
@@ -36,8 +48,11 @@ type Pipeline = 'all' | 'active' | 'terminal';
 
 function StatsBar({ pipeline, onChange }: { pipeline: Pipeline; onChange: (p: Pipeline) => void }) {
   const { data } = useSubmissionStats();
-  const total  = data?.total ?? 0;
-  const active = data?.byStatus.filter((s) => ACTIVE_STATUSES.includes(s.status)).reduce((sum, s) => sum + s.count, 0) ?? 0;
+  const total = data?.total ?? 0;
+  const active =
+    data?.byStatus
+      .filter((s) => ACTIVE_STATUSES.includes(s.status))
+      .reduce((sum, s) => sum + s.count, 0) ?? 0;
   const placed = data?.byStatus.find((s) => s.status === 'PLACED')?.count ?? 0;
 
   const btn = (key: Pipeline, label: string, count: number, tone: string) => (
@@ -60,21 +75,21 @@ function StatsBar({ pipeline, onChange }: { pipeline: Pipeline; onChange: (p: Pi
 
   return (
     <div className="flex flex-wrap gap-2">
-      {btn('all',      'Total',  total,  'text-muted-foreground')}
-      {btn('active',   'Active', active, 'text-emerald-700 dark:text-emerald-300')}
+      {btn('all', 'Total', total, 'text-muted-foreground')}
+      {btn('active', 'Active', active, 'text-emerald-700 dark:text-emerald-300')}
       {btn('terminal', 'Placed', placed, 'text-blue-700    dark:text-blue-300')}
     </div>
   );
 }
 
 export default function SubmissionsPage() {
-  const [page,     setPage]     = useState(1);
+  const [page, setPage] = useState(1);
   const [pipeline, setPipeline] = useState<Pipeline>('all');
 
   const params: ListSubmissionsParams = {
     page,
     limit: PAGE_SIZE,
-    ...(pipeline === 'active'   && { status: ACTIVE_STATUSES   }),
+    ...(pipeline === 'active' && { status: ACTIVE_STATUSES }),
     ...(pipeline === 'terminal' && { status: TERMINAL_STATUSES }),
   };
 
@@ -82,73 +97,112 @@ export default function SubmissionsPage() {
 
   const [views, setViews] = useState<SavedView[]>(() => loadViews(NAMESPACE));
   const [activeViewId, setActiveViewId] = useState<string | undefined>();
-  const [selectedIds,  setSelectedIds]  = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const clearSelection = useCallback(() => setSelectedIds([]), []);
 
-  const handleSaveView = useCallback((name: string) => {
-    const view: SavedView = {
-      id: `v_${name.toLowerCase().replace(/\W+/g, '-')}_${views.length + 1}`,
-      name,
-      state: { pipeline },
-    };
-    setViews(addView(NAMESPACE, view));
-    setActiveViewId(view.id);
-  }, [pipeline, views.length]);
+  const handleSaveView = useCallback(
+    (name: string) => {
+      const view: SavedView = {
+        id: `v_${name.toLowerCase().replace(/\W+/g, '-')}_${views.length + 1}`,
+        name,
+        state: { pipeline },
+      };
+      setViews(addView(NAMESPACE, view));
+      setActiveViewId(view.id);
+    },
+    [pipeline, views.length],
+  );
 
-  const handleSelectView = useCallback((id: string) => {
-    const v = views.find((x) => x.id === id);
-    if (!v) return;
-    setActiveViewId(id);
-    if (v.state.pipeline === 'all' || v.state.pipeline === 'active' || v.state.pipeline === 'terminal') {
-      setPipeline(v.state.pipeline);
-    }
-    setPage(1);
-  }, [views]);
+  const handleSelectView = useCallback(
+    (id: string) => {
+      const v = views.find((x) => x.id === id);
+      if (!v) return;
+      setActiveViewId(id);
+      if (
+        v.state.pipeline === 'all' ||
+        v.state.pipeline === 'active' ||
+        v.state.pipeline === 'terminal'
+      ) {
+        setPipeline(v.state.pipeline);
+      }
+      setPage(1);
+    },
+    [views],
+  );
 
   const activeFilters: FilterChipValue[] = useMemo(() => {
     if (pipeline === 'all') return [];
-    return [{
-      columnId: 'pipeline',
-      label:    'Pipeline',
-      value:    pipeline === 'active' ? 'Active' : 'Closed',
-      serialized: pipeline,
-    }];
+    return [
+      {
+        columnId: 'pipeline',
+        label: 'Pipeline',
+        value: pipeline === 'active' ? 'Active' : 'Closed',
+        serialized: pipeline,
+      },
+    ];
   }, [pipeline]);
 
-  const removeFilter = useCallback(() => { setPipeline('all'); setPage(1); }, []);
-  const clearAll     = useCallback(() => { setPipeline('all'); setPage(1); }, []);
+  const removeFilter = useCallback(() => {
+    setPipeline('all');
+    setPage(1);
+  }, []);
+  const clearAll = useCallback(() => {
+    setPipeline('all');
+    setPage(1);
+  }, []);
 
   const items = data?.data ?? [];
   const total = data?.meta.total ?? 0;
 
-  const bulkActions: BulkAction<SubmissionListItem>[] = useMemo(() => [
-    { id: 'status',   label: 'Change status', icon: <UserPlus className="h-3.5 w-3.5" />, onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)) },
-    { id: 'reminder', label: 'Add reminder',  icon: <Bell     className="h-3.5 w-3.5" />, onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)) },
-    { id: 'archive',  label: 'Archive',       icon: <Archive  className="h-3.5 w-3.5" />, onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)), danger: true },
-  ], []);
+  const bulkActions: BulkAction<SubmissionListItem>[] = useMemo(
+    () => [
+      {
+        id: 'status',
+        label: 'Change status',
+        icon: <UserPlus className="h-3.5 w-3.5" />,
+        onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)),
+      },
+      {
+        id: 'reminder',
+        label: 'Add reminder',
+        icon: <Bell className="h-3.5 w-3.5" />,
+        onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)),
+      },
+      {
+        id: 'archive',
+        label: 'Archive',
+        icon: <Archive className="h-3.5 w-3.5" />,
+        onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)),
+        danger: true,
+      },
+    ],
+    [],
+  );
 
   const config: DataTableConfig<SubmissionListItem> = {
-    columns:     submissionColumns,
-    data:        items,
+    columns: submissionColumns,
+    data: items,
     total,
     isLoading,
     isFetching,
-    error:       error ?? null,
-    rowClick:    'navigate',
-    rowHref:     (r) => `/submissions/${r.id}`,
-    ariaLabel:   'Submissions',
+    error: error ?? null,
+    rowClick: 'navigate',
+    rowHref: (r) => `/submissions/${r.id}`,
+    ariaLabel: 'Submissions',
     virtualized: items.length > 50,
     bulkActions,
     filters: {
-      active:     activeFilters,
-      onRemove:   removeFilter,
+      active: activeFilters,
+      onRemove: removeFilter,
       onClearAll: clearAll,
     },
     pagination: {
-      pageIndex:    page - 1,
-      pageSize:     PAGE_SIZE,
+      pageIndex: page - 1,
+      pageSize: PAGE_SIZE,
       onPageChange: (idx) => setPage(idx + 1),
-      onPageSizeChange: () => { /* fixed in Slice 5 */ },
+      onPageSizeChange: () => {
+        /* fixed in Slice 5 */
+      },
     },
   };
 
@@ -169,7 +223,13 @@ export default function SubmissionsPage() {
         }
       />
 
-      <StatsBar pipeline={pipeline} onChange={(p) => { setPipeline(p); setPage(1); }} />
+      <StatsBar
+        pipeline={pipeline}
+        onChange={(p) => {
+          setPipeline(p);
+          setPage(1);
+        }}
+      />
 
       <SavedViewsRow
         views={views}
@@ -182,16 +242,41 @@ export default function SubmissionsPage() {
         activeFilters={activeFilters}
         onRemoveFilter={removeFilter}
         onClearAll={clearAll}
+        rightSlot={
+          <ExportButton
+            data={items as unknown as Record<string, unknown>[]}
+            columns={submissionExportColumns}
+            filename="submissions"
+            disabled={isLoading || items.length === 0}
+            loading={isLoading}
+          />
+        }
       />
 
       <DataTable<SubmissionListItem> config={config} />
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-[12px] text-muted-foreground">
-          <span>Page {page} of {totalPages}</span>
+          <span>
+            Page {page} of {totalPages}
+          </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1}          onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
           </div>
         </div>
       )}
