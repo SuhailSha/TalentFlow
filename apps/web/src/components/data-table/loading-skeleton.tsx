@@ -2,14 +2,14 @@ import type { DataTableDensity } from './types';
 
 interface Props {
   columns: number;
-  rows?:   number;
+  rows?: number;
   density: DataTableDensity;
 }
 
 const ROW_HEIGHT: Record<DataTableDensity, string> = {
-  cozy:        'h-14',
+  cozy: 'h-14',
   comfortable: 'h-11',
-  compact:     'h-9',
+  compact: 'h-9',
 };
 
 /**
@@ -21,9 +21,12 @@ export function DataTableSkeleton({ columns, rows = 10, density }: Props) {
   return (
     <div role="status" aria-label="Loading table" className="overflow-hidden rounded-md border">
       {/* Header stripe */}
-      <div className={`grid gap-3 border-b bg-muted/30 px-3 ${ROW_HEIGHT[density]} items-center`} style={{ gridTemplateColumns: `repeat(${columns}, minmax(80px, 1fr))` }}>
+      <div
+        className={`grid gap-3 border-b bg-muted/30 px-3 ${ROW_HEIGHT[density]} items-center`}
+        style={{ gridTemplateColumns: `repeat(${columns}, minmax(80px, 1fr))` }}
+      >
         {Array.from({ length: columns }).map((_, i) => (
-          <div key={i} className="h-3 w-24 rounded bg-muted-foreground/20" />
+          <div key={i} className="h-3 w-24 rounded bg-muted-foreground/20 animate-pulse" />
         ))}
       </div>
       {/* Body rows */}

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { CommandPalette, useCommandPalette } from '@/components/layout/command-palette';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
+import { EnterpriseLoader } from '@/components/loading/enterprise-loader';
 import { useAuth } from '@/hooks/use-auth';
 import { useSidebarState } from '@/hooks/use-sidebar-state';
 
@@ -25,14 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Show loading or redirect while checking auth
   if (isLoading || !isAuthenticated) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="mt-2 text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    return <EnterpriseLoader message="Initializing your workspace" showProgress={true} />;
   }
 
   return (
