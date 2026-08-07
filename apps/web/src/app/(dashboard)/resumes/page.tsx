@@ -96,9 +96,12 @@ function ResumeRowSkeleton() {
 export default function ResumesPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ResumeStatus | undefined>();
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
 
   const params: ListResumesParams = {
+    page,
+    limit: 20,
     search: debouncedSearch || undefined,
     status: statusFilter,
   };
@@ -107,11 +110,15 @@ export default function ResumesPage() {
 
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
+    setPage(1);
   }, []);
 
   const toggleStatus = (s: ResumeStatus) => {
     setStatusFilter((prev) => (prev === s ? undefined : s));
+    setPage(1);
   };
+
+  const totalPages = data?.meta?.totalPages ?? 1;
 
   return (
     <div className="space-y-6">
@@ -194,6 +201,31 @@ export default function ResumesPage() {
               <ResumeRow key={r.id} resume={r} />
             ))}
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                {data?.meta?.total} total · page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

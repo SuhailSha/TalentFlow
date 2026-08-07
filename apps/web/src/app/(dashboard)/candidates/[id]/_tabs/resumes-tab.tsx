@@ -47,7 +47,7 @@ interface ResumesTabProps {
 }
 
 export function ResumesTab({ candidateId, canUpdate }: ResumesTabProps) {
-  const { data: resp, isLoading, isError } = useResumes({ candidateId });
+  const { data: resp, isLoading, isError } = useResumes({ candidateId, limit: 50 });
   const upload = useUploadResume();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);

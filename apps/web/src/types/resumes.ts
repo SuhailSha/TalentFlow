@@ -67,7 +67,8 @@ export interface ListResumesParams {
   status?: ResumeStatus;
   source?: ResumeSource;
   search?: string;
-  // Note: Resume API doesn't support pagination parameters
+  page?: number;
+  limit?: number;
 }
 
 export interface UploadResumeForm {

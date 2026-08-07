@@ -10,8 +10,10 @@ import type { ApiResponse, PaginatedResponse } from './types';
 import { apiClient } from './client';
 
 function buildListParams(p: ListResumesParams): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  // Resume API doesn't support pagination parameters
+  const out: Record<string, unknown> = {
+    page: p.page ?? 1,
+    limit: p.limit ?? 20,
+  };
   if (p.candidateId) out.candidateId = p.candidateId;
   if (p.intakeBatchId) out.intakeBatchId = p.intakeBatchId;
   if (p.status) out.status = p.status;

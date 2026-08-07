@@ -85,7 +85,7 @@ function ResumeRow({ resume }: { resume: ResumeListItem }) {
 export default function CandidateResumesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: candidate, isLoading: candLoading } = useCandidate(id);
-  const { data: resumes, isLoading, isError } = useResumes({ candidateId: id });
+  const { data: resumes, isLoading, isError } = useResumes({ candidateId: id, limit: 50 });
 
   const candidateName = candidate ? `${candidate.firstName} ${candidate.lastName}` : 'Candidate';
 
