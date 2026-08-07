@@ -1,10 +1,6 @@
 // Mirror of API wire shapes — keep in sync with apps/api/src/modules/resumes/types/resume.types.ts
 
-export type ResumeSource =
-  | 'RECRUITER_UPLOAD'
-  | 'VENDOR_SUBMISSION'
-  | 'API_IMPORT'
-  | 'EMAIL_INTAKE';
+export type ResumeSource = 'RECRUITER_UPLOAD' | 'VENDOR_SUBMISSION' | 'API_IMPORT' | 'EMAIL_INTAKE';
 
 export type ResumeStatus =
   | 'DRAFT'
@@ -22,32 +18,32 @@ export type ResumeAccessAction =
   | 'RETENTION_PURGE';
 
 export interface ResumeVersionView {
-  id:              string;
-  versionNumber:   number;
+  id: string;
+  versionNumber: number;
   storageProvider: string;
-  fileName:        string;
-  mimeType:        string;
-  sizeBytes:       number;
-  sha256:          string;
-  pageCount:       number | null;
-  uploadedBy:      string;
-  uploadedAt:      string;
-  supersededAt:    string | null;
-  isCurrent:       boolean;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  sha256: string;
+  pageCount: number | null;
+  uploadedBy: string;
+  uploadedAt: string;
+  supersededAt: string | null;
+  isCurrent: boolean;
 }
 
 export interface ResumeListItem {
-  id:             string;
+  id: string;
   organizationId: string;
-  candidateId:    string;
-  intakeBatchId:  string | null;
-  source:         ResumeSource;
-  status:         ResumeStatus;
-  label:          string | null;
+  candidateId: string;
+  intakeBatchId: string | null;
+  source: ResumeSource;
+  status: ResumeStatus;
+  label: string | null;
   currentVersion: ResumeVersionView | null;
-  versionCount:   number;
-  createdAt:      string;
-  updatedAt:      string;
+  versionCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ResumeDetail extends ResumeListItem {
@@ -55,55 +51,54 @@ export interface ResumeDetail extends ResumeListItem {
 }
 
 export interface ResumeAccessLogView {
-  id:        string;
-  action:    ResumeAccessAction;
-  actorId:   string | null;
+  id: string;
+  action: ResumeAccessAction;
+  actorId: string | null;
   ipAddress: string | null;
   userAgent: string | null;
   requestId: string | null;
-  metadata:  Record<string, unknown>;
+  metadata: Record<string, unknown>;
   createdAt: string;
 }
 
 export interface ListResumesParams {
-  candidateId?:   string;
+  candidateId?: string;
   intakeBatchId?: string;
-  status?:        ResumeStatus;
-  source?:        ResumeSource;
-  search?:        string;
-  page?:          number;
-  limit?:         number;
+  status?: ResumeStatus;
+  source?: ResumeSource;
+  search?: string;
+  // Note: Resume API doesn't support pagination parameters
 }
 
 export interface UploadResumeForm {
-  file:           File;
-  candidateId?:   string;
-  firstName?:     string;
-  lastName?:      string;
-  email?:         string;
-  label?:         string;
+  file: File;
+  candidateId?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  label?: string;
   intakeBatchId?: string;
 }
 
 export interface UpdateResumeDto {
-  label?:  string;
+  label?: string;
   status?: 'ACTIVE' | 'ARCHIVED' | 'DRAFT';
 }
 
 // ── Status display ──────────────────────────────────────────────────────────
 
 export const RESUME_STATUS_LABELS: Record<ResumeStatus, string> = {
-  DRAFT:        'Draft',
-  PROCESSING:   'Processing',
+  DRAFT: 'Draft',
+  PROCESSING: 'Processing',
   NEEDS_REVIEW: 'Needs review',
-  ACTIVE:       'Active',
-  ARCHIVED:     'Archived',
-  REJECTED:     'Rejected',
+  ACTIVE: 'Active',
+  ARCHIVED: 'Archived',
+  REJECTED: 'Rejected',
 };
 
 export const RESUME_SOURCE_LABELS: Record<ResumeSource, string> = {
-  RECRUITER_UPLOAD:  'Recruiter upload',
+  RECRUITER_UPLOAD: 'Recruiter upload',
   VENDOR_SUBMISSION: 'Vendor submission',
-  API_IMPORT:        'API import',
-  EMAIL_INTAKE:      'Email intake',
+  API_IMPORT: 'API import',
+  EMAIL_INTAKE: 'Email intake',
 };

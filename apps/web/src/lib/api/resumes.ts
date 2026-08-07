@@ -10,19 +10,19 @@ import type { ApiResponse, PaginatedResponse } from './types';
 import { apiClient } from './client';
 
 function buildListParams(p: ListResumesParams): Record<string, unknown> {
-  const out: Record<string, unknown> = {
-    page:  p.page  ?? 1,
-    limit: p.limit ?? 20,
-  };
-  if (p.candidateId)    out.candidateId   = p.candidateId;
-  if (p.intakeBatchId)  out.intakeBatchId = p.intakeBatchId;
-  if (p.status)         out.status        = p.status;
-  if (p.source)         out.source        = p.source;
-  if (p.search)         out.search        = p.search;
+  const out: Record<string, unknown> = {};
+  // Resume API doesn't support pagination parameters
+  if (p.candidateId) out.candidateId = p.candidateId;
+  if (p.intakeBatchId) out.intakeBatchId = p.intakeBatchId;
+  if (p.status) out.status = p.status;
+  if (p.source) out.source = p.source;
+  if (p.search) out.search = p.search;
   return out;
 }
 
-export async function listResumes(params: ListResumesParams = {}): Promise<PaginatedResponse<ResumeListItem>> {
+export async function listResumes(
+  params: ListResumesParams = {},
+): Promise<PaginatedResponse<ResumeListItem>> {
   const { data } = await apiClient.get<PaginatedResponse<ResumeListItem>>('/resumes', {
     params: buildListParams(params),
   });
@@ -39,12 +39,12 @@ export async function uploadResume(
 ): Promise<{ resume: ResumeDetail; draftCandidateCreated: boolean }> {
   const body = new FormData();
   body.append('file', form.file);
-  if (form.candidateId)    body.append('candidateId', form.candidateId);
-  if (form.firstName)      body.append('firstName',   form.firstName);
-  if (form.lastName)       body.append('lastName',    form.lastName);
-  if (form.email)          body.append('email',       form.email);
-  if (form.label)          body.append('label',       form.label);
-  if (form.intakeBatchId)  body.append('intakeBatchId', form.intakeBatchId);
+  if (form.candidateId) body.append('candidateId', form.candidateId);
+  if (form.firstName) body.append('firstName', form.firstName);
+  if (form.lastName) body.append('lastName', form.lastName);
+  if (form.email) body.append('email', form.email);
+  if (form.label) body.append('label', form.label);
+  if (form.intakeBatchId) body.append('intakeBatchId', form.intakeBatchId);
 
   const { data } = await apiClient.post<
     ApiResponse<{ resume: ResumeDetail; draftCandidateCreated: boolean }>
@@ -86,9 +86,12 @@ export function buildDownloadUrl(resumeId: string, versionId: string): string {
   return `${base}/resumes/${resumeId}/versions/${versionId}/download`;
 }
 
-export async function downloadResumeBlob(resumeId: string, versionId: string): Promise<{
-  blob:        Blob;
-  fileName:    string;
+export async function downloadResumeBlob(
+  resumeId: string,
+  versionId: string,
+): Promise<{
+  blob: Blob;
+  fileName: string;
   contentType: string;
 }> {
   const response = await apiClient.get(`/resumes/${resumeId}/versions/${versionId}/download`, {
@@ -98,13 +101,17 @@ export async function downloadResumeBlob(resumeId: string, versionId: string): P
   // Best-effort filename parse: filename="x.pdf"
   const match = cd?.match(/filename="([^"]+)"/);
   return {
-    blob:        response.data as Blob,
-    fileName:    match?.[1] ?? `resume-${versionId}`,
-    contentType: (response.headers['content-type'] as string | undefined) ?? 'application/octet-stream',
+    blob: response.data as Blob,
+    fileName: match?.[1] ?? `resume-${versionId}`,
+    contentType:
+      (response.headers['content-type'] as string | undefined) ?? 'application/octet-stream',
   };
 }
 
-export async function getAccessLog(resumeId: string, versionId: string): Promise<ResumeAccessLogView[]> {
+export async function getAccessLog(
+  resumeId: string,
+  versionId: string,
+): Promise<ResumeAccessLogView[]> {
   const { data } = await apiClient.get<ApiResponse<ResumeAccessLogView[]>>(
     `/resumes/${resumeId}/versions/${versionId}/access-log`,
   );

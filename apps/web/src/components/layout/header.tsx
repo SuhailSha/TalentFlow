@@ -48,7 +48,7 @@ export function Header({ onMenuToggle, onOpenPalette }: HeaderProps) {
       </Button>
 
       {/* Command-bar trigger — visually weighted as the primary entry point */}
-      <div className="flex-1 max-w-xl">
+      <div className="flex-1 max-w-md mr-4">
         <button
           type="button"
           onClick={onOpenPalette}
@@ -62,7 +62,7 @@ export function Header({ onMenuToggle, onOpenPalette }: HeaderProps) {
         </button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-3">
         <NotificationBell />
         <ThemeToggle />
 
