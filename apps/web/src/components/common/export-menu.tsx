@@ -1,8 +1,5 @@
 'use client';
 
-import { Download } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
 import { ExportButton } from '@/components/data-table/export-button';
 import type { ExportColumn } from '@/lib/export/csv-export';
 

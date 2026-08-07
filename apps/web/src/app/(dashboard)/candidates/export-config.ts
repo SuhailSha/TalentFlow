@@ -1,5 +1,4 @@
 import { formatters, type ExportColumn } from '@/lib/export/csv-export';
-import type { CandidateListItem } from '@/types/candidates';
 
 /**
  * Export column definitions for candidates list
