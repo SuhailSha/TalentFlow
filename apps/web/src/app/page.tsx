@@ -1,11 +1,36 @@
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useAuth } from '@/hooks/use-auth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 /**
- * Root route — immediately redirects to the dashboard.
+ * Root route — redirects based on authentication status.
  *
- * Step 5 (auth middleware) will intercept unauthenticated requests before
- * they ever reach this handler and redirect to /login instead.
+ * Authenticated users → /dashboard
+ * Unauthenticated users → /login
  */
 export default function RootPage() {
-  redirect('/dashboard');
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.push('/dashboard');
+      } else {
+        router.push('/login');
+      }
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  // Show loading while determining auth state
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="text-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        <p className="mt-2 text-sm text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
 }
