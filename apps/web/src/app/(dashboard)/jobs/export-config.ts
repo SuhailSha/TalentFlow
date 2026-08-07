@@ -31,22 +31,22 @@ export const jobExportColumns: ExportColumn[] = [
   {
     key: 'remote',
     header: 'Remote',
-    formatter: formatters.boolean,
+    formatter: (value: unknown) => formatters.boolean(Boolean(value)),
   },
   {
     key: 'status',
     header: 'Status',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'priority',
     header: 'Priority',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'urgency',
     header: 'Urgency',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'headcount',
@@ -55,12 +55,12 @@ export const jobExportColumns: ExportColumn[] = [
   {
     key: 'compensation.min',
     header: 'Compensation Min',
-    formatter: formatters.currency,
+    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
   },
   {
     key: 'compensation.max',
     header: 'Compensation Max',
-    formatter: formatters.currency,
+    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
   },
   {
     key: 'compensation.currency',
@@ -81,21 +81,21 @@ export const jobExportColumns: ExportColumn[] = [
   {
     key: 'recruiterIds',
     header: 'Recruiter IDs',
-    formatter: formatters.array,
+    formatter: (value: unknown) => formatters.array(Array.isArray(value) ? value : []),
   },
   {
     key: 'targetStartDate',
     header: 'Target Start Date',
-    formatter: formatters.date,
+    formatter: (value: unknown) => formatters.date(value as string | Date),
   },
   {
     key: 'createdAt',
     header: 'Created Date',
-    formatter: formatters.date,
+    formatter: (value: unknown) => formatters.date(value as string | Date),
   },
   {
     key: 'updatedAt',
     header: 'Last Updated',
-    formatter: formatters.datetime,
+    formatter: (value: unknown) => formatters.datetime(value as string | Date),
   },
 ];

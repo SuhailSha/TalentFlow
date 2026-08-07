@@ -23,17 +23,17 @@ export const submissionExportColumns: ExportColumn[] = [
   {
     key: 'status',
     header: 'Status',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'stage',
     header: 'Stage',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'source',
     header: 'Source',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'vendorId',
@@ -54,12 +54,12 @@ export const submissionExportColumns: ExportColumn[] = [
   {
     key: 'priority',
     header: 'Priority',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'expectedSalary.amount',
     header: 'Expected Salary',
-    formatter: formatters.currency,
+    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
   },
   {
     key: 'expectedSalary.currency',
@@ -68,7 +68,7 @@ export const submissionExportColumns: ExportColumn[] = [
   {
     key: 'availableFrom',
     header: 'Available From',
-    formatter: formatters.date,
+    formatter: (value: unknown) => formatters.date(value as string | Date),
   },
   {
     key: 'noticePeriodDays',
@@ -85,21 +85,21 @@ export const submissionExportColumns: ExportColumn[] = [
   {
     key: 'rejectionReason',
     header: 'Rejection Reason',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'submittedAt',
     header: 'Submitted Date',
-    formatter: formatters.datetime,
+    formatter: (value: unknown) => formatters.datetime(value as string | Date),
   },
   {
     key: 'createdAt',
     header: 'Created Date',
-    formatter: formatters.date,
+    formatter: (value: unknown) => formatters.date(value as string | Date),
   },
   {
     key: 'updatedAt',
     header: 'Last Updated',
-    formatter: formatters.datetime,
+    formatter: (value: unknown) => formatters.datetime(value as string | Date),
   },
 ];

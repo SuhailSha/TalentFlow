@@ -27,12 +27,12 @@ export const interviewExportColumns: ExportColumn[] = [
   {
     key: 'status',
     header: 'Status',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'type',
     header: 'Type',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'location',
@@ -41,7 +41,7 @@ export const interviewExportColumns: ExportColumn[] = [
   {
     key: 'scheduledFor',
     header: 'Scheduled Date',
-    formatter: formatters.datetime,
+    formatter: (value: unknown) => formatters.datetime(value as string | Date),
   },
   {
     key: 'duration',
@@ -50,7 +50,7 @@ export const interviewExportColumns: ExportColumn[] = [
   {
     key: 'interviewerIds',
     header: 'Interviewer IDs',
-    formatter: formatters.array,
+    formatter: (value: unknown) => formatters.array(Array.isArray(value) ? value : []),
   },
   {
     key: 'coordinatorId',
@@ -71,16 +71,16 @@ export const interviewExportColumns: ExportColumn[] = [
   {
     key: 'recommendation',
     header: 'Recommendation',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'createdAt',
     header: 'Created Date',
-    formatter: formatters.date,
+    formatter: (value: unknown) => formatters.date(value as string | Date),
   },
   {
     key: 'updatedAt',
     header: 'Last Updated',
-    formatter: formatters.datetime,
+    formatter: (value: unknown) => formatters.datetime(value as string | Date),
   },
 ];

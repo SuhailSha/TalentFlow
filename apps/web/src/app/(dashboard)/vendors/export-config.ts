@@ -23,12 +23,12 @@ export const vendorExportColumns: ExportColumn[] = [
   {
     key: 'status',
     header: 'Status',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'tier',
     header: 'Tier',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'location.city',
@@ -45,7 +45,7 @@ export const vendorExportColumns: ExportColumn[] = [
   {
     key: 'specializations',
     header: 'Specializations',
-    formatter: formatters.array,
+    formatter: (value: unknown) => formatters.array(Array.isArray(value) ? value : []),
   },
   {
     key: 'rateStructure.currency',
@@ -66,7 +66,7 @@ export const vendorExportColumns: ExportColumn[] = [
   {
     key: 'paymentTerms.invoicingFrequency',
     header: 'Invoicing Frequency',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'paymentTerms.paymentDueDays',
@@ -87,11 +87,11 @@ export const vendorExportColumns: ExportColumn[] = [
   {
     key: 'createdAt',
     header: 'Created Date',
-    formatter: formatters.date,
+    formatter: (value: unknown) => formatters.date(value as string | Date),
   },
   {
     key: 'updatedAt',
     header: 'Last Updated',
-    formatter: formatters.datetime,
+    formatter: (value: unknown) => formatters.datetime(value as string | Date),
   },
 ];

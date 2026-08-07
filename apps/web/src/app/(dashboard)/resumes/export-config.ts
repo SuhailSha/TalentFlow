@@ -15,12 +15,12 @@ export const resumeExportColumns: ExportColumn[] = [
   {
     key: 'status',
     header: 'Status',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'source',
     header: 'Source',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'candidateId',
@@ -33,7 +33,7 @@ export const resumeExportColumns: ExportColumn[] = [
   {
     key: 'currentVersion.sizeBytes',
     header: 'File Size (KB)',
-    formatter: (bytes: number) => {
+    formatter: (bytes: unknown) => {
       if (typeof bytes !== 'number') return '';
       return (bytes / 1024).toFixed(1);
     },
@@ -53,11 +53,11 @@ export const resumeExportColumns: ExportColumn[] = [
   {
     key: 'createdAt',
     header: 'Upload Date',
-    formatter: formatters.date,
+    formatter: (value: unknown) => formatters.date(value as string | Date),
   },
   {
     key: 'updatedAt',
     header: 'Last Updated',
-    formatter: formatters.datetime,
+    formatter: (value: unknown) => formatters.datetime(value as string | Date),
   },
 ];
