@@ -1,18 +1,20 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-
 import {
-  cancelParsingJob,
-  listParsingJobs,
-  reparse,
-} from '@/lib/api/parsing';
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+  type UseMutationResult,
+} from '@tanstack/react-query';
+
+import { cancelParsingJob, listParsingJobs, reparse } from '@/lib/api/parsing';
 import type { ResumeParserProvider } from '@/types/extraction-config';
 import type { ParsingJobView } from '@/types/parsing';
 import { resumeKeys } from './use-resumes';
 
 export const parsingKeys = {
-  all:      ['parsing'] as const,
+  all: ['parsing'] as const,
   byVersion: (resumeId: string, versionId: string) =>
     [...parsingKeys.all, 'version', resumeId, versionId] as const,
 };
@@ -22,11 +24,14 @@ export const parsingKeys = {
  * Once everything is terminal the query stops refetching, eliminating idle
  * load on the API.
  */
-export function useParsingJobs(resumeId: string, versionId: string | null | undefined) {
+export function useParsingJobs(
+  resumeId: string,
+  versionId: string | null | undefined,
+): UseQueryResult<ParsingJobView[], Error> {
   return useQuery<ParsingJobView[]>({
     queryKey: parsingKeys.byVersion(resumeId, versionId ?? ''),
-    queryFn:  () => listParsingJobs(resumeId, versionId!),
-    enabled:  !!resumeId && !!versionId,
+    queryFn: () => listParsingJobs(resumeId, versionId!),
+    enabled: !!resumeId && !!versionId,
     refetchInterval: (q) => {
       const jobs = q.state.data;
       if (!jobs) return false;
@@ -36,22 +41,36 @@ export function useParsingJobs(resumeId: string, versionId: string | null | unde
   });
 }
 
-export function useReparseResume(resumeId: string, versionId: string) {
+export function useReparseResume(
+  resumeId: string,
+  versionId: string,
+): UseMutationResult<
+  { parsingJobId: string; attempt: number; status: string; provider: ResumeParserProvider },
+  Error,
+  ResumeParserProvider | undefined
+> {
   const qc = useQueryClient();
-  return useMutation({
+  return useMutation<
+    { parsingJobId: string; attempt: number; status: string; provider: ResumeParserProvider },
+    Error,
+    ResumeParserProvider | undefined
+  >({
     mutationFn: (provider?: ResumeParserProvider) => reparse(resumeId, versionId, provider),
-    onSuccess:  () => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: parsingKeys.byVersion(resumeId, versionId) });
       qc.invalidateQueries({ queryKey: resumeKeys.detail(resumeId) });
     },
   });
 }
 
-export function useCancelParsingJob(resumeId: string, versionId: string) {
+export function useCancelParsingJob(
+  resumeId: string,
+  versionId: string,
+): UseMutationResult<void, Error, string> {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (jobId: string) => cancelParsingJob(jobId),
-    onSuccess:  () => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: parsingKeys.byVersion(resumeId, versionId) });
     },
   });

@@ -3,9 +3,7 @@
 import { use, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  CheckCircle2, Download, FileText, Loader2, RefreshCw, User, XCircle,
-} from 'lucide-react';
+import { CheckCircle2, Download, FileText, Loader2, RefreshCw, User, XCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -14,12 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  MetricTile,
-  WorkspaceFact,
-  WorkspaceHeader,
-  WorkspaceShell,
-} from '@/components/workspace';
+import { MetricTile, WorkspaceFact, WorkspaceHeader, WorkspaceShell } from '@/components/workspace';
 import {
   useApproveReview,
   useClaimReview,
@@ -33,24 +26,22 @@ import { useAuth } from '@/hooks';
 import { buildDownloadUrl } from '@/lib/api/resumes';
 import { getApiErrorMessage } from '@/lib/api';
 import { REVIEW_PRIORITY_LABELS, REVIEW_STATUS_LABELS } from '@/types';
-import type {
-  ReviewDecisionPayload, ReviewPriority, ReviewTaskStatus,
-} from '@/types';
+import type { ReviewDecisionPayload, ReviewPriority, ReviewTaskStatus } from '@/types';
 import { FieldEditor } from './extraction-form';
 
 const STATUS_STYLES: Record<ReviewTaskStatus, string> = {
-  PENDING:           'bg-amber-100 text-amber-800',
-  IN_REVIEW:         'bg-blue-100 text-blue-800',
-  APPROVED:          'bg-green-100 text-green-800',
-  REJECTED:          'bg-red-100 text-red-800',
+  PENDING: 'bg-amber-100 text-amber-800',
+  IN_REVIEW: 'bg-blue-100 text-blue-800',
+  APPROVED: 'bg-green-100 text-green-800',
+  REJECTED: 'bg-red-100 text-red-800',
   REPARSE_REQUESTED: 'bg-slate-100 text-slate-700',
-  SUPERSEDED:        'bg-gray-100 text-gray-400',
+  SUPERSEDED: 'bg-gray-100 text-gray-400',
 };
 
 const PRIORITY_STYLES: Record<ReviewPriority, string> = {
-  LOW:    'bg-gray-100 text-gray-600',
+  LOW: 'bg-gray-100 text-gray-600',
   NORMAL: 'bg-blue-50 text-blue-700',
-  HIGH:   'bg-orange-100 text-orange-700',
+  HIGH: 'bg-orange-100 text-orange-700',
   URGENT: 'bg-red-100 text-red-700',
 };
 
@@ -60,33 +51,33 @@ const FIELD_GROUPS: Array<{ title: string; fields: Array<{ path: string; label: 
   {
     title: 'Identity',
     fields: [
-      { path: 'identity.firstName',   label: 'First name' },
-      { path: 'identity.lastName',    label: 'Last name' },
-      { path: 'identity.fullName',    label: 'Full name' },
-      { path: 'identity.emails',      label: 'Email' },
-      { path: 'identity.phones',      label: 'Phone' },
+      { path: 'identity.firstName', label: 'First name' },
+      { path: 'identity.lastName', label: 'Last name' },
+      { path: 'identity.fullName', label: 'Full name' },
+      { path: 'identity.emails', label: 'Email' },
+      { path: 'identity.phones', label: 'Phone' },
       { path: 'identity.linkedinUrl', label: 'LinkedIn' },
-      { path: 'identity.location.city',    label: 'City' },
-      { path: 'identity.location.state',   label: 'State' },
+      { path: 'identity.location.city', label: 'City' },
+      { path: 'identity.location.state', label: 'State' },
       { path: 'identity.location.country', label: 'Country' },
     ],
   },
   {
     title: 'Professional',
     fields: [
-      { path: 'professional.currentTitle',   label: 'Current title' },
+      { path: 'professional.currentTitle', label: 'Current title' },
       { path: 'professional.currentCompany', label: 'Current company' },
-      { path: 'professional.summary',        label: 'Summary' },
-      { path: 'professional.skills',         label: 'Skills' },
+      { path: 'professional.summary', label: 'Summary' },
+      { path: 'professional.skills', label: 'Skills' },
     ],
   },
   {
     title: 'Recruiting',
     fields: [
-      { path: 'recruiting.noticePeriodDays',  label: 'Notice period (days)' },
+      { path: 'recruiting.noticePeriodDays', label: 'Notice period (days)' },
       { path: 'recruiting.currentCtc.amount', label: 'Current CTC' },
-      { path: 'recruiting.expectedCtc.amount',label: 'Expected CTC' },
-      { path: 'recruiting.visaStatus',        label: 'Visa status' },
+      { path: 'recruiting.expectedCtc.amount', label: 'Expected CTC' },
+      { path: 'recruiting.visaStatus', label: 'Visa status' },
       { path: 'recruiting.workAuthorization', label: 'Work authorization' },
     ],
   },
@@ -108,21 +99,21 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
   const { data: task, isLoading, isError } = useReview(id);
   const { user: me } = useAuth();
 
-  const claim    = useClaimReview(id);
-  const release  = useReleaseReview(id);
+  const claim = useClaimReview(id);
+  const release = useReleaseReview(id);
   const saveDraft = useSaveReviewDraft(id);
-  const approve  = useApproveReview(id);
-  const reject   = useRejectReview(id);
-  const reparse  = useReparseFromReview(id);
+  const approve = useApproveReview(id);
+  const reject = useRejectReview(id);
+  const reparse = useReparseFromReview(id);
 
   // Local edit state — synced from server draft on first load.
-  const [editedFields,  setEditedFields]  = useState<Record<string, unknown>>({});
-  const [rejectedSet,   setRejectedSet]   = useState<Set<string>>(new Set());
-  const [notes,         setNotes]         = useState<string>('');
-  const [rejectReason,  setRejectReason]  = useState<string>('');
+  const [editedFields, setEditedFields] = useState<Record<string, unknown>>({});
+  const [rejectedSet, setRejectedSet] = useState<Set<string>>(new Set());
+  const [notes, setNotes] = useState<string>('');
+  const [rejectReason, setRejectReason] = useState<string>('');
   const [showRejectBox, setShowRejectBox] = useState(false);
   const draftVersionRef = useRef<number>(0);
-  const hydratedRef     = useRef<boolean>(false);
+  const hydratedRef = useRef<boolean>(false);
 
   // Hydrate from server draft on first load only — subsequent server updates
   // don't clobber the recruiter's in-progress edits.
@@ -148,27 +139,35 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
   const isTerminal = task && !isLive;
 
   // ── Autosave ────────────────────────────────────────────────────────────
-  const autosave = useCallback(async (next: { edited: Record<string, unknown>; rejected: Set<string>; notesStr: string }) => {
-    if (!claimedByMe || !task) return;
-    const decision: ReviewDecisionPayload = {
-      editedFields:   Object.fromEntries(Object.entries(next.edited).map(([p, v]) => [p, { edited: v }])),
-      rejectedFields: Array.from(next.rejected),
-      notes:          next.notesStr || undefined,
-    };
-    try {
-      const r = await saveDraft.mutateAsync({ decision, baseVersion: draftVersionRef.current });
-      draftVersionRef.current = r.draftVersion;
-    } catch (e) {
-      toast.error(getApiErrorMessage(e));
-    }
-  }, [claimedByMe, task, saveDraft]);
+  const autosave = useCallback(
+    async (next: { edited: Record<string, unknown>; rejected: Set<string>; notesStr: string }) => {
+      if (!claimedByMe || !task) return;
+      const decision: ReviewDecisionPayload = {
+        editedFields: Object.fromEntries(
+          Object.entries(next.edited).map(([p, v]) => [p, { edited: v }]),
+        ),
+        rejectedFields: Array.from(next.rejected),
+        notes: next.notesStr || undefined,
+      };
+      try {
+        const r = await saveDraft.mutateAsync({ decision, baseVersion: draftVersionRef.current });
+        draftVersionRef.current = r.draftVersion;
+      } catch (e) {
+        toast.error(getApiErrorMessage(e));
+      }
+    },
+    [claimedByMe, task, saveDraft],
+  );
 
   // Debounce autosave so a typing burst doesn't hammer the API.
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scheduleSave = useCallback((edited: Record<string, unknown>, rejected: Set<string>, notesStr: string) => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => autosave({ edited, rejected, notesStr }), 750);
-  }, [autosave]);
+  const scheduleSave = useCallback(
+    (edited: Record<string, unknown>, rejected: Set<string>, notesStr: string) => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => autosave({ edited, rejected, notesStr }), 750);
+    },
+    [autosave],
+  );
 
   const handleEdit = (path: string, value: unknown) => {
     const orig = getByPath(task?.payload, path);
@@ -185,12 +184,15 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
   const handleClearEdit = (path: string) => {
     if (!(path in editedFields) && !rejectedSet.has(path)) return;
     const { [path]: _, ...rest } = editedFields;
-    const r = new Set(rejectedSet); r.delete(path);
-    setEditedFields(rest); setRejectedSet(r);
+    const r = new Set(rejectedSet);
+    r.delete(path);
+    setEditedFields(rest);
+    setRejectedSet(r);
     scheduleSave(rest, r, notes);
   };
   const handleReject = (path: string) => {
-    const r = new Set(rejectedSet); r.add(path);
+    const r = new Set(rejectedSet);
+    r.add(path);
     setRejectedSet(r);
     scheduleSave(editedFields, r, notes);
   };
@@ -198,7 +200,9 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
   // Approve / reject / reparse handlers
   const doApprove = async () => {
     const decision: ReviewDecisionPayload = {
-      editedFields:   Object.fromEntries(Object.entries(editedFields).map(([p, v]) => [p, { edited: v }])),
+      editedFields: Object.fromEntries(
+        Object.entries(editedFields).map(([p, v]) => [p, { edited: v }]),
+      ),
       rejectedFields: Array.from(rejectedSet),
       candidateAction: { kind: 'CREATE' },
       notes: notes || undefined,
@@ -214,19 +218,26 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
     }
   };
   const doReject = async () => {
-    if (!rejectReason.trim()) { toast.error('Reason required to reject'); return; }
+    if (!rejectReason.trim()) {
+      toast.error('Reason required to reject');
+      return;
+    }
     try {
       await reject.mutateAsync({ reason: rejectReason.trim() });
       toast.success('Review rejected');
       router.push('/resume-reviews');
-    } catch (e) { toast.error(getApiErrorMessage(e)); }
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    }
   };
   const doReparse = async () => {
     try {
       await reparse.mutateAsync({});
       toast.success('Reparse queued');
       router.push('/resume-reviews');
-    } catch (e) { toast.error(getApiErrorMessage(e)); }
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    }
   };
 
   if (isLoading) {
@@ -261,10 +272,10 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
             <CardContent className="p-4 space-y-3">
               <h3 className="text-sm font-medium">Confidence</h3>
               <div className="grid grid-cols-2 gap-3">
-                <MetricTile label="Overall"      value={`${confidencePct}%`} />
-                <MetricTile label="Edits"        value={Object.keys(editedFields).length} />
-                <MetricTile label="Rejected"     value={rejectedSet.size} />
-                <MetricTile label="Draft v"      value={task.draftVersion} />
+                <MetricTile label="Overall" value={`${confidencePct}%`} />
+                <MetricTile label="Edits" value={Object.keys(editedFields).length} />
+                <MetricTile label="Rejected" value={rejectedSet.size} />
+                <MetricTile label="Draft v" value={task.draftVersion} />
               </div>
             </CardContent>
           </Card>
@@ -276,7 +287,9 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
                 className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm hover:bg-muted"
               >
                 <User className="h-4 w-4 text-muted-foreground" />
-                <span className="truncate">{task.candidateName || task.candidateId.slice(0, 8)}…</span>
+                <span className="truncate">
+                  {task.candidateName || task.candidateId.slice(0, 8)}…
+                </span>
               </Link>
             </CardContent>
           </Card>
@@ -284,7 +297,9 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
             <Card>
               <CardContent className="p-4 space-y-1 text-xs">
                 <h3 className="text-sm font-medium">Parsed by</h3>
-                <div className="text-muted-foreground">{task.parsingJob.provider} · attempt {task.parsingJob.attempt}</div>
+                <div className="text-muted-foreground">
+                  {task.parsingJob.provider} · attempt {task.parsingJob.attempt}
+                </div>
                 {task.parsingJob.durationMs != null && (
                   <div className="text-muted-foreground">{task.parsingJob.durationMs} ms</div>
                 )}
@@ -299,20 +314,32 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
         title={task.resumeFileName || 'Untitled'}
         subtitle={task.candidateName || undefined}
         breadcrumbs={[
-          { title: 'Dashboard',       href: '/dashboard' },
-          { title: 'Resume reviews',  href: '/resume-reviews' },
+          { title: 'Dashboard', href: '/dashboard' },
+          { title: 'Resume reviews', href: '/resume-reviews' },
           { title: task.resumeFileName || task.id.slice(0, 8) },
         ]}
         badges={
           <>
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[task.status]}`}>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[task.status]}`}
+            >
               {REVIEW_STATUS_LABELS[task.status]}
             </span>
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[task.priority]}`}>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_STYLES[task.priority]}`}
+            >
               {REVIEW_PRIORITY_LABELS[task.priority]}
             </span>
-            {task.assigneeId && claimedByMe && <Badge variant="secondary" className="text-xs">claimed by you</Badge>}
-            {task.assigneeId && !claimedByMe && <Badge variant="outline"  className="text-xs">claimed by another reviewer</Badge>}
+            {task.assigneeId && claimedByMe && (
+              <Badge variant="secondary" className="text-xs">
+                claimed by you
+              </Badge>
+            )}
+            {task.assigneeId && !claimedByMe && (
+              <Badge variant="outline" className="text-xs">
+                claimed by another reviewer
+              </Badge>
+            )}
           </>
         }
         actions={
@@ -324,22 +351,33 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
               </a>
             </Button>
             {isLive && !claimedByMe && (
-              <Button size="sm" onClick={() => claim.mutateAsync().catch((e) => toast.error(getApiErrorMessage(e)))}>
+              <Button
+                size="sm"
+                onClick={() => claim.mutateAsync().catch((e) => toast.error(getApiErrorMessage(e)))}
+              >
                 <FileText className="mr-1.5 h-4 w-4" />
                 Claim
               </Button>
             )}
             {isLive && claimedByMe && (
-              <Button size="sm" variant="outline" onClick={() => release.mutate()}>Release</Button>
+              <Button size="sm" variant="outline" onClick={() => release.mutate()}>
+                Release
+              </Button>
             )}
           </>
         }
         facts={
           <>
             <WorkspaceFact label="Confidence">{confidencePct}%</WorkspaceFact>
-            <WorkspaceFact label="SLA due">{task.slaDueAt ? formatDistanceToNow(new Date(task.slaDueAt), { addSuffix: true }) : '—'}</WorkspaceFact>
+            <WorkspaceFact label="SLA due">
+              {task.slaDueAt
+                ? formatDistanceToNow(new Date(task.slaDueAt), { addSuffix: true })
+                : '—'}
+            </WorkspaceFact>
             <WorkspaceFact label="Provider">{task.parsingJob?.provider ?? '—'}</WorkspaceFact>
-            <WorkspaceFact label="Created">{formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}</WorkspaceFact>
+            <WorkspaceFact label="Created">
+              {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
+            </WorkspaceFact>
           </>
         }
       />
@@ -374,7 +412,8 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
                 <div>
                   {group.fields.map(({ path, label }) => {
                     const v = getByPath(task.payload, path);
-                    const present = v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : true);
+                    const present =
+                      v !== undefined && v !== null && (Array.isArray(v) ? v.length > 0 : true);
                     if (!present && !(path in editedFields) && !rejectedSet.has(path)) {
                       return null;
                     }
@@ -386,10 +425,19 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
                         value={v}
                         edited={editedFields[path]}
                         rejected={rejectedSet.has(path)}
-                        confidence={task.confidence[path] ?? task.confidence[path.split('.').slice(0, -1).join('.')]}
-                        onEdit={(p, value) => { if (claimedByMe) handleEdit(p, value); }}
-                        onReject={(p) => { if (claimedByMe) handleReject(p); }}
-                        onClearEdit={(p) => { if (claimedByMe) handleClearEdit(p); }}
+                        confidence={
+                          task.confidence[path] ??
+                          task.confidence[path.split('.').slice(0, -1).join('.')]
+                        }
+                        onEdit={(p, value) => {
+                          if (claimedByMe) handleEdit(p, value);
+                        }}
+                        onReject={(p) => {
+                          if (claimedByMe) handleReject(p);
+                        }}
+                        onClearEdit={(p) => {
+                          if (claimedByMe) handleClearEdit(p);
+                        }}
                       />
                     );
                   })}
@@ -398,11 +446,16 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
             ))}
 
             <div className="space-y-1">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Notes
+              </h4>
               <Textarea
                 value={notes}
                 disabled={!claimedByMe}
-                onChange={(e) => { setNotes(e.target.value); scheduleSave(editedFields, rejectedSet, e.target.value); }}
+                onChange={(e) => {
+                  setNotes(e.target.value);
+                  scheduleSave(editedFields, rejectedSet, e.target.value);
+                }}
                 placeholder="Internal notes about this extraction"
                 rows={2}
               />
@@ -415,12 +468,17 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
             )}
 
             {isTerminal && (
-              <div className={`rounded-md border px-3 py-2 text-sm ${
-                task.status === 'APPROVED' ? 'bg-green-50 border-green-200 text-green-900'
-                : task.status === 'REJECTED' ? 'bg-red-50 border-red-200 text-red-900'
-                : 'bg-muted/40'
-              }`}>
-                Terminal state: <span className="font-medium">{REVIEW_STATUS_LABELS[task.status]}</span>
+              <div
+                className={`rounded-md border px-3 py-2 text-sm ${
+                  task.status === 'APPROVED'
+                    ? 'bg-green-50 border-green-200 text-green-900'
+                    : task.status === 'REJECTED'
+                      ? 'bg-red-50 border-red-200 text-red-900'
+                      : 'bg-muted/40'
+                }`}
+              >
+                Terminal state:{' '}
+                <span className="font-medium">{REVIEW_STATUS_LABELS[task.status]}</span>
                 {task.decisionNotes && <div className="mt-1 text-xs">{task.decisionNotes}</div>}
               </div>
             )}
@@ -441,19 +499,37 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
                   rows={3}
                 />
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => { setShowRejectBox(false); setRejectReason(''); }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowRejectBox(false);
+                      setRejectReason('');
+                    }}
+                  >
                     Cancel
                   </Button>
-                  <Button variant="destructive" size="sm" disabled={!rejectReason.trim() || reject.isPending} onClick={doReject}>
-                    {reject.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <XCircle className="mr-1.5 h-4 w-4" />}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={!rejectReason.trim() || reject.isPending}
+                    onClick={doReject}
+                  >
+                    {reject.isPending ? (
+                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    ) : (
+                      <XCircle className="mr-1.5 h-4 w-4" />
+                    )}
                     Reject extraction
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="ghost"   size="sm" onClick={doReparse}  disabled={reparse.isPending}>
-                  <RefreshCw className={`mr-1.5 h-4 w-4 ${reparse.isPending ? 'animate-spin' : ''}`} />
+                <Button variant="ghost" size="sm" onClick={doReparse} disabled={reparse.isPending}>
+                  <RefreshCw
+                    className={`mr-1.5 h-4 w-4 ${reparse.isPending ? 'animate-spin' : ''}`}
+                  />
                   Reparse
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setShowRejectBox(true)}>
@@ -461,7 +537,11 @@ export default function ReviewWorkspacePage({ params }: { params: Promise<{ id: 
                   Reject
                 </Button>
                 <Button size="sm" onClick={doApprove} disabled={approve.isPending}>
-                  {approve.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-4 w-4" />}
+                  {approve.isPending ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                  )}
                   Approve &amp; save to candidate
                 </Button>
               </div>

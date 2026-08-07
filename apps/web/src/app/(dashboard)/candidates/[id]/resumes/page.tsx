@@ -15,12 +15,12 @@ import { RESUME_SOURCE_LABELS, RESUME_STATUS_LABELS } from '@/types';
 import type { ResumeListItem, ResumeStatus } from '@/types';
 
 const STATUS_STYLES: Record<ResumeStatus, string> = {
-  DRAFT:        'bg-slate-100 text-slate-700',
-  PROCESSING:   'bg-blue-100 text-blue-800',
+  DRAFT: 'bg-slate-100 text-slate-700',
+  PROCESSING: 'bg-blue-100 text-blue-800',
   NEEDS_REVIEW: 'bg-amber-100 text-amber-800',
-  ACTIVE:       'bg-green-100 text-green-800',
-  ARCHIVED:     'bg-gray-100 text-gray-500',
-  REJECTED:     'bg-red-100 text-red-800',
+  ACTIVE: 'bg-green-100 text-green-800',
+  ARCHIVED: 'bg-gray-100 text-gray-500',
+  REJECTED: 'bg-red-100 text-red-800',
 };
 
 function formatBytes(n: number) {
@@ -33,23 +33,40 @@ function ResumeRow({ resume }: { resume: ResumeListItem }) {
   const v = resume.currentVersion;
   return (
     <div className="flex items-center justify-between rounded-lg border p-4">
-      <Link href={`/resumes/${resume.id}`} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80">
+      <Link
+        href={`/resumes/${resume.id}`}
+        className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80"
+      >
         <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm truncate">{v?.fileName ?? 'No file'}</span>
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[resume.status]}`}>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[resume.status]}`}
+            >
               {RESUME_STATUS_LABELS[resume.status]}
             </span>
-            {resume.label && <Badge variant="secondary" className="text-xs">{resume.label}</Badge>}
-            {v && <Badge variant="outline" className="text-[10px]">v{v.versionNumber}</Badge>}
+            {resume.label && (
+              <Badge variant="secondary" className="text-xs">
+                {resume.label}
+              </Badge>
+            )}
+            {v && (
+              <Badge variant="outline" className="text-[10px]">
+                v{v.versionNumber}
+              </Badge>
+            )}
             {resume.versionCount > 1 && (
               <span className="text-xs text-muted-foreground">{resume.versionCount} versions</span>
             )}
           </div>
           <div className="flex flex-wrap gap-3 mt-0.5 text-xs text-muted-foreground">
             <span>{RESUME_SOURCE_LABELS[resume.source]}</span>
-            {v && <span>{v.mimeType} · {formatBytes(v.sizeBytes)}</span>}
+            {v && (
+              <span>
+                {v.mimeType} · {formatBytes(v.sizeBytes)}
+              </span>
+            )}
             <span>{formatDistanceToNow(new Date(resume.createdAt), { addSuffix: true })}</span>
           </div>
         </div>
@@ -68,7 +85,7 @@ function ResumeRow({ resume }: { resume: ResumeListItem }) {
 export default function CandidateResumesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: candidate, isLoading: candLoading } = useCandidate(id);
-  const { data: resumes, isLoading, isError } = useResumes({ candidateId: id, limit: 50 });
+  const { data: resumes, isLoading, isError } = useResumes({ candidateId: id });
 
   const candidateName = candidate ? `${candidate.firstName} ${candidate.lastName}` : 'Candidate';
 
@@ -78,7 +95,7 @@ export default function CandidateResumesPage({ params }: { params: Promise<{ id:
         title={candLoading ? 'Resumes' : `Resumes — ${candidateName}`}
         description="All resume versions attached to this candidate."
         breadcrumbs={[
-          { title: 'Dashboard',  href: '/dashboard' },
+          { title: 'Dashboard', href: '/dashboard' },
           { title: 'Candidates', href: '/candidates' },
           { title: candidateName, href: `/candidates/${id}` },
           { title: 'Resumes' },
@@ -101,7 +118,9 @@ export default function CandidateResumesPage({ params }: { params: Promise<{ id:
         </Card>
       ) : isLoading ? (
         <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-lg" />
+          ))}
         </div>
       ) : resumes?.data.length === 0 ? (
         <Card>
@@ -115,7 +134,9 @@ export default function CandidateResumesPage({ params }: { params: Promise<{ id:
         </Card>
       ) : (
         <div className="space-y-3">
-          {resumes?.data.map((r) => <ResumeRow key={r.id} resume={r} />)}
+          {resumes?.data.map((r) => (
+            <ResumeRow key={r.id} resume={r} />
+          ))}
         </div>
       )}
     </div>

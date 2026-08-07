@@ -4,8 +4,15 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  AlertCircle, CheckCircle2, Clock, Download, FileText, History, Loader2,
-  RefreshCw, Upload,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Download,
+  FileText,
+  History,
+  Loader2,
+  RefreshCw,
+  Upload,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -14,22 +21,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useParsingJobs, useReparseResume } from '@/hooks/use-parsing';
 import { useResume, useResumes, useUploadNewVersion, useUploadResume } from '@/hooks/use-resumes';
-import {
-  RESUME_SOURCE_LABELS, RESUME_STATUS_LABELS,
-} from '@/types/resumes';
-import type {
-  ResumeListItem, ResumeStatus, ResumeVersionView,
-} from '@/types/resumes';
+import { RESUME_SOURCE_LABELS, RESUME_STATUS_LABELS } from '@/types/resumes';
+import type { ResumeListItem, ResumeStatus, ResumeVersionView } from '@/types/resumes';
 import { PARSING_STATUS_LABELS } from '@/types/parsing';
 import { cn } from '@/lib/utils';
 
 const STATUS_STYLES: Record<ResumeStatus, string> = {
-  DRAFT:        'bg-slate-100 text-slate-700',
-  PROCESSING:   'bg-blue-100 text-blue-800',
+  DRAFT: 'bg-slate-100 text-slate-700',
+  PROCESSING: 'bg-blue-100 text-blue-800',
   NEEDS_REVIEW: 'bg-amber-100 text-amber-800',
-  ACTIVE:       'bg-green-100 text-green-800',
-  ARCHIVED:     'bg-gray-100 text-gray-500',
-  REJECTED:     'bg-red-100 text-red-800',
+  ACTIVE: 'bg-green-100 text-green-800',
+  ARCHIVED: 'bg-gray-100 text-gray-500',
+  REJECTED: 'bg-red-100 text-red-800',
 };
 
 function formatBytes(n: number) {
@@ -40,11 +43,11 @@ function formatBytes(n: number) {
 
 interface ResumesTabProps {
   candidateId: string;
-  canUpdate:   boolean;
+  canUpdate: boolean;
 }
 
 export function ResumesTab({ candidateId, canUpdate }: ResumesTabProps) {
-  const { data: resp, isLoading, isError } = useResumes({ candidateId, limit: 50 });
+  const { data: resp, isLoading, isError } = useResumes({ candidateId });
   const upload = useUploadResume();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -61,7 +64,9 @@ export function ResumesTab({ candidateId, canUpdate }: ResumesTabProps) {
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             <FileText className="h-4 w-4" /> Resumes
-            <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">{resumes.length}</span>
+            <span className="rounded bg-muted px-1.5 text-xs text-muted-foreground">
+              {resumes.length}
+            </span>
           </CardTitle>
           {canUpdate && (
             <>
@@ -81,35 +86,35 @@ export function ResumesTab({ candidateId, canUpdate }: ResumesTabProps) {
                 onClick={() => fileRef.current?.click()}
                 disabled={upload.isPending}
               >
-                {upload.isPending
-                  ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                  : <Upload className="mr-1 h-3.5 w-3.5" />}
+                {upload.isPending ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Upload className="mr-1 h-3.5 w-3.5" />
+                )}
                 Upload new
               </Button>
             </>
           )}
         </CardHeader>
         <CardContent className="space-y-2">
-          {isError && (
-            <p className="text-sm text-destructive">Failed to load resumes.</p>
-          )}
-          {isLoading && Array.from({ length: 2 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
+          {isError && <p className="text-sm text-destructive">Failed to load resumes.</p>}
+          {isLoading &&
+            Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
           {!isLoading && !isError && resumes.length === 0 && (
             <p className="py-6 text-center text-sm text-muted-foreground">
               No resumes attached yet. Upload one to start parsing.
             </p>
           )}
-          {!isLoading && resumes.map((r) => (
-            <ResumeRow
-              key={r.id}
-              resume={r}
-              isOpen={expanded === r.id}
-              onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
-              canUpdate={canUpdate}
-            />
-          ))}
+          {!isLoading &&
+            resumes.map((r) => (
+              <ResumeRow
+                key={r.id}
+                resume={r}
+                isOpen={expanded === r.id}
+                onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+                canUpdate={canUpdate}
+              />
+            ))}
         </CardContent>
       </Card>
     </div>
@@ -119,8 +124,8 @@ export function ResumesTab({ candidateId, canUpdate }: ResumesTabProps) {
 // ── Resume row with version history + parsing state ──────────────────────────
 
 interface ResumeRowProps {
-  resume:   ResumeListItem;
-  isOpen:   boolean;
+  resume: ResumeListItem;
+  isOpen: boolean;
   onToggle: () => void;
   canUpdate: boolean;
 }
@@ -143,18 +148,37 @@ function ResumeRow({ resume, isOpen, onToggle, canUpdate }: ResumeRowProps) {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="truncate text-sm font-medium">{v?.fileName ?? 'No file'}</span>
-              <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium', STATUS_STYLES[resume.status])}>
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
+                  STATUS_STYLES[resume.status],
+                )}
+              >
                 {RESUME_STATUS_LABELS[resume.status]}
               </span>
-              {resume.label && <Badge variant="secondary" className="text-[10px]">{resume.label}</Badge>}
-              {v && <Badge variant="outline" className="text-[10px]">v{v.versionNumber}</Badge>}
+              {resume.label && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {resume.label}
+                </Badge>
+              )}
+              {v && (
+                <Badge variant="outline" className="text-[10px]">
+                  v{v.versionNumber}
+                </Badge>
+              )}
               {resume.versionCount > 1 && (
-                <span className="text-[10px] text-muted-foreground">{resume.versionCount} versions</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {resume.versionCount} versions
+                </span>
               )}
             </div>
             <div className="mt-0.5 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
               <span>{RESUME_SOURCE_LABELS[resume.source]}</span>
-              {v && <span>{v.mimeType} · {formatBytes(v.sizeBytes)}</span>}
+              {v && (
+                <span>
+                  {v.mimeType} · {formatBytes(v.sizeBytes)}
+                </span>
+              )}
               <span>{formatDistanceToNow(new Date(resume.createdAt), { addSuffix: true })}</span>
             </div>
           </div>
@@ -196,9 +220,11 @@ function ResumeRow({ resume, isOpen, onToggle, canUpdate }: ResumeRowProps) {
                     onClick={() => versionFileRef.current?.click()}
                     disabled={newVersion.isPending}
                   >
-                    {newVersion.isPending
-                      ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                      : <Upload className="mr-1 h-3.5 w-3.5" />}
+                    {newVersion.isPending ? (
+                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="mr-1 h-3.5 w-3.5" />
+                    )}
                     Upload new version
                   </Button>
                 </>
@@ -219,7 +245,11 @@ function ResumeRow({ resume, isOpen, onToggle, canUpdate }: ResumeRowProps) {
   );
 }
 
-function VersionRow({ resumeId, version, canUpdate }: {
+function VersionRow({
+  resumeId,
+  version,
+  canUpdate,
+}: {
   resumeId: string;
   version: ResumeVersionView;
   canUpdate: boolean;
@@ -234,7 +264,8 @@ function VersionRow({ resumeId, version, canUpdate }: {
     <div className="flex flex-col gap-1 rounded-md border bg-background px-2.5 py-2">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <Badge variant={version.isCurrent ? 'default' : 'outline'} className="text-[10px]">
-          v{version.versionNumber}{version.isCurrent && ' · current'}
+          v{version.versionNumber}
+          {version.isCurrent && ' · current'}
         </Badge>
         <span className="truncate font-medium">{version.fileName}</span>
         <span className="text-[10px] text-muted-foreground">{formatBytes(version.sizeBytes)}</span>
@@ -250,7 +281,9 @@ function VersionRow({ resumeId, version, canUpdate }: {
           <span className="flex items-center gap-1">
             {latest.status === 'SUCCEEDED' && <CheckCircle2 className="h-3 w-3 text-green-600" />}
             {latest.status === 'FAILED' && <AlertCircle className="h-3 w-3 text-red-600" />}
-            {(latest.status === 'QUEUED' || latest.status === 'RUNNING') && <Clock className="h-3 w-3 text-blue-600" />}
+            {(latest.status === 'QUEUED' || latest.status === 'RUNNING') && (
+              <Clock className="h-3 w-3 text-blue-600" />
+            )}
             <span>{PARSING_STATUS_LABELS[latest.status]}</span>
             <span className="text-muted-foreground">via {latest.provider}</span>
             {latest.extractionResult && (
@@ -272,13 +305,15 @@ function VersionRow({ resumeId, version, canUpdate }: {
             size="sm"
             variant="ghost"
             className="ml-auto h-6 px-2 text-[11px]"
-            onClick={() => reparse.mutate(undefined)}
+            onClick={() => reparse.mutateAsync(undefined).catch(() => {})}
             disabled={isLive || reparse.isPending}
             title={isLive ? 'Parsing already in progress' : 'Trigger re-parse'}
           >
-            {reparse.isPending
-              ? <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              : <RefreshCw className="mr-1 h-3 w-3" />}
+            {reparse.isPending ? (
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-1 h-3 w-3" />
+            )}
             Re-parse
           </Button>
         )}
