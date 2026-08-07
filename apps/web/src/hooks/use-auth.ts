@@ -50,7 +50,9 @@ export function useAuth(): UseAuthReturn {
       try {
         return await getMe();
       } catch {
-        // 401 = unauthenticated — not an error, just null user
+        // 401 = unauthenticated — clear stale tokens and return null
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         return null;
       }
     },
