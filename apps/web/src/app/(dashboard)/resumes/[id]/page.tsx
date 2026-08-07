@@ -32,12 +32,12 @@ import type { ResumeAccessLogView, ResumeDetail, ResumeStatus, ResumeVersionView
 import { ParsingCard } from './parsing-card';
 
 const STATUS_STYLES: Record<ResumeStatus, string> = {
-  DRAFT:        'bg-slate-100 text-slate-700',
-  PROCESSING:   'bg-blue-100 text-blue-800',
+  DRAFT: 'bg-slate-100 text-slate-700',
+  PROCESSING: 'bg-blue-100 text-blue-800',
   NEEDS_REVIEW: 'bg-amber-100 text-amber-800',
-  ACTIVE:       'bg-green-100 text-green-800',
-  ARCHIVED:     'bg-gray-100 text-gray-500',
-  REJECTED:     'bg-red-100 text-red-800',
+  ACTIVE: 'bg-green-100 text-green-800',
+  ARCHIVED: 'bg-gray-100 text-gray-500',
+  REJECTED: 'bg-red-100 text-red-800',
 };
 
 function formatBytes(n: number): string {
@@ -47,15 +47,20 @@ function formatBytes(n: number): string {
 }
 
 async function triggerDownload(resumeId: string, version: ResumeVersionView): Promise<void> {
-  const { blob, fileName } = await downloadResumeBlob(resumeId, version.id);
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(url);
+  try {
+    const { blob, fileName } = await downloadResumeBlob(resumeId, version.id);
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Download failed:', error);
+    toast.error('Download failed. The file may no longer be available.');
+  }
 }
 
 function buildTimeline(
@@ -67,21 +72,21 @@ function buildTimeline(
   // Each version upload becomes a `created` entry on the timeline.
   for (const v of resume.versions) {
     entries.push({
-      id:           `v-${v.id}`,
-      action:       `Uploaded v${v.versionNumber}`,
-      verb:         'created',
-      actorId:      v.uploadedBy,
-      actorEmail:   null,
+      id: `v-${v.id}`,
+      action: `Uploaded v${v.versionNumber}`,
+      verb: 'created',
+      actorId: v.uploadedBy,
+      actorEmail: null,
       resourceType: 'resume_version',
-      resourceId:   v.id,
-      occurredAt:   v.uploadedAt,
+      resourceId: v.id,
+      occurredAt: v.uploadedAt,
       metadata: {
-        fileName:  v.fileName,
+        fileName: v.fileName,
         sizeBytes: v.sizeBytes,
-        sha256:    v.sha256.slice(0, 12),
+        sha256: v.sha256.slice(0, 12),
       },
       before: null,
-      after:  null,
+      after: null,
     });
   }
 
@@ -90,17 +95,17 @@ function buildTimeline(
   if (accessLogs) {
     for (const log of accessLogs.slice(0, 25)) {
       entries.push({
-        id:           `a-${log.id}`,
-        action:       log.action === 'DOWNLOAD' ? 'Downloaded' : log.action,
-        verb:         log.action === 'DOWNLOAD' ? 'updated' : 'updated',
-        actorId:      log.actorId,
-        actorEmail:   null,
+        id: `a-${log.id}`,
+        action: log.action === 'DOWNLOAD' ? 'Downloaded' : log.action,
+        verb: log.action === 'DOWNLOAD' ? 'updated' : 'updated',
+        actorId: log.actorId,
+        actorEmail: null,
         resourceType: 'resume_access_log',
-        resourceId:   log.id,
-        occurredAt:   log.createdAt,
-        metadata:     log.metadata,
-        before:       null,
-        after:        null,
+        resourceId: log.id,
+        occurredAt: log.createdAt,
+        metadata: log.metadata,
+        before: null,
+        after: null,
       });
     }
   }
@@ -110,13 +115,13 @@ function buildTimeline(
 }
 
 export default function ResumeDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id }            = use(params);
+  const { id } = use(params);
   const { data: resume, isLoading, isError } = useResume(id);
-  const currentVersionId  = resume?.currentVersion?.id ?? null;
+  const currentVersionId = resume?.currentVersion?.id ?? null;
   const { data: accessLogs } = useResumeAccessLog(id, currentVersionId);
-  const update            = useUpdateResume(id);
-  const addVersion        = useUploadNewVersion(id);
-  const remove            = useDeleteResume();
+  const update = useUpdateResume(id);
+  const addVersion = useUploadNewVersion(id);
+  const remove = useDeleteResume();
   const [versionFile, setVersionFile] = useState<File | null>(null);
 
   const timeline = useMemo(
@@ -146,13 +151,16 @@ export default function ResumeDetailPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  const v          = resume.currentVersion;
-  const candidate  = resume.candidateId;
-  const totalSize  = resume.versions.reduce((sum, x) => sum + x.sizeBytes, 0);
+  const v = resume.currentVersion;
+  const candidate = resume.candidateId;
+  const totalSize = resume.versions.reduce((sum, x) => sum + x.sizeBytes, 0);
 
   const onDownload = async (ver: ResumeVersionView) => {
-    try { await triggerDownload(resume.id, ver); }
-    catch (e) { toast.error(getApiErrorMessage(e)); }
+    try {
+      await triggerDownload(resume.id, ver);
+    } catch (e) {
+      toast.error(getApiErrorMessage(e));
+    }
   };
 
   const onAddVersion = async () => {
@@ -176,7 +184,8 @@ export default function ResumeDetailPage({ params }: { params: Promise<{ id: str
   };
 
   const onDelete = async () => {
-    if (!confirm('Soft-delete this resume? The file is retained but hidden from the library.')) return;
+    if (!confirm('Soft-delete this resume? The file is retained but hidden from the library.'))
+      return;
     try {
       await remove.mutateAsync(resume.id);
       toast.success('Resume deleted');
@@ -194,7 +203,7 @@ export default function ResumeDetailPage({ params }: { params: Promise<{ id: str
             <CardContent className="p-4 space-y-3">
               <h3 className="text-sm font-medium">Quick stats</h3>
               <div className="grid grid-cols-2 gap-3">
-                <MetricTile label="Versions"  value={resume.versionCount} />
+                <MetricTile label="Versions" value={resume.versionCount} />
                 <MetricTile label="Total size" value={formatBytes(totalSize)} />
               </div>
             </CardContent>
@@ -220,16 +229,24 @@ export default function ResumeDetailPage({ params }: { params: Promise<{ id: str
         subtitle={resume.label ?? undefined}
         breadcrumbs={[
           { title: 'Dashboard', href: '/dashboard' },
-          { title: 'Resumes',   href: '/resumes' },
+          { title: 'Resumes', href: '/resumes' },
           { title: v?.fileName ?? id.slice(0, 8) },
         ]}
         badges={
           <>
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[resume.status]}`}>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[resume.status]}`}
+            >
               {RESUME_STATUS_LABELS[resume.status]}
             </span>
-            <Badge variant="secondary" className="text-xs">{RESUME_SOURCE_LABELS[resume.source]}</Badge>
-            {v && <Badge variant="outline" className="text-xs">v{v.versionNumber}</Badge>}
+            <Badge variant="secondary" className="text-xs">
+              {RESUME_SOURCE_LABELS[resume.source]}
+            </Badge>
+            {v && (
+              <Badge variant="outline" className="text-xs">
+                v{v.versionNumber}
+              </Badge>
+            )}
           </>
         }
         actions={
@@ -244,7 +261,9 @@ export default function ResumeDetailPage({ params }: { params: Promise<{ id: str
               <Archive className="mr-1.5 h-4 w-4" />
               {resume.status === 'ARCHIVED' ? 'Restore' : 'Archive'}
             </Button>
-            <Button size="sm" variant="ghost" onClick={onDelete}>Delete</Button>
+            <Button size="sm" variant="ghost" onClick={onDelete}>
+              Delete
+            </Button>
           </>
         }
         facts={
@@ -252,8 +271,12 @@ export default function ResumeDetailPage({ params }: { params: Promise<{ id: str
             <>
               <WorkspaceFact label="MIME">{v.mimeType}</WorkspaceFact>
               <WorkspaceFact label="Size">{formatBytes(v.sizeBytes)}</WorkspaceFact>
-              <WorkspaceFact label="Uploaded">{formatDistanceToNow(new Date(v.uploadedAt), { addSuffix: true })}</WorkspaceFact>
-              <WorkspaceFact label="SHA-256"><span className="font-mono">{v.sha256.slice(0, 16)}…</span></WorkspaceFact>
+              <WorkspaceFact label="Uploaded">
+                {formatDistanceToNow(new Date(v.uploadedAt), { addSuffix: true })}
+              </WorkspaceFact>
+              <WorkspaceFact label="SHA-256">
+                <span className="font-mono">{v.sha256.slice(0, 16)}…</span>
+              </WorkspaceFact>
             </>
           )
         }
@@ -271,7 +294,11 @@ export default function ResumeDetailPage({ params }: { params: Promise<{ id: str
                 onChange={(e) => setVersionFile(e.target.files?.[0] ?? null)}
                 className="text-xs"
               />
-              <Button size="sm" disabled={!versionFile || addVersion.isPending} onClick={onAddVersion}>
+              <Button
+                size="sm"
+                disabled={!versionFile || addVersion.isPending}
+                onClick={onAddVersion}
+              >
                 <Upload className="mr-1.5 h-3.5 w-3.5" />
                 {addVersion.isPending ? 'Uploading…' : 'Add version'}
               </Button>
@@ -286,12 +313,17 @@ export default function ResumeDetailPage({ params }: { params: Promise<{ id: str
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">
                       v{ver.versionNumber} · {ver.fileName}
-                      {ver.isCurrent && <Badge variant="secondary" className="ml-2 text-[10px]">current</Badge>}
+                      {ver.isCurrent && (
+                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                          current
+                        </Badge>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {formatBytes(ver.sizeBytes)} · {ver.mimeType} ·{' '}
-                      uploaded {formatDistanceToNow(new Date(ver.uploadedAt), { addSuffix: true })}
-                      {ver.supersededAt && ` · superseded ${formatDistanceToNow(new Date(ver.supersededAt), { addSuffix: true })}`}
+                      {formatBytes(ver.sizeBytes)} · {ver.mimeType} · uploaded{' '}
+                      {formatDistanceToNow(new Date(ver.uploadedAt), { addSuffix: true })}
+                      {ver.supersededAt &&
+                        ` · superseded ${formatDistanceToNow(new Date(ver.supersededAt), { addSuffix: true })}`}
                     </div>
                   </div>
                 </div>

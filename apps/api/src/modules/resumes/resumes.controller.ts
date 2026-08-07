@@ -16,6 +16,7 @@ import {
   Res,
   UploadedFile,
   UseInterceptors,
+  UsePipes,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
@@ -36,6 +37,7 @@ import { Permission } from '../../auth/permissions/permissions';
 import type { RequestUser } from '../../auth/types/request-user.interface';
 import { ok, paginated } from '../../common/helpers/response.helper';
 import type { ApiResponse, PaginatedResponse } from '../../common/types';
+import { MultipartValidationPipe } from '../../common/pipes/multipart-validation.pipe';
 import { ResumesService } from './resumes.service';
 import { type CreateIntakeBatchDto } from './dto/create-intake-batch.dto';
 import { type ListResumesDto } from './dto/list-resumes.dto';
@@ -71,6 +73,7 @@ export class ResumesController {
   @HttpCode(HttpStatus.CREATED)
   @RequirePermissions(Permission.RESUMES_CREATE)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MULTER_MAX_BYTES } }))
+  @UsePipes(new MultipartValidationPipe())
   async upload(
     @UploadedFile() file: MulterFile | undefined,
     @Body() dto: UploadResumeDto,
@@ -136,6 +139,7 @@ export class ResumesController {
   @HttpCode(HttpStatus.CREATED)
   @RequirePermissions(Permission.RESUMES_UPDATE)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MULTER_MAX_BYTES } }))
+  @UsePipes(new MultipartValidationPipe())
   async uploadNewVersion(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile() file: MulterFile | undefined,

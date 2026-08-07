@@ -88,7 +88,7 @@ export default function CandidateWorkspacePage() {
 
   const { data: candidate, isLoading, isError } = useCandidate(id);
   const { data: workspace } = useCandidateWorkspace(id);
-  const { data: usersResp } = useUsers({ limit: 200 });
+  const { data: usersResp } = useUsers({ limit: 100 });
 
   const deleteMutation = useDeleteCandidate();
   const assignOwner = useAssignCandidateOwner(id);

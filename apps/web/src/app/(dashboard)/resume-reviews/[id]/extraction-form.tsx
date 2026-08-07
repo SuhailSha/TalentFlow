@@ -22,21 +22,31 @@ import { Textarea } from '@/components/ui/textarea';
 type EditorMode = 'accepted' | 'editing' | 'rejected';
 
 export function FieldEditor({
-  label, path, value, confidence,
-  edited, rejected,
-  onEdit, onReject, onClearEdit,
+  label,
+  path,
+  value,
+  confidence,
+  edited,
+  rejected,
+  onEdit,
+  onReject,
+  onClearEdit,
 }: {
-  label:     string;
-  path:      string;
-  value:     unknown;
+  label: string;
+  path: string;
+  value: unknown;
   confidence?: number;
-  edited?:   unknown;
+  edited?: unknown;
   rejected?: boolean;
-  onEdit:    (path: string, value: unknown) => void;
-  onReject:  (path: string) => void;
+  onEdit: (path: string, value: unknown) => void;
+  onReject: (path: string) => void;
   onClearEdit: (path: string) => void;
 }) {
-  const initialMode: EditorMode = rejected ? 'rejected' : edited !== undefined ? 'editing' : 'accepted';
+  const initialMode: EditorMode = rejected
+    ? 'rejected'
+    : edited !== undefined
+      ? 'editing'
+      : 'accepted';
   const [mode, setMode] = useState<EditorMode>(initialMode);
   const [draft, setDraft] = useState<string>(stringify(edited ?? value));
 
@@ -52,8 +62,12 @@ export function FieldEditor({
   const displayValue = stringify(value);
 
   return (
-    <div className={`grid grid-cols-[160px_1fr_auto] items-start gap-2 py-1.5 ${mode === 'rejected' ? 'opacity-60' : ''}`}>
-      <div className="text-xs text-muted-foreground pt-1.5 truncate" title={path}>{label}</div>
+    <div
+      className={`grid grid-cols-[160px_1fr_auto] items-start gap-2 py-1.5 ${mode === 'rejected' ? 'opacity-60' : ''}`}
+    >
+      <div className="text-xs text-muted-foreground pt-1.5 truncate" title={path}>
+        {label}
+      </div>
       <div>
         {mode === 'editing' ? (
           isMultiline(draft) ? (
@@ -73,7 +87,9 @@ export function FieldEditor({
             />
           )
         ) : (
-          <div className={`text-sm py-1 px-2 rounded border bg-muted/30 ${mode === 'rejected' ? 'line-through' : ''}`}>
+          <div
+            className={`text-sm py-1 px-2 rounded border bg-muted/30 ${mode === 'rejected' ? 'line-through' : ''}`}
+          >
             {displayValue || <span className="text-muted-foreground italic">—</span>}
           </div>
         )}
@@ -83,20 +99,39 @@ export function FieldEditor({
         {mode !== 'rejected' && (
           <button
             type="button"
-            onClick={() => { setMode(mode === 'editing' ? 'accepted' : 'editing'); if (mode === 'editing') onClearEdit(path); }}
+            onClick={() => {
+              setMode(mode === 'editing' ? 'accepted' : 'editing');
+              if (mode === 'editing') onClearEdit(path);
+            }}
             title={mode === 'editing' ? 'Discard edit' : 'Edit'}
             className="h-7 w-7 rounded hover:bg-muted flex items-center justify-center"
           >
-            {mode === 'editing' ? <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" /> : <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />}
+            {mode === 'editing' ? (
+              <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+            ) : (
+              <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
           </button>
         )}
         <button
           type="button"
-          onClick={() => { if (rejected) { onClearEdit(path); setMode('accepted'); } else { onReject(path); setMode('rejected'); } }}
+          onClick={() => {
+            if (rejected) {
+              onClearEdit(path);
+              setMode('accepted');
+            } else {
+              onReject(path);
+              setMode('rejected');
+            }
+          }}
           title={rejected ? 'Restore' : 'Reject this field'}
           className="h-7 w-7 rounded hover:bg-muted flex items-center justify-center"
         >
-          {rejected ? <Check className="h-3.5 w-3.5 text-muted-foreground" /> : <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />}
+          {rejected ? (
+            <Check className="h-3.5 w-3.5 text-muted-foreground" />
+          ) : (
+            <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
         </button>
       </div>
     </div>
@@ -109,15 +144,48 @@ function stringify(v: unknown): string {
   if (v === null || v === undefined) return '';
   if (typeof v === 'string') return v;
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
-  if (Array.isArray(v))      return v.map(stringify).filter(Boolean).join(', ');
-  try { return JSON.stringify(v); } catch { return String(v); }
+  if (Array.isArray(v)) return v.map(stringify).filter(Boolean).join(', ');
+
+  // Handle skill objects - show normalized name or raw value instead of JSON
+  if (typeof v === 'object' && v !== null) {
+    const obj = v as Record<string, unknown>;
+    // Skills have 'raw' and optionally 'normalized' fields
+    if ('raw' in obj) {
+      return String(obj.normalized || obj.raw || '');
+    }
+    // Other objects might have 'name' or 'value' fields
+    if ('name' in obj) return String(obj.name || '');
+    if ('value' in obj) return String(obj.value || '');
+  }
+
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
 }
 
-function isMultiline(s: string): boolean { return s.includes('\n') || s.length > 80; }
+function isMultiline(s: string): boolean {
+  return s.includes('\n') || s.length > 80;
+}
 
 function confidenceBadge(c: number) {
   const pct = Math.round(c * 100);
-  if (c >= 0.9)  return <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-800">{pct}%</Badge>;
-  if (c >= 0.6)  return <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-800">{pct}%</Badge>;
-  return <Badge variant="secondary" className="text-[10px] bg-red-100 text-red-800">{pct}%</Badge>;
+  if (c >= 0.9)
+    return (
+      <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-800">
+        {pct}%
+      </Badge>
+    );
+  if (c >= 0.6)
+    return (
+      <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-800">
+        {pct}%
+      </Badge>
+    );
+  return (
+    <Badge variant="secondary" className="text-[10px] bg-red-100 text-red-800">
+      {pct}%
+    </Badge>
+  );
 }
