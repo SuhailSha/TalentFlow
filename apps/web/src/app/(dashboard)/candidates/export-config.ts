@@ -39,10 +39,16 @@ export const candidateExportColumns: ExportColumn[] = [
   {
     key: 'professional.skills',
     header: 'Skills',
-    formatter: (skills: any[]) => {
+    formatter: (skills: unknown) => {
       if (!Array.isArray(skills)) return '';
       return skills
-        .map((skill) => skill?.normalized || skill?.raw || skill)
+        .map((skill) => {
+          if (skill && typeof skill === 'object') {
+            const skillObj = skill as { normalized?: string; raw?: string };
+            return skillObj.normalized || skillObj.raw || String(skill);
+          }
+          return String(skill || '');
+        })
         .filter(Boolean)
         .join(', ');
     },
@@ -62,22 +68,22 @@ export const candidateExportColumns: ExportColumn[] = [
   {
     key: 'status',
     header: 'Status',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'source',
     header: 'Source',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'recruiting.currentCtc.amount',
     header: 'Current CTC',
-    formatter: formatters.currency,
+    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
   },
   {
     key: 'recruiting.expectedCtc.amount',
     header: 'Expected CTC',
-    formatter: formatters.currency,
+    formatter: (value: unknown) => formatters.currency(typeof value === 'number' ? value : 0),
   },
   {
     key: 'recruiting.noticePeriodDays',
@@ -86,12 +92,12 @@ export const candidateExportColumns: ExportColumn[] = [
   {
     key: 'recruiting.visaStatus',
     header: 'Visa Status',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'recruiting.workAuthorization',
     header: 'Work Authorization',
-    formatter: formatters.status,
+    formatter: (value: unknown) => formatters.status(String(value || '')),
   },
   {
     key: 'ownerId',
@@ -100,11 +106,11 @@ export const candidateExportColumns: ExportColumn[] = [
   {
     key: 'createdAt',
     header: 'Created Date',
-    formatter: formatters.date,
+    formatter: (value: unknown) => formatters.date(value as string | Date),
   },
   {
     key: 'updatedAt',
     header: 'Last Updated',
-    formatter: formatters.datetime,
+    formatter: (value: unknown) => formatters.datetime(value as string | Date),
   },
 ];

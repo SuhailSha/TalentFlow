@@ -7,19 +7,19 @@
 export interface ExportColumn {
   key: string;
   header: string;
-  formatter?: (value: any) => string;
+  formatter?: (value: unknown) => string;
 }
 
 export interface ExportOptions {
   filename: string;
   columns: ExportColumn[];
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
 }
 
 /**
  * Convert array of objects to CSV string
  */
-function arrayToCsv(data: Record<string, any>[], columns: ExportColumn[]): string {
+function arrayToCsv(data: Record<string, unknown>[], columns: ExportColumn[]): string {
   // Create header row
   const headers = columns.map((col) => `"${col.header}"`).join(',');
 
@@ -43,8 +43,13 @@ function arrayToCsv(data: Record<string, any>[], columns: ExportColumn[]): strin
 /**
  * Get nested object value using dot notation (e.g., "user.name")
  */
-function getNestedValue(obj: any, path: string): any {
-  return path.split('.').reduce((current, key) => current?.[key], obj);
+function getNestedValue(obj: unknown, path: string): unknown {
+  return path.split('.').reduce((current, key) => {
+    if (current && typeof current === 'object' && key in current) {
+      return (current as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj);
 }
 
 /**
@@ -92,7 +97,7 @@ export const formatters = {
     }).format(value);
   },
 
-  array: (value: any[]) => {
+  array: (value: unknown[]) => {
     if (!Array.isArray(value)) return '';
     return value.join(', ');
   },

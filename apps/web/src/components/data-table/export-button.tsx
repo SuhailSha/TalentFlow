@@ -16,7 +16,7 @@ import { downloadCsv, type ExportColumn } from '@/lib/export/csv-export';
 
 export interface ExportButtonProps {
   /** Data to export */
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
   /** Column definitions for export */
   columns: ExportColumn[];
   /** Base filename (without extension) */
