@@ -6,6 +6,7 @@ import { FileText, Plus, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 import { PageHeader } from '@/components/common/page-header';
+import { ExportMenu } from '@/components/common/export-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,14 +16,15 @@ import { useResumes } from '@/hooks';
 import { useDebounce } from '@/hooks/use-debounce';
 import { RESUME_STATUS_LABELS, RESUME_SOURCE_LABELS } from '@/types';
 import type { ListResumesParams, ResumeListItem, ResumeStatus } from '@/types';
+import { resumeExportColumns } from './export-config';
 
 const STATUS_STYLES: Record<ResumeStatus, string> = {
-  DRAFT:        'bg-slate-100 text-slate-700',
-  PROCESSING:   'bg-blue-100 text-blue-800',
+  DRAFT: 'bg-slate-100 text-slate-700',
+  PROCESSING: 'bg-blue-100 text-blue-800',
   NEEDS_REVIEW: 'bg-amber-100 text-amber-800',
-  ACTIVE:       'bg-green-100 text-green-800',
-  ARCHIVED:     'bg-gray-100 text-gray-500',
-  REJECTED:     'bg-red-100 text-red-800',
+  ACTIVE: 'bg-green-100 text-green-800',
+  ARCHIVED: 'bg-gray-100 text-gray-500',
+  REJECTED: 'bg-red-100 text-red-800',
 };
 
 const STATUS_FILTERS: ResumeStatus[] = ['DRAFT', 'ACTIVE', 'ARCHIVED'];
@@ -45,17 +47,29 @@ function ResumeRow({ resume }: { resume: ResumeListItem }) {
           <div className="flex items-center gap-2 flex-wrap">
             <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="font-medium text-sm truncate">{v?.fileName ?? 'No file'}</span>
-            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[resume.status]}`}>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[resume.status]}`}
+            >
               {RESUME_STATUS_LABELS[resume.status]}
             </span>
-            {resume.label && <Badge variant="secondary" className="text-xs">{resume.label}</Badge>}
+            {resume.label && (
+              <Badge variant="secondary" className="text-xs">
+                {resume.label}
+              </Badge>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
             <span>{RESUME_SOURCE_LABELS[resume.source]}</span>
-            {v && <span>v{v.versionNumber} · {v.mimeType} · {formatBytes(v.sizeBytes)}</span>}
+            {v && (
+              <span>
+                v{v.versionNumber} · {v.mimeType} · {formatBytes(v.sizeBytes)}
+              </span>
+            )}
             {resume.versionCount > 1 && <span>{resume.versionCount} versions</span>}
-            <span>Uploaded {formatDistanceToNow(new Date(resume.createdAt), { addSuffix: true })}</span>
+            <span>
+              Uploaded {formatDistanceToNow(new Date(resume.createdAt), { addSuffix: true })}
+            </span>
           </div>
         </div>
 
@@ -80,14 +94,14 @@ function ResumeRowSkeleton() {
 }
 
 export default function ResumesPage() {
-  const [search, setSearch]             = useState('');
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ResumeStatus | undefined>();
-  const [page, setPage]                 = useState(1);
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
 
   const params: ListResumesParams = {
     page,
-    limit:  20,
+    limit: 20,
     search: debouncedSearch || undefined,
     status: statusFilter,
   };
@@ -113,12 +127,21 @@ export default function ResumesPage() {
         description="Recruiter-uploaded resumes. Parsing and review begin in R2."
         breadcrumbs={[{ title: 'Dashboard', href: '/dashboard' }, { title: 'Resumes' }]}
         actions={
-          <Button asChild size="sm">
-            <Link href="/resumes/upload">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Upload resume
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <ExportMenu
+              data={data?.data ?? []}
+              columns={resumeExportColumns}
+              filename="resumes"
+              disabled={isLoading || (data?.data ?? []).length === 0}
+              loading={isLoading}
+            />
+            <Button asChild size="sm">
+              <Link href="/resumes/upload">
+                <Plus className="mr-1.5 h-4 w-4" />
+                Upload resume
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -157,7 +180,9 @@ export default function ResumesPage() {
         </Card>
       ) : isLoading ? (
         <div className="space-y-3">
-          {Array.from({ length: 6 }).map((_, i) => <ResumeRowSkeleton key={i} />)}
+          {Array.from({ length: 6 }).map((_, i) => (
+            <ResumeRowSkeleton key={i} />
+          ))}
         </div>
       ) : data?.data.length === 0 ? (
         <Card>
@@ -172,14 +197,32 @@ export default function ResumesPage() {
       ) : (
         <>
           <div className="space-y-3">
-            {data?.data.map((r) => <ResumeRow key={r.id} resume={r} />)}
+            {data?.data.map((r) => (
+              <ResumeRow key={r.id} resume={r} />
+            ))}
           </div>
           {totalPages > 1 && (
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>{data?.meta?.total} total · page {page} of {totalPages}</span>
+              <span>
+                {data?.meta?.total} total · page {page} of {totalPages}
+              </span>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
               </div>
             </div>
           )}

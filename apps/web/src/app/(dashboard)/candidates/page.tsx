@@ -6,8 +6,14 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 
 import { PageHeader } from '@/components/common/page-header';
-import { DataTable, DataTableToolbar, SavedViewsRow } from '@/components/data-table';
-import type { BulkAction, DataTableConfig, FilterChipValue, RowAction, SavedView } from '@/components/data-table';
+import { DataTable, DataTableToolbar, SavedViewsRow, ExportButton } from '@/components/data-table';
+import type {
+  BulkAction,
+  DataTableConfig,
+  FilterChipValue,
+  RowAction,
+  SavedView,
+} from '@/components/data-table';
 import { addView, loadViews } from '@/components/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +23,7 @@ import type { CandidateListItem, ListCandidatesParams } from '@/types/candidates
 
 import { CandidateBulkActions } from './bulk-actions';
 import { candidateColumns } from './columns';
+import { candidateExportColumns } from './export-config';
 
 const NAMESPACE = 'candidates';
 
@@ -44,77 +51,109 @@ export default function CandidatesPage() {
   const [views, setViews] = useState<SavedView[]>(() => loadViews(NAMESPACE));
   const [activeViewId, setActiveViewId] = useState<string | undefined>();
 
-  const handleSaveView = useCallback((name: string) => {
-    const view: SavedView = {
-      id:    `v_${name.toLowerCase().replace(/\W+/g, '-')}_${views.length + 1}`,
-      name,
-      state: { q: debouncedSearch },
-    };
-    setViews(addView(NAMESPACE, view));
-    setActiveViewId(view.id);
-  }, [debouncedSearch, views.length]);
+  const handleSaveView = useCallback(
+    (name: string) => {
+      const view: SavedView = {
+        id: `v_${name.toLowerCase().replace(/\W+/g, '-')}_${views.length + 1}`,
+        name,
+        state: { q: debouncedSearch },
+      };
+      setViews(addView(NAMESPACE, view));
+      setActiveViewId(view.id);
+    },
+    [debouncedSearch, views.length],
+  );
 
-  const handleSelectView = useCallback((id: string) => {
-    const v = views.find((x) => x.id === id);
-    if (!v) return;
-    setActiveViewId(id);
-    setSearch(v.state.q ?? '');
-    setPage(1);
-  }, [views]);
+  const handleSelectView = useCallback(
+    (id: string) => {
+      const v = views.find((x) => x.id === id);
+      if (!v) return;
+      setActiveViewId(id);
+      setSearch(v.state.q ?? '');
+      setPage(1);
+    },
+    [views],
+  );
 
   // Filter chips — only search is wired in Slice 4; status/skill filters
   // land as follow-up work now that the shell is boundary-clean.
   const activeFilters: FilterChipValue[] = useMemo(() => {
     if (!debouncedSearch) return [];
-    return [{
-      columnId:   'search',
-      label:      'Search',
-      value:      debouncedSearch,
-      serialized: debouncedSearch,
-    }];
+    return [
+      {
+        columnId: 'search',
+        label: 'Search',
+        value: debouncedSearch,
+        serialized: debouncedSearch,
+      },
+    ];
   }, [debouncedSearch]);
 
-  const bulkActions: BulkAction<CandidateListItem>[] = useMemo(() => [
-    { id: 'note',     label: 'Add note',     icon: <MessageSquare className="h-3.5 w-3.5" />, onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)) },
-    { id: 'reminder', label: 'Add reminder', icon: <Bell         className="h-3.5 w-3.5" />, onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)) },
-    { id: 'delete',   label: 'Delete',       icon: <Trash2       className="h-3.5 w-3.5" />, onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)), danger: true },
-  ], []);
+  const bulkActions: BulkAction<CandidateListItem>[] = useMemo(
+    () => [
+      {
+        id: 'note',
+        label: 'Add note',
+        icon: <MessageSquare className="h-3.5 w-3.5" />,
+        onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)),
+      },
+      {
+        id: 'reminder',
+        label: 'Add reminder',
+        icon: <Bell className="h-3.5 w-3.5" />,
+        onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)),
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        icon: <Trash2 className="h-3.5 w-3.5" />,
+        onExecute: (rows) => setSelectedIds(rows.map((r) => r.id)),
+        danger: true,
+      },
+    ],
+    [],
+  );
 
-  const rowActions: RowAction<CandidateListItem>[] = useMemo(() => [
-    {
-      id:    'open',
-      label: 'Open candidate',
-      icon:  <Search className="h-3.5 w-3.5" />,
-      onClick: (row) => router.push(`/candidates/${row.id}`),
-    },
-  ], [router]);
+  const rowActions: RowAction<CandidateListItem>[] = useMemo(
+    () => [
+      {
+        id: 'open',
+        label: 'Open candidate',
+        icon: <Search className="h-3.5 w-3.5" />,
+        onClick: (row) => router.push(`/candidates/${row.id}`),
+      },
+    ],
+    [router],
+  );
 
   const items = data?.data ?? [];
   const total = data?.meta.total ?? 0;
 
   const config: DataTableConfig<CandidateListItem> = {
-    columns:     candidateColumns,
-    data:        items,
+    columns: candidateColumns,
+    data: items,
     total,
     isLoading,
     isFetching,
-    error:       error ?? null,
-    rowClick:    'navigate',
-    rowHref:     (r) => `/candidates/${r.id}`,
-    ariaLabel:   'Candidates',
+    error: error ?? null,
+    rowClick: 'navigate',
+    rowHref: (r) => `/candidates/${r.id}`,
+    ariaLabel: 'Candidates',
     virtualized: items.length > 50,
     rowActions,
     bulkActions,
     filters: {
-      active:   activeFilters,
+      active: activeFilters,
       onRemove: () => setSearch(''),
       onClearAll: () => setSearch(''),
     },
     pagination: {
-      pageIndex:        page - 1,
-      pageSize:         25,
-      onPageChange:     (idx) => setPage(idx + 1),
-      onPageSizeChange: () => { /* fixed page size in Slice 4 */ },
+      pageIndex: page - 1,
+      pageSize: 25,
+      onPageChange: (idx) => setPage(idx + 1),
+      onPageSizeChange: () => {
+        /* fixed page size in Slice 4 */
+      },
     },
   };
 
@@ -147,28 +186,56 @@ export default function CandidatesPage() {
         activeFilters={activeFilters}
         onRemoveFilter={() => setSearch('')}
         onClearAll={() => setSearch('')}
-        filterMenu={(
+        filterMenu={
           <div className="relative min-w-[280px]">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search by name, email, title…"
               className="h-8 pl-9 text-[12.5px]"
               aria-label="Search candidates"
             />
           </div>
-        )}
+        }
+        rightSlot={
+          <ExportButton
+            data={items}
+            columns={candidateExportColumns}
+            filename="candidates"
+            disabled={isLoading || items.length === 0}
+            loading={isFetching}
+          />
+        }
       />
 
       <DataTable<CandidateListItem> config={config} />
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-[12px] text-muted-foreground">
-          <span>Page {page} of {totalPages}</span>
+          <span>
+            Page {page} of {totalPages}
+          </span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1}          onClick={() => setPage((p) => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
           </div>
         </div>
       )}
