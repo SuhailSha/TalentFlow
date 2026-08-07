@@ -129,7 +129,7 @@ export default function ResumesPage() {
         actions={
           <div className="flex gap-2">
             <ExportMenu
-              data={data?.data ?? []}
+              data={(data?.data ?? []) as unknown as Record<string, unknown>[]}
               columns={resumeExportColumns}
               filename="resumes"
               disabled={isLoading || (data?.data ?? []).length === 0}

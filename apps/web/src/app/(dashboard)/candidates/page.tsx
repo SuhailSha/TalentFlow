@@ -203,11 +203,11 @@ export default function CandidatesPage() {
         }
         rightSlot={
           <ExportButton
-            data={items}
+            data={items as unknown as Record<string, unknown>[]}
             columns={candidateExportColumns}
             filename="candidates"
             disabled={isLoading || items.length === 0}
-            loading={isFetching}
+            loading={isLoading}
           />
         }
       />
