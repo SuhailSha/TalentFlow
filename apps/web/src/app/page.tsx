@@ -14,8 +14,14 @@ export default function RootPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Root page auth state:', { isAuthenticated, isLoading });
+  }, [isAuthenticated, isLoading]);
+
   useEffect(() => {
     if (!isLoading) {
+      console.log('Auth resolved, redirecting...', isAuthenticated ? 'to dashboard' : 'to login');
       if (isAuthenticated) {
         router.push('/dashboard');
       } else {
@@ -23,6 +29,18 @@ export default function RootPage() {
       }
     }
   }, [isAuthenticated, isLoading, router]);
+
+  // Fallback timeout - if auth check takes too long, redirect to login
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        console.log('Auth check timed out, redirecting to login');
+        router.push('/login');
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isLoading, router]);
 
   // Show loading while determining auth state
   return (
